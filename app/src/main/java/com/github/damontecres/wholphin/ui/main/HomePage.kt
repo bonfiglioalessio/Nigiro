@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -493,6 +494,8 @@ fun StremioHomeContent(
                     when {
                         // Hero scrolls to index 0 via LaunchedEffect so bottom-aligned buttons never clip the banner top
                         isHeroFocused -> 0f
+                        // Card rows are placed right below the focused item header by a LaunchedEffect
+                        focusedRowIndex >= 0 -> 0f
                         isFilterFocused && offset >= spaceAbovePx && offset + size <= containerSize - spaceAbovePx -> 0f
                         else -> offset - spaceAbovePx
                     }
@@ -503,6 +506,25 @@ fun StremioHomeContent(
         if (isHeroFocused) {
             listState.scrollToItem(0)
         }
+    }
+
+    // Put the focused row (with its title) right below the opaque focused item header, so rows above it
+    // are hidden under the header instead of showing as a cut-off strip
+    val headerPx = remember(density) { with(density) { FocusedItemHeaderHeight.toPx() } }
+    LaunchedEffect(focusedRowIndex) {
+        val row = focusedRowIndex
+        if (row < 0) return@LaunchedEffect
+        val continueItems = if (continueRowIndex == 0) 1 else 0
+        val platformItems = if (platforms.isNotEmpty()) 1 else 0
+        // Item 0 is the hero (or the filter bar without a hero)
+        val lazyIndex =
+            if (row == 0 && continueRowIndex == 0) {
+                1
+            } else {
+                1 + continueItems + platformItems + (row - catalogStartIndex)
+            }
+        listState.scrollToItem(lazyIndex)
+        listState.scrollBy(-headerPx)
     }
 
     Box(modifier = modifier) {
