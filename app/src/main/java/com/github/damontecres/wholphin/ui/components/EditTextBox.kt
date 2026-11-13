@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
@@ -325,11 +326,13 @@ fun SearchEditTextBox(
     readOnly: Boolean = false,
     height: Dp = 40.dp,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    placeholder: String? = null,
 ) {
     EditTextBox(
         value,
         onValueChange,
         modifier,
+        placeholder = placeholder?.let { { Text(text = it, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
         keyboardOptions =
             KeyboardOptions(
                 autoCorrectEnabled = false,

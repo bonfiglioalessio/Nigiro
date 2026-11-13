@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialogState
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
+import com.github.damontecres.wholphin.ui.main.isOnDisk
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.ui.toBaseItems
@@ -57,6 +58,9 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.personsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ItemFields
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
@@ -104,8 +108,59 @@ class SearchViewModel
 
         private var userLibraryTypes: Set<BaseItemKind> = emptySet()
 
+        // Shown before searching: recent queries and the user's favorites (usually the downloaded titles)
+        private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
+        val recentSearches: StateFlow<List<String>> = _recentSearches
+        private val _favorites = MutableStateFlow<List<BaseItem>>(emptyList())
+        val favorites: StateFlow<List<BaseItem>> = _favorites
+
         init {
             init()
+            loadIdleContent()
+        }
+
+        private fun loadIdleContent() {
+            viewModelScope.launchIO {
+                val userId = serverRepository.currentUser?.id ?: return@launchIO
+                try {
+                    _recentSearches.value =
+                        keyValueService.get(userId, RECENT_SEARCHES_KEY, emptyList<String>()).firstOrNull().orEmpty()
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not read recent searches")
+                }
+                try {
+                    val request =
+                        GetItemsRequest(
+                            userId = userId,
+                            isFavorite = true,
+                            recursive = true,
+                            includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
+                            fields = SlimItemFields + listOf(ItemFields.PATH),
+                            sortBy = listOf(ItemSortBy.DATE_CREATED),
+                            sortOrder = listOf(SortOrder.DESCENDING),
+                            limit = 20,
+                            enableTotalRecordCount = false,
+                        )
+                    _favorites.value = api.itemsApi.getItems(request).toBaseItems(api, false)
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Could not load favorites for search")
+                }
+            }
+        }
+
+        private fun rememberSearch(query: String) {
+            viewModelScope.launchIO {
+                val userId = serverRepository.currentUser?.id ?: return@launchIO
+                val updated =
+                    (listOf(query) + _recentSearches.value.filterNot { it.equals(query, ignoreCase = true) })
+                        .take(MAX_RECENT_SEARCHES)
+                _recentSearches.value = updated
+                keyValueService.save(userId, RECENT_SEARCHES_KEY, updated)
+            }
         }
 
         private fun init() {
@@ -207,6 +262,7 @@ class SearchViewModel
                         combinedResults = SearchResult.Searching,
                     )
                 }
+                rememberSearch(query)
                 if (combined) {
                     searchJobs.add(searchCombined(query))
                 } else {
@@ -214,7 +270,7 @@ class SearchViewModel
                         searchJobs.add(searchType(query, type))
                     }
                 }
-                searchJobs.add(searchSeerr(query))
+                // Seerr isn't searched here: with Gelato the library already has everything that can be streamed
             } else {
                 _state.update {
                     it.copy(
@@ -303,7 +359,7 @@ class SearchViewModel
                             searchTerm = query,
                             recursive = true,
                             includeItemTypes = state.value.includedSearchableTypes,
-                            fields = SlimItemFields,
+                            fields = SlimItemFields + listOf(ItemFields.PROVIDER_IDS, ItemFields.PATH),
                             limit = SEARCH_LIMIT,
                             enableTotalRecordCount = false,
                         )
@@ -313,7 +369,7 @@ class SearchViewModel
                         result.items.map {
                             BaseItem(it, false)
                         }
-                    val sorted = SearchRelevance.filterAndSort(items, query)
+                    val sorted = dedupeLocalCopies(SearchRelevance.filterAndSort(items, query))
                     Timber.v("searchCombined complete %s results", sorted.size)
                     _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
                 } catch (ex: CancellationException) {
@@ -635,3 +691,36 @@ internal val DEFAULT_EXCLUDED_SEARCH_TYPES =
     allSearchableTypes.filterNot { it == BaseItemKind.MOVIE || it == BaseItemKind.SERIES }
 
 private const val SEARCH_LIMIT = 50
+
+private const val RECENT_SEARCHES_KEY = "recent_searches"
+private const val MAX_RECENT_SEARCHES = 8
+
+/**
+ * A title both streamed (Gelato) and downloaded shows up twice: keep one card, the downloaded copy, at the
+ * position of the first one
+ */
+internal fun dedupeLocalCopies(items: List<BaseItem>): List<BaseItem> {
+    val result = mutableListOf<BaseItem>()
+    val indexByKey = HashMap<String, Int>()
+    for (item in items) {
+        val tmdb =
+            item.data.providerIds
+                ?.entries
+                ?.firstOrNull { it.key.equals("Tmdb", ignoreCase = true) }
+                ?.value
+                ?.takeIf { it.isNotBlank() }
+        if (tmdb == null) {
+            result.add(item)
+            continue
+        }
+        val key = "${item.type}:$tmdb"
+        val existing = indexByKey[key]
+        if (existing == null) {
+            indexByKey[key] = result.size
+            result.add(item)
+        } else if (item.isOnDisk() && !result[existing].isOnDisk()) {
+            result[existing] = item
+        }
+    }
+    return result
+}

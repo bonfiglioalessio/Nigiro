@@ -21619,3 +21619,5 @@ HSPLuk/kulikov/slf4j2/timber/TimberLoggerServiceProvider;->initialize()V
 Luk/kulikov/slf4j2/timber/TimberLoggerServiceProvider$Companion;
 HSPLuk/kulikov/slf4j2/timber/TimberLoggerServiceProvider$Companion;-><init>()V
 HSPLuk/kulikov/slf4j2/timber/TimberLoggerServiceProvider$Companion;-><init>(Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+HSPLcom/github/damontecres/wholphin/**->**(**)**
+Lcom/github/damontecres/wholphin/**;

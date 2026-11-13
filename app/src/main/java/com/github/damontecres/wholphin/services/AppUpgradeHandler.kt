@@ -18,6 +18,7 @@ import com.github.damontecres.wholphin.data.model.RememberedTab
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoice
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.ExperimentalPreference
 import com.github.damontecres.wholphin.preferences.HdrOverrideMode
 import com.github.damontecres.wholphin.preferences.ScreensaverPreference
@@ -122,6 +123,22 @@ class AppUpgradeHandler
         }
 
         /**
+         * Switches to the Nigiro theme once, unless the user had picked a theme other than the old default
+         */
+        suspend fun applyNigiroThemeOnce() {
+            val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+            if (prefs.getBoolean(NIGIRO_THEME_KEY, false)) return
+            appPreferences.updateData { current ->
+                if (current.interfacePreferences.appThemeColors == AppThemeColors.PURPLE) {
+                    current.updateInterfacePreferences { appThemeColors = AppThemeColors.NIGIRO }
+                } else {
+                    current
+                }
+            }
+            prefs.edit(true) { putBoolean(NIGIRO_THEME_KEY, true) }
+        }
+
+        /**
          * Copies the font file used by MPV subtitles to the app's files directory
          */
         fun copySubfont(overwrite: Boolean) {
@@ -153,6 +170,7 @@ class AppUpgradeHandler
         }
 
         companion object {
+            private const val NIGIRO_THEME_KEY = "nigiro_theme_applied"
             const val VERSION_NAME_PREVIOUS_KEY = "version.previous.name"
             const val VERSION_CODE_PREVIOUS_KEY = "version.previous.code"
             const val VERSION_NAME_CURRENT_KEY = "version.current.name"

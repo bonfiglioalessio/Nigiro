@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -45,6 +46,10 @@ fun <T> ItemRow(
     showViewMore: Boolean = false,
     viewMoreCardContent: @Composable (Modifier) -> Unit = {},
     itemKey: ((T) -> Any)? = null,
+    contentStartPadding: Dp = horizontalPadding,
+    titleStartPadding: Dp = 8.dp,
+    titleStyle: TextStyle? = null,
+    titleGap: Dp = 8.dp,
 ) {
     val state = rememberLazyListState()
     // Stable keys keep focus & card state on the same item when the list changes (eg a refresh reorders it).
@@ -64,7 +69,7 @@ fun <T> ItemRow(
     val currentOnLongClickItem by rememberUpdatedState(onLongClickItem)
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(titleGap),
         modifier =
             modifier.focusProperties {
                 onEnter = {
@@ -72,12 +77,12 @@ fun <T> ItemRow(
                 }
             },
     ) {
-        ItemRowTitle(title)
+        ItemRowTitle(title, startPadding = titleStartPadding, style = titleStyle)
 
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
-            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 8.dp),
+            contentPadding = PaddingValues(start = contentStartPadding, end = horizontalPadding, top = 8.dp, bottom = 8.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -141,9 +146,11 @@ fun <T> ItemRow(
 fun ItemRowTitle(
     title: String,
     modifier: Modifier = Modifier,
+    startPadding: Dp = 8.dp,
+    style: TextStyle? = null,
 ) = Text(
     text = title,
-    style = MaterialTheme.typography.titleLarge,
+    style = style ?: MaterialTheme.typography.titleLarge,
     color = MaterialTheme.colorScheme.onBackground,
-    modifier = modifier.padding(start = 8.dp),
+    modifier = modifier.padding(start = startPadding),
 )

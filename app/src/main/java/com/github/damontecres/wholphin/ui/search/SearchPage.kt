@@ -21,10 +21,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
@@ -49,21 +52,29 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.DiscoverItem
+import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
+import com.github.damontecres.wholphin.preferences.PrefContentScale
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.ui.AspectRatio
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRow
@@ -79,8 +90,13 @@ import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.detail.CardGridItem
 import com.github.damontecres.wholphin.ui.detail.GridItemDetails
 import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialog
+import com.github.damontecres.wholphin.ui.main.HomePageCardContent
+import com.github.damontecres.wholphin.ui.main.NigiroDimens
+import com.github.damontecres.wholphin.ui.main.OnDiskBadge
+import com.github.damontecres.wholphin.ui.main.isOnDisk
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
+import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
@@ -88,6 +104,7 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
+import java.util.Locale
 
 internal fun shouldShowPendingPrompt(
     query: String,
@@ -163,6 +180,8 @@ fun SearchPage(
         remember(state.includedSearchableTypes.size) { List(RESULTS_START + state.includedSearchableTypes.size) { FocusRequester() } }
 
     val seerrActive by viewModel.seerrActive.collectAsState()
+    val recentSearches by viewModel.recentSearches.collectAsState()
+    val favorites by viewModel.favorites.collectAsState()
     var selectedTab by rememberSaveable(seerrActive, state.discoverEnabled) { mutableIntStateOf(0) }
     var showViewOptions by rememberSaveable { mutableStateOf(false) }
     var showFilterTypeDialog by rememberSaveable { mutableStateOf(false) }
@@ -247,8 +266,8 @@ fun SearchPage(
         showHeader = index < columns
     }
     // Based on the submitted query, so the tabs don't flicker while typing
-    val showTabs =
-        seerrActive && state.discoverEnabled && !submittedQuery.isNullOrBlank() && showHeader && combinedMode
+    // Seerr isn't searched here (Gelato already makes the library complete), so there is only one tab
+    val showTabs = false
     val animationsEnabled = LocalInterfaceCustomization.current.enableAnimations
     val isLibraryTab = selectedTab == 0
 
@@ -341,7 +360,8 @@ fun SearchPage(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     Modifier
-                        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                        .fillMaxWidth()
+                        .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd, top = 24.dp)
                         .focusGroup()
                         .focusRestorer(textFieldFocusRequester)
                         .focusRequester(focusRequesters[SEARCH_ROW]),
@@ -369,8 +389,11 @@ fun SearchPage(
                     },
                     onSearchClick = { triggerImmediateSearch(query) },
                     readOnly = !isSearchActive,
+                    height = 56.dp,
+                    placeholder = stringResource(R.string.search_placeholder),
                     modifier =
                         Modifier
+                            .weight(1f)
                             .focusRequester(textFieldFocusRequester)
                             .onFocusChanged { state ->
                                 isTextFieldFocused = state.isFocused
@@ -438,6 +461,21 @@ fun SearchPage(
 //                Timber.v("isLibraryTab=%s, combinedMode=%s", isLibraryTab, combinedMode)
 //            }
             when {
+                combinedMode && state.combinedResults is SearchResult.NoQuery -> {
+                    SearchIdleContent(
+                        recentSearches = recentSearches,
+                        favorites = favorites,
+                        onClickRecent = { recent ->
+                            query = recent
+                            triggerImmediateSearch(recent)
+                        },
+                        onClickItem = { index, item -> onClickItem(index, item) },
+                        onLongClickItem = { index, item -> onLongClickItem(COMBINED_ROW, index, item) },
+                        firstFocusRequester = focusRequesters[COMBINED_ROW],
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
                 isLibraryTab && combinedMode -> {
                     SearchCombinedResults(
                         result = state.combinedResults,
@@ -655,8 +693,11 @@ fun SearchCombinedResults(
                             onLongClick = details.onLongClick,
                             modifier = details.mod,
                             fillWidth = details.widthPx,
+                            showTitle = false,
+                            imageContentScale = ContentScale.Crop,
                         )
                     },
+                    focusedItemHeader = true,
                     modifier = modifier,
                 )
             }
@@ -704,12 +745,19 @@ private fun <T : CardGridItem> SearchGrid(
     cardContent: @Composable (GridItemDetails<T>) -> Unit,
     positionCallback: (columns: Int, position: Int) -> Unit,
     modifier: Modifier = Modifier,
+    focusedItemHeader: Boolean = false,
 ) {
+    // Read only by the header, through a provider, so moving focus doesn't recompose the grid
+    var focusedIndex by remember(items) { mutableIntStateOf(0) }
     Column(
         verticalArrangement = Arrangement.spacedBy(0.dp),
         modifier = modifier,
     ) {
-        ItemRowTitle(stringResource(R.string.results))
+        if (focusedItemHeader) {
+            SearchFocusedHeader(itemProvider = { items.getOrNull(focusedIndex) as? BaseItem })
+        } else {
+            ItemRowTitle(stringResource(R.string.results))
+        }
 
         CardGrid(
             pager = items,
@@ -726,7 +774,10 @@ private fun <T : CardGridItem> SearchGrid(
             gridFocusRequester = focusRequester,
             showJumpButtons = false,
             showLetterButtons = false,
-            positionCallback = positionCallback,
+            positionCallback = { columns, index ->
+                focusedIndex = index
+                positionCallback(columns, index)
+            },
             modifier = Modifier.fillMaxSize(),
             cardContent = cardContent,
         )
@@ -835,5 +886,143 @@ fun SearchResultPlaceholder(
             style = MaterialTheme.typography.titleMedium,
             color = messageColor,
         )
+    }
+}
+
+/**
+ * One line with title, details and the on-disk badge of the focused result
+ */
+@Composable
+private fun SearchFocusedHeader(itemProvider: () -> BaseItem?) {
+    val item = itemProvider()
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
+    ) {
+        if (item == null) return@Row
+        Text(
+            text = item.name.orEmpty(),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        val meta =
+            remember(item) {
+                listOfNotNull(
+                    item.data.productionYear?.toString(),
+                    item.data.communityRating?.let { String.format(Locale.ITALIAN, "★ %.1f", it) },
+                ).joinToString(" · ")
+            }
+        if (meta.isNotBlank()) {
+            Text(text = meta, style = NigiroDimens.Meta, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (item.isOnDisk()) {
+            OnDiskBadge()
+        }
+    }
+}
+
+/**
+ * Before searching: recent searches and the favorites (usually the downloaded titles) instead of a blank page
+ */
+@Composable
+private fun SearchIdleContent(
+    recentSearches: List<String>,
+    favorites: List<BaseItem>,
+    onClickRecent: (String) -> Unit,
+    onClickItem: (Int, BaseItem) -> Unit,
+    onLongClickItem: (Int, BaseItem) -> Unit,
+    firstFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val posterOptions =
+        remember {
+            HomeRowViewOptions(
+                heightDp = NigiroDimens.PosterHeight.value.toInt(),
+                spacing = NigiroDimens.CardGap.value.toInt(),
+                contentScale = PrefContentScale.CROP,
+                aspectRatio = AspectRatio.TALL,
+                showTitles = false,
+                useSeries = false,
+            )
+        }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
+        modifier = modifier.padding(top = 12.dp),
+    ) {
+        if (recentSearches.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap)) {
+                ItemRowTitle(
+                    stringResource(R.string.recent_searches),
+                    startPadding = NigiroDimens.ContentStart,
+                    style = NigiroDimens.RowTitle,
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
+                    modifier = Modifier.focusGroup(),
+                ) {
+                    itemsIndexed(recentSearches, key = { _, it -> it }) { index, recent ->
+                        Button(
+                            onClick = { onClickRecent(recent) },
+                            shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
+                            colors =
+                                ButtonDefaults.colors(
+                                    containerColor = Color.White.copy(alpha = 0.10f),
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                    focusedContainerColor = Color.White,
+                                    focusedContentColor = NigiroPalette.Background,
+                                ),
+                            scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                            modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
+                        ) {
+                            Text(text = recent, fontSize = 16.sp)
+                        }
+                    }
+                }
+            }
+        }
+        if (favorites.isNotEmpty()) {
+            ItemRow(
+                title = stringResource(R.string.favorites_and_on_disk),
+                items = favorites,
+                onClickItem = onClickItem,
+                onLongClickItem = onLongClickItem,
+                cardContent = { index, item, cardModifier, onClick, onLongClick ->
+                    Box {
+                        HomePageCardContent(
+                            index = index,
+                            item = item,
+                            onClick = onClick,
+                            onLongClick = onLongClick,
+                            viewOptions = posterOptions,
+                            modifier = cardModifier,
+                        )
+                        if (item?.isOnDisk() == true) {
+                            OnDiskBadge(
+                                Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(8.dp),
+                            )
+                        }
+                    }
+                },
+                horizontalPadding = NigiroDimens.CardGap,
+                itemKey = { it.id.toString() },
+                contentStartPadding = NigiroDimens.ContentStart,
+                titleStartPadding = NigiroDimens.ContentStart,
+                titleStyle = NigiroDimens.RowTitle,
+                titleGap = NigiroDimens.TitleGap - 8.dp,
+                modifier =
+                    if (recentSearches.isEmpty()) Modifier.focusRequester(firstFocusRequester) else Modifier,
+            )
+        }
     }
 }

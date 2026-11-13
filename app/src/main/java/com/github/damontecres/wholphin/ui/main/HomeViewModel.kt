@@ -28,10 +28,10 @@ import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.AspectRatio
-import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.HomeItemFields
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.combinePair
+import com.github.damontecres.wholphin.ui.components.ViewOptionImageType
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
@@ -329,11 +329,17 @@ class HomeViewModel
                 val rowConfig =
                     HomeRowConfig.ContinueWatchingCombined(
                         viewOptions =
+                            // Real 16:9 artwork (thumb, else backdrop) instead of a poster stretched to 16:9
                             HomeRowViewOptions(
                                 showTitles = true,
                                 aspectRatio = AspectRatio.WIDE,
                                 episodeAspectRatio = AspectRatio.WIDE,
-                                heightDp = Cards.HEIGHT_EPISODE,
+                                heightDp = NigiroDimens.WideCardHeight.value.toInt(),
+                                spacing = NigiroDimens.CardGap.value.toInt(),
+                                imageType = ViewOptionImageType.THUMB,
+                                episodeImageType = ViewOptionImageType.THUMB,
+                                contentScale = PrefContentScale.CROP,
+                                episodeContentScale = PrefContentScale.CROP,
                             ),
                     )
                 val result =
@@ -422,12 +428,13 @@ class HomeViewModel
                 rows.add(continueRow)
             }
             val posterOptions =
+                // Poster only: title & details show in the header for the focused item
                 HomeRowViewOptions(
-                    heightDp = Cards.HEIGHT_2X3_DP,
-                    spacing = 16,
-                    contentScale = PrefContentScale.FILL,
+                    heightDp = NigiroDimens.PosterHeight.value.toInt(),
+                    spacing = NigiroDimens.CardGap.value.toInt(),
+                    contentScale = PrefContentScale.CROP,
                     aspectRatio = AspectRatio.TALL,
-                    showTitles = true,
+                    showTitles = false,
                     useSeries = false,
                 )
             val maxItems = config.home.maxItemsPerRow.coerceAtLeast(1)

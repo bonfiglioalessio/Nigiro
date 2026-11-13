@@ -550,6 +550,7 @@ class MainActivityViewModel
                 appUpgradeHandler.run()
             }
             appUpgradeHandler.copySubfont(false)
+            appUpgradeHandler.applyNigiroThemeOnce()
         }
 
         /**

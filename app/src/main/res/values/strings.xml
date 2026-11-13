@@ -638,6 +638,7 @@
         <item>@string/black</item>
         <item>@string/red</item>
         <item>@string/brown</item>
+        <item>Nigiro</item>
     </string-array>
 
     <string name="skip_ignore">Ignore</string>
@@ -1010,4 +1011,8 @@
     <string name="version_local">Local file</string>
     <string name="version_not_cached">Not cached</string>
     <string name="home_refresh_error">Could not refresh the home page</string>
+    <string name="hero_details">Details</string>
+    <string name="search_placeholder">Search movies and series</string>
+    <string name="recent_searches">Recent searches</string>
+    <string name="favorites_and_on_disk">Favorites and on disk</string>
 </resources>

@@ -806,4 +806,8 @@
     <string name="version_local">File locale</string>
     <string name="version_not_cached">Non in cache</string>
     <string name="home_refresh_error">Impossibile aggiornare la home</string>
+    <string name="hero_details">Dettagli</string>
+    <string name="search_placeholder">Cerca film e serie</string>
+    <string name="recent_searches">Ricerche recenti</string>
+    <string name="favorites_and_on_disk">Preferiti e su disco</string>
 </resources>

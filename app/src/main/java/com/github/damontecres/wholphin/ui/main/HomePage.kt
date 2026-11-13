@@ -29,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -47,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -55,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.tv.material3.Border
@@ -107,6 +111,7 @@ import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
 import com.github.damontecres.wholphin.ui.playback.playable
 import com.github.damontecres.wholphin.ui.playback.scale
 import com.github.damontecres.wholphin.ui.rememberPosition
+import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
@@ -285,6 +290,11 @@ fun HomePage(
                 onHeroToggleFavorite = { item, favorite ->
                     viewModel.setFavorite(item.id, favorite)
                 },
+                onHeroPlay = { item ->
+                    // Come back to the hero instead of the last focused row
+                    position = RowColumn(-1, -1)
+                    viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                },
                 onClickPlatform = { tile ->
                     val targetId = resolvePlatformTargetCollectionId(tile, state.selectedFilter)
                     if (targetId != null) {
@@ -375,6 +385,7 @@ fun StremioHomeContent(
     onSelectFilter: (HomeMediaFilter) -> Unit,
     onHeroWatchNow: (BaseItem) -> Unit,
     onHeroToggleFavorite: (BaseItem, Boolean) -> Unit,
+    onHeroPlay: (BaseItem) -> Unit,
     onClickPlatform: (PlatformTile) -> Unit,
     onFocusPosition: (RowColumn) -> Unit,
     onClickItem: (RowColumn, BaseItem) -> Unit,
@@ -446,10 +457,23 @@ fun StremioHomeContent(
         }
 
     val density = LocalDensity.current
+    // The focused row sits right below the focused item header
     val spaceAbovePx =
         remember(density) {
-            with(density) { 44.dp.toPx() }
+            with(density) { (FocusedItemHeaderHeight + 10.dp).toPx() }
         }
+    // Row (index in homeRows) holding focus, -1 when focus is on the hero, filters or platforms
+    var focusedRowIndex by remember { mutableIntStateOf(-1) }
+    val focusedItem by remember(homeRows) {
+        derivedStateOf {
+            if (focusedRowIndex < 0) {
+                null
+            } else {
+                val position = positionProvider()
+                (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)?.items?.getOrNull(position.column)
+            }
+        }
+    }
     val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
     var isHeroFocused by remember { mutableStateOf(false) }
     var isFilterFocused by remember { mutableStateOf(false) }
@@ -482,8 +506,8 @@ fun StremioHomeContent(
         ) {
             LazyColumn(
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = Cards.height2x3),
+                verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
+                contentPadding = PaddingValues(bottom = 48.dp),
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -505,7 +529,7 @@ fun StremioHomeContent(
                         },
             ) {
                 if (heroSlides.isNotEmpty()) {
-                    item(key = "stremio_hero") {
+                    item(key = "stremio_hero", contentType = "hero") {
                         CompositionLocalProvider(
                             LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
                         ) {
@@ -513,12 +537,50 @@ fun StremioHomeContent(
                                 slides = heroSlides,
                                 config = heroConfig,
                                 watchFocusRequester = heroFocusRequester,
-                                onWatchNow = onHeroWatchNow,
+                                onPlay = onHeroPlay,
+                                onDetails = onHeroWatchNow,
                                 onToggleFavorite = onHeroToggleFavorite,
+                                topEndContent = {
+                                    HomeMediaFilterBar(
+                                        selectedFilter = selectedFilter,
+                                        onSelectFilter = onSelectFilter,
+                                        firstButtonFocusRequester = filterFocusRequester,
+                                    )
+                                },
                                 modifier =
                                     Modifier
-                                        .padding(horizontal = 16.dp)
+                                        .bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd)
                                         .onFocusChanged { isHeroFocused = it.hasFocus },
+                            )
+                        }
+                    }
+                } else {
+                    item(key = "stremio_filter_bar") {
+                        CompositionLocalProvider(
+                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                        ) {
+                            HomeMediaFilterBar(
+                                selectedFilter = selectedFilter,
+                                onSelectFilter = onSelectFilter,
+                                firstButtonFocusRequester = filterFocusRequester,
+                                modifier =
+                                    Modifier
+                                        .padding(start = NigiroDimens.ContentStart, top = 20.dp)
+                                        .onFocusChanged { isFilterFocused = it.hasFocus },
+                            )
+                        }
+                    }
+                }
+
+                if (platforms.isNotEmpty()) {
+                    item(key = "stremio_platforms_row", contentType = "platforms") {
+                        CompositionLocalProvider(
+                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                        ) {
+                            PlatformsRow(
+                                platforms = platforms,
+                                activeFilter = selectedFilter,
+                                onClickPlatform = onClickPlatform,
                             )
                         }
                     }
@@ -526,7 +588,7 @@ fun StremioHomeContent(
 
                 if (continueRowIndex == 0) {
                     val continueRow = homeRows[0]
-                    item(key = "stremio_continue_watching") {
+                    item(key = "stremio_continue_watching", contentType = "continue_watching") {
                         CompositionLocalProvider(
                             LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
                         ) {
@@ -541,34 +603,14 @@ fun StremioHomeContent(
                                 onClickItem = onClickItem,
                                 onLongClickItem = onLongClickItem,
                                 onClickViewMore = onClickViewMore,
-                                modifier = Modifier.padding(bottom = 4.dp),
-                            )
-                        }
-                    }
-                }
-
-                item(key = "stremio_filter_bar") {
-                    CompositionLocalProvider(
-                        LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
-                    ) {
-                        HomeMediaFilterBar(
-                            selectedFilter = selectedFilter,
-                            onSelectFilter = onSelectFilter,
-                            firstButtonFocusRequester = filterFocusRequester,
-                            modifier = Modifier.onFocusChanged { isFilterFocused = it.hasFocus },
-                        )
-                    }
-                }
-
-                if (platforms.isNotEmpty()) {
-                    item(key = "stremio_platforms_row") {
-                        CompositionLocalProvider(
-                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
-                        ) {
-                            PlatformsRow(
-                                platforms = platforms,
-                                activeFilter = selectedFilter,
-                                onClickPlatform = onClickPlatform,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.hasFocus) {
+                                            focusedRowIndex = 0
+                                        } else if (focusedRowIndex == 0) {
+                                            focusedRowIndex = -1
+                                        }
+                                    },
                             )
                         }
                     }
@@ -595,11 +637,21 @@ fun StremioHomeContent(
                             onClickItem = onClickItem,
                             onLongClickItem = onLongClickItem,
                             onClickViewMore = onClickViewMore,
-                            modifier = Modifier.padding(bottom = 8.dp),
+                            modifier =
+                                Modifier.onFocusChanged {
+                                    if (it.hasFocus) {
+                                        focusedRowIndex = actualRowIndex
+                                    } else if (focusedRowIndex == actualRowIndex) {
+                                        focusedRowIndex = -1
+                                    }
+                                },
                         )
                     }
                 }
             }
+        }
+        if (focusedRowIndex >= 0) {
+            FocusedHeaderSlot(itemProvider = { focusedItem })
         }
         when (loadingState) {
             LoadingState.Pending,
@@ -635,46 +687,34 @@ private fun HomeMediaFilterBar(
             HomeMediaFilter.SERIES to stringResource(R.string.home_filter_series),
         )
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .focusGroup()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = modifier.focusGroup(),
     ) {
         filters.forEachIndexed { idx, (filter, label) ->
             val selected = filter == selectedFilter
+            val shape = RoundedCornerShape(15.dp)
             Button(
                 onClick = { onSelectFilter(filter) },
+                shape = ButtonDefaults.shape(shape),
                 colors =
                     ButtonDefaults.colors(
-                        containerColor =
-                            if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                Color.White.copy(alpha = 0.12f)
-                            },
-                        contentColor =
-                            if (selected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
+                        containerColor = if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent,
+                        contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                         focusedContainerColor = Color.White,
-                        focusedContentColor = Color.Black,
+                        focusedContentColor = NigiroPalette.Background,
                     ),
+                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                contentPadding = PaddingValues(horizontal = 14.dp),
                 modifier =
-                    if (idx == 0) {
-                        Modifier.focusRequester(firstButtonFocusRequester)
-                    } else {
-                        Modifier
-                    },
+                    Modifier
+                        .height(30.dp)
+                        .then(if (idx == 0) Modifier.focusRequester(firstButtonFocusRequester) else Modifier),
             ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 14.sp,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 )
             }
         }
@@ -689,13 +729,19 @@ private fun PlatformsRow(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        // The row's vertical content padding (room for the focus scale) completes the title gap
+        verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap - 6.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        ItemRowTitle(stringResource(R.string.home_platforms_title))
+        ItemRowTitle(
+            stringResource(R.string.home_platforms_title),
+            startPadding = NigiroDimens.ContentStart,
+            style = NigiroDimens.RowTitle,
+        )
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
+            contentPadding =
+                PaddingValues(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd, top = 6.dp, bottom = 6.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -719,16 +765,8 @@ private fun PlatformTileCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accent =
-        when (tile.key.lowercase()) {
-            "netflix" -> Color(0xFFB81D24)
-            "prime" -> Color(0xFF0078A8)
-            "disney" -> Color(0xFF113CCF)
-            "apple" -> Color(0xFF2B2D36)
-            "sky" -> Color(0xFF0B5CAD)
-            "para" -> Color(0xFF0057D9)
-            else -> Color(0xFF282B36)
-        }
+    // Neutral tile in the theme's gray (the cover image, when present, carries the platform's look)
+    val accent = NigiroPalette.SurfaceRaised
     val subLabel =
         when (activeFilter) {
             HomeMediaFilter.MOVIE -> stringResource(R.string.home_filter_movies)
@@ -744,13 +782,11 @@ private fun PlatformTileCard(
         colors = CardDefaults.colors(containerColor = accent),
         border =
             CardDefaults.border(
-                focusedBorder =
-                    Border(
-                        border = BorderStroke(2.dp, Color.White),
-                        shape = shape,
-                    ),
+                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), shape = shape),
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
             ),
-        modifier = modifier.size(width = 160.dp, height = 90.dp),
+        scale = CardDefaults.scale(focusedScale = 1.05f),
+        modifier = modifier.size(width = NigiroDimens.PlatformTileWidth, height = NigiroDimens.PlatformTileHeight),
     ) {
         if (showCoverImage) {
             AsyncImage(
@@ -930,6 +966,11 @@ private fun HomeRowItemContent(
                     },
                     showViewMore = showViewMore && r.showViewMore,
                     itemKey = { it.id.toString() },
+                    contentStartPadding = NigiroDimens.ContentStart,
+                    titleStartPadding = NigiroDimens.ContentStart,
+                    titleStyle = NigiroDimens.RowTitle,
+                    // The row's 8 dp top padding (room for the focus scale) completes the title gap
+                    titleGap = NigiroDimens.TitleGap - 8.dp,
                     viewMoreCardContent = { mod ->
                         HomePageViewMoreCard(
                             isEpisode = r.items.last()?.type == BaseItemKind.EPISODE,
@@ -1330,4 +1371,29 @@ fun HomePageViewMoreCard(
         size = DpSize(height = viewOptions.heightDp.dp, width = Dp.Unspecified),
         showTitle = viewOptions.showTitles,
     )
+}
+
+/**
+ * Lets a full-width element (the hero) extend past the page's horizontal padding to the screen edges
+ */
+private fun Modifier.bleedHorizontally(
+    start: Dp,
+    end: Dp,
+): Modifier =
+    layout { measurable, constraints ->
+        val startPx = start.roundToPx()
+        val endPx = end.roundToPx()
+        val width = constraints.maxWidth + startPx + endPx
+        val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+        layout(constraints.maxWidth, placeable.height) {
+            placeable.place(-startPx, 0)
+        }
+    }
+
+/**
+ * Own restart scope, so only the header recomposes when focus moves between cards
+ */
+@Composable
+private fun FocusedHeaderSlot(itemProvider: () -> BaseItem?) {
+    FocusedItemHeader(item = itemProvider())
 }
