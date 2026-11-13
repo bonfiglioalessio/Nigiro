@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ExtrasItem
 import com.github.damontecres.wholphin.data.model.BaseItem
@@ -64,7 +64,7 @@ import com.github.damontecres.wholphin.ui.components.DialogParams
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.ExpandableFaButton
 import com.github.damontecres.wholphin.ui.components.ExpandablePlayButton
-import com.github.damontecres.wholphin.ui.components.GenreText
+import com.github.damontecres.wholphin.ui.components.FavoriteButton
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.Optional
@@ -76,10 +76,11 @@ import com.github.damontecres.wholphin.ui.components.TrailerButton
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
+import com.github.damontecres.wholphin.ui.detail.DetailContentInset
+import com.github.damontecres.wholphin.ui.detail.DetailPageFrame
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
-import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
@@ -356,7 +357,8 @@ fun SeriesDetailsContent(
     val playFocusRequester = remember { FocusRequester() }
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
-    Box(
+    DetailPageFrame(
+        item = series,
         modifier = modifier,
     ) {
         Column(
@@ -379,13 +381,13 @@ fun SeriesDetailsContent(
                             Modifier
                                 .fillMaxWidth()
                                 .bringIntoViewRequester(bringIntoViewRequester)
-                                .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
+                                .padding(start = DetailContentInset, top = HeaderUtils.topPadding, bottom = 16.dp),
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier =
                             Modifier
-                                .padding(start = HeaderUtils.startPadding)
+                                .padding(start = HeaderUtils.startPadding + DetailContentInset)
                                 .focusRequester(focusRequesters[HEADER_ROW])
                                 .focusRestorer(playFocusRequester)
                                 .focusGroup()
@@ -439,11 +441,9 @@ fun SeriesDetailsContent(
                                     }
                                 },
                         )
-                        ExpandableFaButton(
-                            title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                            iconStringRes = R.string.fa_heart,
+                        FavoriteButton(
+                            favorite = favorite,
                             onClick = favoriteOnClick,
-                            iconColor = if (favorite) Color.Red else Color.Unspecified,
                             modifier =
                                 Modifier.onFocusChanged {
                                     if (it.isFocused) {
@@ -453,18 +453,20 @@ fun SeriesDetailsContent(
                                     }
                                 },
                         )
-                        TrailerButton(
-                            trailers = trailers,
-                            trailerOnClick = trailerOnClick,
-                            modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.isFocused) {
-                                        scope.launch(ExceptionHandler()) {
-                                            bringIntoViewRequester.bringIntoView()
+                        if (trailers.isNotEmpty()) {
+                            TrailerButton(
+                                trailers = trailers,
+                                trailerOnClick = trailerOnClick,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) {
+                                                bringIntoViewRequester.bringIntoView()
+                                            }
                                         }
-                                    }
-                                },
-                        )
+                                    },
+                            )
+                        }
                         if (canDelete) {
                             DeleteButton(
                                 title = series.title ?: "",
@@ -676,16 +678,19 @@ fun SeriesDetailsHeader(
                 null,
                 Modifier.padding(start = HeaderUtils.startPadding),
             )
-            dto.studios?.let {
-                val studios = remember { series.studioNames }
-                GenreText(
-                    studios,
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(start = HeaderUtils.startPadding),
+            // Genres and the network on one quiet line, instead of the full studio list in a larger font
+            val genresAndNetwork =
+                remember(series) {
+                    (dto.genres.orEmpty().take(3) + series.studioNames.take(1)).joinToString(" · ")
+                }
+            if (genresAndNetwork.isNotBlank()) {
+                Text(
+                    text = genresAndNetwork,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp),
                 )
-            }
-            dto.genres?.letNotEmpty {
-                GenreText(it, Modifier.padding(start = HeaderUtils.startPadding, bottom = 4.dp))
             }
             dto.overview?.let { overview ->
                 OverviewText(

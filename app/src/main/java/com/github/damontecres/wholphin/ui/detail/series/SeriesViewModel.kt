@@ -369,6 +369,7 @@ class SeriesViewModel
                             ItemFields.PRIMARY_IMAGE_ASPECT_RATIO,
                             ItemFields.CAN_DELETE,
                             ItemFields.PARENT_ID,
+                            ItemFields.PATH,
                         ),
                 )
             Timber.v(

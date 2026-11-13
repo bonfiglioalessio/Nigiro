@@ -113,8 +113,9 @@ fun VideoStreamDetails(
         val audioCount = remember(source) { source?.audioStreamCount ?: 0 }
         val audio =
             remember(audioCount, audioStream) {
+                // Streamed (Gelato) items have no stream info until played: show nothing rather than "None"
                 if (audioCount == 0 || audioStream == null) {
-                    resources.getString(R.string.none)
+                    null
                 } else {
                     listOfNotNull(
                         languageName(audioStream.language),
@@ -123,12 +124,14 @@ fun VideoStreamDetails(
                     ).joinToString(" ")
                 }
             }
-        StreamLabel(
-            text = audio,
-            count = audioCount,
-            icon = R.string.fa_volume_high,
-            modifier = Modifier.widthIn(max = 200.dp),
-        )
+        audio?.let {
+            StreamLabel(
+                text = it,
+                count = audioCount,
+                icon = R.string.fa_volume_high,
+                modifier = Modifier.widthIn(max = 200.dp),
+            )
+        }
 
         val subtitleCount =
             remember(source) {

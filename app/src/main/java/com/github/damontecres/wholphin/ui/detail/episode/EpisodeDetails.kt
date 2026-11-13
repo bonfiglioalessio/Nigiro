@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.episode
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,6 +41,8 @@ import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
 import com.github.damontecres.wholphin.ui.data.ChooseVersionParams
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
+import com.github.damontecres.wholphin.ui.detail.DetailContentInset
+import com.github.damontecres.wholphin.ui.detail.DetailPageFrame
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
@@ -235,7 +236,7 @@ fun EpisodeDetailsContent(
 
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
-    Box(modifier = modifier) {
+    DetailPageFrame(item = ep, modifier = modifier) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 8.dp),
@@ -247,7 +248,8 @@ fun EpisodeDetailsContent(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .bringIntoViewRequester(bringIntoViewRequester),
+                            .bringIntoViewRequester(bringIntoViewRequester)
+                            .padding(start = DetailContentInset),
                 ) {
                     EpisodeDetailsHeader(
                         preferences = preferences,

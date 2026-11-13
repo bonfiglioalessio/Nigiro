@@ -42,6 +42,24 @@ class PeopleFavorites
                                 )
                             }
                         }.orEmpty()
-                people
+                mergeRoles(people)
             }
     }
+
+/**
+ * One card per person: eg a director who also wrote the screenplay shows once with both roles
+ */
+fun mergeRoles(people: List<Person>): List<Person> =
+    people
+        .groupBy { it.id }
+        .values
+        .map { same ->
+            if (same.size == 1) {
+                same.first()
+            } else {
+                same.first().copy(
+                    role = same.mapNotNull { it.role?.takeIf { r -> r.isNotBlank() } }.distinct().joinToString(", "),
+                    favorite = same.any { it.favorite },
+                )
+            }
+        }

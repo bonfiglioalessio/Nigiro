@@ -9,7 +9,6 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -59,9 +58,12 @@ import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.TabRow
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
+import com.github.damontecres.wholphin.ui.detail.DetailContentInset
+import com.github.damontecres.wholphin.ui.detail.DetailPageFrame
 import com.github.damontecres.wholphin.ui.formatSeasonNumber
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.logTab
+import com.github.damontecres.wholphin.ui.main.isOnDisk
 import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
@@ -139,7 +141,8 @@ fun SeriesOverviewContent(
 
     val currentOnChangeSeason by rememberUpdatedState(onChangeSeason)
 
-    Box(
+    DetailPageFrame(
+        item = series,
         modifier =
             modifier
                 .fillMaxWidth(),
@@ -165,9 +168,9 @@ fun SeriesOverviewContent(
                 val paddingValues =
                     remember(preferences.appPreferences.interfacePreferences.showClock) {
                         if (preferences.appPreferences.interfacePreferences.showClock) {
-                            PaddingValues(start = 0.dp, end = 184.dp)
+                            PaddingValues(start = DetailContentInset, end = 184.dp)
                         } else {
-                            PaddingValues(start = 0.dp, end = 16.dp)
+                            PaddingValues(start = DetailContentInset, end = 16.dp)
                         }
                     }
                 TabRow(
@@ -191,7 +194,7 @@ fun SeriesOverviewContent(
                 TitleOrLogo(
                     item = series,
                     showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                    modifier = Modifier.padding(start = HeaderUtils.startPadding),
+                    modifier = Modifier.padding(start = HeaderUtils.startPadding + DetailContentInset),
                 )
                 FocusedEpisodeHeader(
                     preferences = preferences,
@@ -205,7 +208,10 @@ fun SeriesOverviewContent(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(.6f),
+                    modifier =
+                        Modifier
+                            .padding(start = DetailContentInset)
+                            .fillMaxWidth(.6f),
                 )
 
 //                key(position.seasonTabIndex) {
@@ -231,7 +237,7 @@ fun SeriesOverviewContent(
                         LazyRow(
                             state = state,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            contentPadding = PaddingValues(start = 16.dp + DetailContentInset, end = 16.dp),
                             modifier =
                                 Modifier
                                     .focusRestorer(episodeRowFocusRequester)
@@ -305,6 +311,7 @@ fun SeriesOverviewContent(
                                     interactionSource = interactionSource,
                                     cardHeight = 120.dp,
                                     useSeriesForPrimary = false,
+                                    onDisk = episode?.isOnDisk() == true,
                                 )
                             }
                         }
@@ -336,7 +343,7 @@ fun SeriesOverviewContent(
                         onChooseVersion = { onChooseVersion.invoke(ep, it) },
                         modifier =
                             Modifier
-                                .padding(top = 4.dp)
+                                .padding(start = DetailContentInset, top = 4.dp)
                                 .fillMaxWidth(),
                     )
                 }

@@ -68,10 +68,8 @@ private fun personRole(
     } else if (role.isNotNullOrBlank() && role.lowercase().contains(type.name.lowercase())) {
         role
     } else {
-        listOfNotNull(
-            role?.takeIf { it.isNotNullOrBlank() },
-            type.stringRes?.let { context.getString(it) },
-        ).takeIf { it.isNotEmpty() }?.joinToString(" - ")
+        // The translated job ("Sceneggiatore") rather than the untranslated credit ("Screenplay - Sceneggiatore")
+        type.stringRes?.let { context.getString(it) } ?: role?.takeIf { it.isNotNullOrBlank() }
     }
 
 @get:StringRes

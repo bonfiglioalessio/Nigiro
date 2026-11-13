@@ -128,6 +128,23 @@ fun formatEpisodeNumber(episode: Int): String = formatStringWithFallback(R.strin
 /** Fallback season title when the library has no season name, e.g. `Season 2`. */
 fun formatSeasonNumber(season: Int): String = formatStringWithFallback(R.string.season_number, "Season %1\$d", season)
 
+private val GENERIC_SEASON_NAME = Regex("^(season|stagione)\\s*0*\\d+$", RegexOption.IGNORE_CASE)
+
+/**
+ * Season names as the server sends them ("Season 01", "Specials", from Gelato too) in the app language
+ */
+fun displaySeasonName(
+    name: String?,
+    indexNumber: Int?,
+): String? =
+    when {
+        indexNumber == null || name == null -> name
+        indexNumber == 0 && name.equals("Specials", ignoreCase = true) ->
+            formatStringWithFallback(R.string.specials, "Specials")
+        GENERIC_SEASON_NAME.matches(name.trim()) -> formatSeasonNumber(indexNumber)
+        else -> name
+    }
+
 /**
  * If the item has season & episode info, format as localized `S# E#`
  */

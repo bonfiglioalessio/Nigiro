@@ -22,9 +22,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,6 +64,7 @@ import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.theme.PreviewInteractionSource
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
@@ -173,16 +176,15 @@ fun ExpandablePlayButtons(
 
         // Favorite button
         item("favorite") {
-            ExpandableFaButton(
-                title = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
+            FavoriteButton(
+                favorite = favorite,
                 onClick = favoriteOnClick,
-                iconColor = if (favorite) Color.Red else Color.Unspecified,
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
         }
 
-        if (trailers != null) {
+        // A disabled "no trailers" button is only noise
+        if (!trailers.isNullOrEmpty()) {
             item("trailers") {
                 TrailerButton(
                     trailers = trailers,
@@ -337,6 +339,46 @@ fun ExpandablePlayButton(
 /**
  * Similar to [ExpandablePlayButton], but uses a [FontAwesome] string instead of an Icon
  */
+/**
+ * Outlined heart until the item is a favorite, then a filled pink one
+ */
+@Composable
+fun FavoriteButton(
+    favorite: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+) {
+    val isFocused = interactionSource.collectIsFocusedAsState().value
+    Button(
+        onClick = onClick,
+        modifier =
+            modifier.requiredSizeIn(
+                minWidth = MinButtonSize,
+                minHeight = MinButtonSize,
+                maxHeight = MinButtonSize,
+            ),
+        contentPadding = DefaultButtonPadding,
+        interactionSource = interactionSource,
+    ) {
+        Box(modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription = null,
+                tint = if (favorite) NigiroPalette.Pink else LocalContentColor.current,
+                modifier = Modifier.size(20.dp).align(Alignment.Center),
+            )
+        }
+        AnimatedVisibility(isFocused) {
+            Text(
+                text = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(end = 4.dp),
+            )
+        }
+    }
+}
+
 @Composable
 fun ExpandableFaButton(
     @StringRes title: Int,

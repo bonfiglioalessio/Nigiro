@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.detail.LocalRowStyle
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 
@@ -82,7 +83,13 @@ fun <T> ItemRow(
         LazyRow(
             state = state,
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
-            contentPadding = PaddingValues(start = contentStartPadding, end = horizontalPadding, top = 8.dp, bottom = 8.dp),
+            contentPadding =
+                PaddingValues(
+                    start = contentStartPadding + LocalRowStyle.current.startInset,
+                    end = horizontalPadding,
+                    top = 8.dp,
+                    bottom = 8.dp,
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -148,9 +155,12 @@ fun ItemRowTitle(
     modifier: Modifier = Modifier,
     startPadding: Dp = 8.dp,
     style: TextStyle? = null,
-) = Text(
-    text = title,
-    style = style ?: MaterialTheme.typography.titleLarge,
-    color = MaterialTheme.colorScheme.onBackground,
-    modifier = modifier.padding(start = startPadding),
-)
+) {
+    val rowStyle = LocalRowStyle.current
+    Text(
+        text = title,
+        style = style ?: rowStyle.titleStyle ?: MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = modifier.padding(start = startPadding + rowStyle.startInset),
+    )
+}

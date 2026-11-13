@@ -11,6 +11,7 @@ import com.github.damontecres.wholphin.ui.abbreviateNumber
 import com.github.damontecres.wholphin.ui.detail.CardGridItem
 import com.github.damontecres.wholphin.ui.detail.music.artistsString
 import com.github.damontecres.wholphin.ui.detail.series.SeasonEpisodeIds
+import com.github.damontecres.wholphin.ui.displaySeasonName
 import com.github.damontecres.wholphin.ui.dot
 import com.github.damontecres.wholphin.ui.formatDateTime
 import com.github.damontecres.wholphin.ui.formatDuration
@@ -59,7 +60,8 @@ data class BaseItem(
 
     val type get() = data.type
 
-    val name get() = data.name
+    val name: String?
+        get() = if (type == BaseItemKind.SEASON) displaySeasonName(data.name, data.indexNumber) else data.name
 
     val title get() = if (type == BaseItemKind.EPISODE) data.seriesName else name
 
