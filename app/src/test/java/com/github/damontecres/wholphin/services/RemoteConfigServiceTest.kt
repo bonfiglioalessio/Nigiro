@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.services
 
+import com.github.damontecres.wholphin.data.model.RemoteConfigRuntime
 import com.github.damontecres.wholphin.data.model.RemoteConfigUrlResolver
 import com.github.damontecres.wholphin.data.model.RemoteWholphinConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
@@ -9,9 +10,11 @@ import com.github.damontecres.wholphin.preferences.SkipSegmentBehavior
 import com.github.damontecres.wholphin.preferences.ThemeSongVolume
 import com.github.damontecres.wholphin.preferences.updateInterfacePreferences
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -20,6 +23,16 @@ import java.io.IOException
 class RemoteConfigServiceTest {
     @get:Rule
     val tempDir = TemporaryFolder()
+
+    @Before
+    fun setUp() {
+        RemoteConfigRuntime.current = null
+    }
+
+    @After
+    fun tearDown() {
+        RemoteConfigRuntime.current = null
+    }
 
     @Test
     fun candidateUrls_strips8096PortAndSubpath() {
