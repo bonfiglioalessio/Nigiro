@@ -778,7 +778,11 @@ private fun <T : CardGridItem> SearchGrid(
                 focusedIndex = index
                 positionCallback(columns, index)
             },
-            modifier = Modifier.fillMaxSize(),
+            // Aligned with the search bar and the header above
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
             cardContent = cardContent,
         )
     }

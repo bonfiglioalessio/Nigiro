@@ -405,7 +405,13 @@ fun NavDrawer(
                         state = navDrawerListState,
                         contentPadding = PaddingValues(0.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedByWithFooter(spacedBy),
+                        // The footer pins Settings to the bottom; without it, it would pin the last library instead
+                        verticalArrangement =
+                            if (preferences.appPreferences.interfacePreferences.showTvSettings) {
+                                Arrangement.spacedByWithFooter(spacedBy)
+                            } else {
+                                Arrangement.spacedBy(spacedBy)
+                            },
                         modifier =
                             Modifier
                                 .focusGroup()

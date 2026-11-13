@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -223,13 +225,15 @@ fun EditTextBox(
     supportingText: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    containerColor: Color? = null,
+    focusedIndicatorThickness: Dp = 4.dp,
 ) {
     val colors =
         TextFieldDefaults.colors(
             unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+            unfocusedContainerColor = containerColor ?: MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
             focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+            focusedContainerColor = containerColor ?: MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
             disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f),
             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
             errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.75f),
@@ -303,7 +307,7 @@ fun EditTextBox(
                                 modifier = Modifier,
                                 colors = colors,
                                 shape = CircleShape,
-                                focusedIndicatorLineThickness = 4.dp,
+                                focusedIndicatorLineThickness = focusedIndicatorThickness,
                                 unfocusedIndicatorLineThickness = 0.dp,
                             )
                         },
@@ -328,10 +332,18 @@ fun SearchEditTextBox(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     placeholder: String? = null,
 ) {
+    // A clearly visible pill with a white outline when focused, instead of the accent-colored underline
+    val focused by interactionSource.collectIsFocusedAsState()
     EditTextBox(
         value,
         onValueChange,
-        modifier,
+        modifier.border(
+            width = if (focused) 3.dp else 1.dp,
+            color = if (focused) Color.White else Color.White.copy(alpha = 0.2f),
+            shape = CircleShape,
+        ),
+        containerColor = Color.White.copy(alpha = 0.08f),
+        focusedIndicatorThickness = 0.dp,
         placeholder = placeholder?.let { { Text(text = it, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
         keyboardOptions =
             KeyboardOptions(

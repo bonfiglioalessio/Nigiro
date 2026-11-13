@@ -457,10 +457,10 @@ fun StremioHomeContent(
         }
 
     val density = LocalDensity.current
-    // The focused row sits right below the focused item header
+    // The focused card sits below the focused item header plus its row's title (23 dp + gaps)
     val spaceAbovePx =
         remember(density) {
-            with(density) { (FocusedItemHeaderHeight + 10.dp).toPx() }
+            with(density) { (FocusedItemHeaderHeight + 44.dp).toPx() }
         }
     // Row (index in homeRows) holding focus, -1 when focus is on the hero, filters or platforms
     var focusedRowIndex by remember { mutableIntStateOf(-1) }
@@ -1395,5 +1395,10 @@ private fun Modifier.bleedHorizontally(
  */
 @Composable
 private fun FocusedHeaderSlot(itemProvider: () -> BaseItem?) {
-    FocusedItemHeader(item = itemProvider())
+    // Full width like the hero, so its background has no visible edges over the rows scrolling below it
+    FocusedItemHeader(
+        item = itemProvider(),
+        modifier = Modifier.bleedHorizontally(NigiroDimens.HeroBleedStart, 16.dp),
+        contentStart = NigiroDimens.ContentStart + NigiroDimens.HeroBleedStart,
+    )
 }

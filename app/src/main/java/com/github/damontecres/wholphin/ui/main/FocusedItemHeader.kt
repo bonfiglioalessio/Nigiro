@@ -35,12 +35,13 @@ fun FocusedItemHeader(
     item: BaseItem?,
     modifier: Modifier = Modifier,
     height: Dp = FocusedItemHeaderHeight,
+    contentStart: Dp = NigiroDimens.ContentStart,
 ) {
     val background =
         remember {
             Brush.verticalGradient(
                 0f to NigiroPalette.BackgroundTop,
-                0.85f to NigiroPalette.BackgroundTop.copy(alpha = 0.97f),
+                0.88f to NigiroPalette.BackgroundTop,
                 1f to NigiroPalette.BackgroundTop.copy(alpha = 0f),
             )
         }
@@ -51,7 +52,7 @@ fun FocusedItemHeader(
                 .fillMaxWidth()
                 .height(height)
                 .background(background)
-                .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd, top = 26.dp),
+                .padding(start = contentStart, end = NigiroDimens.ContentEnd, top = 26.dp),
     ) {
         if (item == null) return@Column
         val details = remember(item) { focusedItemDetails(item) }
