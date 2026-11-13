@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
@@ -57,6 +58,7 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.detail.DetailContentInset
 import com.github.damontecres.wholphin.ui.detail.DetailPageFrame
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
+import com.github.damontecres.wholphin.ui.detail.headerBackdropAlpha
 import com.github.damontecres.wholphin.ui.discover.DiscoverRow
 import com.github.damontecres.wholphin.ui.discover.DiscoverRowData
 import com.github.damontecres.wholphin.ui.letNotEmpty
@@ -314,8 +316,10 @@ fun MovieDetailsContent(
 
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
-    DetailPageFrame(item = movie, modifier = modifier) {
+    val listState = rememberLazyListState()
+    DetailPageFrame(item = movie, modifier = modifier, backdropAlpha = { listState.headerBackdropAlpha() }) {
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 8.dp),
             modifier = Modifier.fillMaxSize(),

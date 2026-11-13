@@ -124,7 +124,10 @@ fun DiscoverItemRow(
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
             contentPadding =
                 PaddingValues(
-                    start = horizontalPadding + LocalRowStyle.current.startInset,
+                    start =
+                        LocalRowStyle.current.let {
+                            (if (it.alignContentToTitle) 8.dp else horizontalPadding) + it.startInset
+                        },
                     end = horizontalPadding,
                     top = 8.dp,
                     bottom = 8.dp,

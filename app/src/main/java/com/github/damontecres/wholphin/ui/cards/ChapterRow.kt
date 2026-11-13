@@ -32,7 +32,12 @@ fun ChapterRow(
             state = rememberLazyListState(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding =
-                PaddingValues(start = 16.dp + LocalRowStyle.current.startInset, top = 8.dp, end = 16.dp, bottom = 8.dp),
+                PaddingValues(
+                    start = LocalRowStyle.current.let { (if (it.alignContentToTitle) 8.dp else 16.dp) + it.startInset },
+                    top = 8.dp,
+                    end = 16.dp,
+                    bottom = 8.dp,
+                ),
             modifier =
                 Modifier
                     .fillMaxWidth()

@@ -60,6 +60,7 @@ import com.github.damontecres.wholphin.ui.components.TabRow
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.detail.DetailContentInset
 import com.github.damontecres.wholphin.ui.detail.DetailPageFrame
+import com.github.damontecres.wholphin.ui.detail.headerBackdropAlpha
 import com.github.damontecres.wholphin.ui.formatSeasonNumber
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.logTab
@@ -146,6 +147,7 @@ fun SeriesOverviewContent(
         modifier =
             modifier
                 .fillMaxWidth(),
+        backdropAlpha = { scrollState.headerBackdropAlpha() },
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),

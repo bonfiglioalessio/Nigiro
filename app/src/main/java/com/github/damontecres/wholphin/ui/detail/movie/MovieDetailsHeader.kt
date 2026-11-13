@@ -76,11 +76,12 @@ fun MovieDetailsHeader(
             VideoStreamDetails(
                 chosenStreams = chosenStreams,
                 numberOfVersions = movie.data.mediaSourceCount ?: 0,
+                // Streamed items have no stream info until played: no empty gap before the overview
                 modifier =
                     Modifier.padding(
                         start = HeaderUtils.startPadding,
-                        top = 4.dp,
-                        bottom = 16.dp,
+                        top = if (chosenStreams?.videoStream != null) 4.dp else 0.dp,
+                        bottom = if (chosenStreams?.videoStream != null) 16.dp else 4.dp,
                     ),
             )
             dto.taglines?.firstOrNull()?.let { tagline ->

@@ -85,7 +85,10 @@ fun <T> ItemRow(
             horizontalArrangement = Arrangement.spacedBy(horizontalPadding),
             contentPadding =
                 PaddingValues(
-                    start = contentStartPadding + LocalRowStyle.current.startInset,
+                    start =
+                        LocalRowStyle.current.let {
+                            (if (it.alignContentToTitle) titleStartPadding else contentStartPadding) + it.startInset
+                        },
                     end = horizontalPadding,
                     top = 8.dp,
                     bottom = 8.dp,
