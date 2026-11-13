@@ -200,7 +200,8 @@ fun HomeHeroBanner(
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.BottomStart,
                     onError = { logoFailed = true },
-                    modifier = Modifier.size(width = 360.dp, height = 96.dp),
+                    // Kept short so badge, logo, details, overview and buttons fit the hero's height
+                    modifier = Modifier.size(width = 320.dp, height = 70.dp),
                 )
             } else {
                 Text(
@@ -304,7 +305,11 @@ fun HomeHeroBanner(
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 20.dp, end = 110.dp),
+                    .padding(top = 18.dp, end = 140.dp)
+                    // Readable over bright backdrops
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .padding(3.dp),
         ) {
             topEndContent()
         }

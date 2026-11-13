@@ -701,7 +701,7 @@ private fun HomeMediaFilterBar(
                 colors =
                     ButtonDefaults.colors(
                         containerColor = if (selected) Color.White.copy(alpha = 0.16f) else Color.Transparent,
-                        contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        contentColor = if (selected) Color.White else Color.White.copy(alpha = 0.8f),
                         focusedContainerColor = Color.White,
                         focusedContentColor = NigiroPalette.Background,
                     ),
