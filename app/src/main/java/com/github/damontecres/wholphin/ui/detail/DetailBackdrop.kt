@@ -96,25 +96,41 @@ private fun BoxScope.DetailBackdrop(
         remember(item?.id) {
             item?.let { imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 1280) }
         } ?: return
-    AsyncImage(
+    MaskedBackdrop(
         model = url,
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        alignment = Alignment.TopCenter,
+        alpha = alpha,
         modifier =
             Modifier
                 .align(Alignment.TopEnd)
                 // The page is inset 16 dp from the right edge: bleed to it
                 .offset(x = 16.dp)
                 .fillMaxWidth(.74f)
-                .fillMaxHeight(.78f)
-                // Fade the image itself to transparent (one offscreen layer, drawn once since it never moves),
-                // so it blends into the page gradient with no visible edge
+                .fillMaxHeight(.78f),
+    )
+}
+
+/**
+ * A backdrop image faded to transparent on its left and bottom edges (one offscreen layer, redrawn only when the
+ * image or [alpha] changes), so it blends into whatever is behind it with no visible edge
+ */
+@Composable
+fun MaskedBackdrop(
+    model: Any?,
+    modifier: Modifier = Modifier,
+    alpha: () -> Float = { 1f },
+    alignment: Alignment = Alignment.TopCenter,
+) {
+    AsyncImage(
+        model = model,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        alignment = alignment,
+        modifier =
+            modifier
                 .graphicsLayer {
                     this.alpha = alpha()
                     compositingStrategy = CompositingStrategy.Offscreen
-                }
-                .drawWithContent {
+                }.drawWithContent {
                     drawContent()
                     drawRect(TopScrim)
                     drawRect(HorizontalMask, blendMode = BlendMode.DstIn)

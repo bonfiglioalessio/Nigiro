@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,10 +20,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +39,7 @@ import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
+import com.github.damontecres.wholphin.ui.detail.MaskedBackdrop
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -47,40 +47,17 @@ import org.jellyfin.sdk.model.api.ImageType
 import java.util.Locale
 
 /**
- * A small hero for the focused card: its backdrop, clear logo (or title), details and overview,
- * so the cards themselves can be poster only
+ * Backdrop of the focused card, like the detail pages: fixed at the top right over about 60% of the screen and
+ * faded into the page, with the rows scrolling over its lower part. The image only loads once focus rests on a
+ * card, so fast scrolling doesn't download an image per card
  */
 @Composable
-fun FocusedItemHeader(
+fun FocusedItemBackdrop(
     item: BaseItem?,
     modifier: Modifier = Modifier,
-    height: Dp = FocusedItemHeaderHeight,
-    contentStart: Dp = NigiroDimens.ContentStart,
 ) {
-    // Same colors as the page's background gradient at the header's height, so it has no visible edge
-    val headerTop = NigiroPalette.BackgroundTop
-    val headerBottom = HeaderBottomColor
-    val baseBackground = remember { Brush.verticalGradient(0f to headerTop, 1f to headerBottom) }
-    val horizontalScrim =
-        remember {
-            Brush.horizontalGradient(
-                0f to headerBottom,
-                0.35f to headerBottom.copy(alpha = 0.85f),
-                0.75f to headerBottom.copy(alpha = 0f),
-            )
-        }
-    val bottomScrim =
-        remember {
-            Brush.verticalGradient(
-                0.55f to headerBottom.copy(alpha = 0f),
-                1f to headerBottom,
-            )
-        }
     val imageUrlService = LocalImageUrlService.current
     val context = LocalContext.current
-
-    // Text follows focus right away; the backdrop only loads once focus rests on a card, so fast scrolling
-    // doesn't download an image per card
     var backdropItem by remember { mutableStateOf<BaseItem?>(null) }
     LaunchedEffect(item?.id) {
         delay(300)
@@ -98,100 +75,98 @@ fun FocusedItemHeader(
                         .build()
                 }
             }
-        }
+        } ?: return
+    Box(modifier = modifier.fillMaxSize()) {
+        MaskedBackdrop(
+            model = backdropRequest,
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .fillMaxWidth(.78f)
+                    .fillMaxHeight(.62f),
+        )
+    }
+}
 
-    Box(
+/**
+ * Clear logo (or title), details and overview of the focused card, with no background: drawn over its backdrop
+ * in the top part of the screen, so the cards themselves can be poster only
+ */
+@Composable
+fun FocusedItemInfo(
+    item: BaseItem?,
+    modifier: Modifier = Modifier,
+    height: Dp = FocusedItemHeaderHeight,
+    contentStart: Dp = NigiroDimens.ContentStart,
+) {
+    if (item == null) return
+    val imageUrlService = LocalImageUrlService.current
+    val details = remember(item) { focusedItemDetails(item) }
+    val logoUrl =
+        remember(item) {
+            if (item.data.imageTags?.containsKey(ImageType.LOGO) == true) {
+                imageUrlService.getItemImageUrl(item, ImageType.LOGO, fillWidth = 520, fillHeight = 140)
+            } else {
+                null
+            }
+        }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
         modifier =
             modifier
                 .fillMaxWidth()
                 .height(height)
-                .background(baseBackground),
+                .padding(start = contentStart, end = NigiroDimens.ContentEnd, bottom = 18.dp),
     ) {
-        if (backdropRequest != null) {
+        var logoFailed by remember(logoUrl) { mutableStateOf(false) }
+        if (logoUrl != null && !logoFailed) {
             AsyncImage(
-                model = backdropRequest,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                // Slightly above center: faces sit there in most backdrops
-                alignment = BiasAlignment(0f, -0.35f),
-                modifier = Modifier.fillMaxSize(),
+                model = logoUrl,
+                contentDescription = details.title,
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.BottomStart,
+                onError = { logoFailed = true },
+                modifier = Modifier.size(width = 300.dp, height = 72.dp),
+            )
+        } else {
+            Text(
+                text = details.title,
+                fontSize = 30.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(560.dp),
             )
         }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(horizontalScrim),
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(bottomScrim),
-        )
-        if (item == null) return@Box
-        val details = remember(item) { focusedItemDetails(item) }
-        val logoUrl =
-            remember(item) {
-                if (item.data.imageTags?.containsKey(ImageType.LOGO) == true) {
-                    imageUrlService.getItemImageUrl(item, ImageType.LOGO, fillWidth = 520, fillHeight = 140)
-                } else {
-                    null
-                }
-            }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(start = contentStart, end = NigiroDimens.ContentEnd, bottom = 18.dp),
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            var logoFailed by remember(logoUrl) { mutableStateOf(false) }
-            if (logoUrl != null && !logoFailed) {
-                AsyncImage(
-                    model = logoUrl,
-                    contentDescription = details.title,
-                    contentScale = ContentScale.Fit,
-                    alignment = Alignment.BottomStart,
-                    onError = { logoFailed = true },
-                    modifier = Modifier.size(width = 260.dp, height = 56.dp),
-                )
-            } else {
+            if (details.meta.isNotBlank()) {
                 Text(
-                    text = details.title,
-                    fontSize = 28.sp,
-                    lineHeight = 32.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    text = details.meta,
+                    style = NigiroDimens.Meta,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(560.dp),
+                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (details.meta.isNotBlank()) {
-                    Text(
-                        text = details.meta,
-                        style = NigiroDimens.Meta,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-                if (details.onDisk) {
-                    OnDiskBadge()
-                }
+            if (details.onDisk) {
+                OnDiskBadge()
             }
-            details.overview?.let {
-                Text(
-                    text = it,
-                    style = NigiroDimens.Body,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(520.dp),
-                )
-            }
+        }
+        details.overview?.let {
+            Text(
+                text = it,
+                style = NigiroDimens.Body,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(540.dp),
+            )
         }
     }
 }
@@ -219,8 +194,6 @@ fun OnDiskBadge(modifier: Modifier = Modifier) {
     }
 }
 
-// Page gradient (BackgroundTop -> Background over 60% of the 540 dp screen) at the header's bottom edge
-private val HeaderBottomColor = Color(0xFF1F1D1C)
 
 private data class FocusedItemDetails(
     val title: String,
@@ -247,7 +220,8 @@ private fun focusedItemDetails(item: BaseItem): FocusedItemDetails {
             minutes >= 60 -> "${minutes / 60} h ${minutes % 60} min"
             else -> "$minutes min"
         }
-    val meta = listOfNotNull(episode, data.productionYear?.toString(), rating, runtime).joinToString(" · ")
+    val genres = data.genres?.take(3)?.takeIf { it.isNotEmpty() }?.joinToString(", ")
+    val meta = listOfNotNull(episode, data.productionYear?.toString(), rating, genres, runtime).joinToString(" · ")
     return FocusedItemDetails(
         title = title,
         meta = meta,

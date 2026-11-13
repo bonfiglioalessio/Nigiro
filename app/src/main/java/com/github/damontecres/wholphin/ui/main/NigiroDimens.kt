@@ -26,7 +26,8 @@ object NigiroDimens {
     val ButtonHeight = 46.dp
 
     // Inset the hero is stretched by to reach the sidebar and the right edge of the screen
-    val HeroBleedStart = 12.dp
+    // Under the transparent sidebar too: 60 dp collapsed sidebar + 12 dp page padding
+    val HeroBleedStart = 72.dp
     val HeroBleedEnd = 15.dp
 
     val RowTitle = TextStyle(fontSize = 19.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold)

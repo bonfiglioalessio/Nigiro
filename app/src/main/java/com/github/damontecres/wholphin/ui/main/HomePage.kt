@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -42,12 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.ContentScale
@@ -530,6 +531,9 @@ fun StremioHomeContent(
     }
 
     Box(modifier = modifier) {
+        if (focusedRowIndex >= 0) {
+            FocusedBackdropSlot(itemProvider = { focusedItem })
+        }
         CompositionLocalProvider(
             LocalBringIntoViewSpec provides stremioBringIntoViewSpec,
         ) {
@@ -542,7 +546,15 @@ fun StremioHomeContent(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .focusRestorer()
+                        // With a card focused, rows above the focused one are hidden under the details instead
+                        // of showing as a cut-off strip (read while drawing: no recomposition)
+                        .drawWithContent {
+                            if (focusedRowIndex >= 0) {
+                                clipRect(top = headerPx) { this@drawWithContent.drawContent() }
+                            } else {
+                                drawContent()
+                            }
+                        }.focusRestorer()
                         .focusProperties {
                             onEnter = {
                                 val currentRow = positionProvider().row
@@ -1461,15 +1473,19 @@ private fun Modifier.bleedHorizontally(
     }
 
 /**
- * Own restart scope, so only the header recomposes when focus moves between cards
+ * Own restart scopes, so only the header recomposes when focus moves between cards
  */
 @Composable
 private fun FocusedHeaderSlot(itemProvider: () -> BaseItem?) {
-    // Full width like the hero, so its background has no visible edges over the rows scrolling below it
-    FocusedItemHeader(
+    FocusedItemInfo(item = itemProvider())
+}
+
+@Composable
+private fun FocusedBackdropSlot(itemProvider: () -> BaseItem?) {
+    // Bleeds under the sidebar and to the right edge like the hero
+    FocusedItemBackdrop(
         item = itemProvider(),
         modifier = Modifier.bleedHorizontally(NigiroDimens.HeroBleedStart, 16.dp),
-        contentStart = NigiroDimens.ContentStart + NigiroDimens.HeroBleedStart,
     )
 }
 

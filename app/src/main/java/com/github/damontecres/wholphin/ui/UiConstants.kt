@@ -79,6 +79,9 @@ val HomeItemFields =
     listOf(
         ItemFields.OVERVIEW,
         ItemFields.CAN_DELETE,
+        // Focused item header and "Su disco" badge
+        ItemFields.GENRES,
+        ItemFields.PATH,
     )
 
 val PhotoItemFields =

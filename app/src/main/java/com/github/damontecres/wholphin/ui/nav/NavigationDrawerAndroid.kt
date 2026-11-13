@@ -47,6 +47,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -62,6 +63,7 @@ import androidx.tv.material3.NavigationDrawerScope
 import androidx.tv.material3.rememberDrawerState
 import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
+import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 
 /**
@@ -77,6 +79,9 @@ fun ModalNavigationDrawer(
     content: @Composable () -> Unit,
 ) {
     Box(modifier = modifier) {
+        // Content first: with the Nigiro theme the sidebar is transparent and drawn over the hero and backdrops
+        content()
+
         DrawerSheet(
             modifier =
                 Modifier
@@ -84,8 +89,6 @@ fun ModalNavigationDrawer(
             drawerState = drawerState,
             content = drawerContent,
         )
-
-        content()
     }
 }
 
@@ -132,7 +135,12 @@ private fun DrawerSheet(
             .fillMaxHeight()
             .then(
                 if (isNigiroTheme) {
-                    Modifier.background(NigiroBackgroundBrush)
+                    // Transparent when collapsed; a dark scrim when open so the labels stay readable over images
+                    if (drawerState.currentValue == DrawerValue.Open) {
+                        Modifier.background(NigiroOpenDrawerBrush)
+                    } else {
+                        Modifier
+                    }
                 } else {
                     Modifier.background(flatContainerColor)
                 },
@@ -275,4 +283,10 @@ private fun NavigationDrawerItemColors.toToggleableListItemColors(doesNavigation
         focusedSelectedContentColor = focusedSelectedContentColor,
         pressedSelectedContainerColor = pressedSelectedContainerColor,
         pressedSelectedContentColor = pressedSelectedContentColor,
+    )
+
+private val NigiroOpenDrawerBrush =
+    Brush.horizontalGradient(
+        0f to NigiroPalette.Background.copy(alpha = 0.97f),
+        1f to NigiroPalette.Background.copy(alpha = 0.88f),
     )
