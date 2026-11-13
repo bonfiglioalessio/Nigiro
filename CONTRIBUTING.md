@@ -1,32 +1,19 @@
-# Contributing to Wholphin
+# Contributing to Nigiro
 
-We appreciate your interest in contributing to Wholphin!
+Grazie per l'interesse nel contribuire a **Nigiro** (`bonfiglioalessio/Nigiro`)!
 
-## Code of Conduct
+Nigiro è un fork indipendente di [Wholphin](https://github.com/damontecres/Wholphin) focalizzato su prestazioni per Android TV `armeabi-v7a`, UI piatta in stile Stremio e configurazione gestita lato server.
 
-We follow Jellyfin's example by adhering to their [Code of Conduct](https://jellyfin.org/docs/general/community-standards/#code-of-conduct).
+## Come contribuire
 
-## How to contribute
+1. Controlla le [Issue aperte](https://github.com/bonfiglioalessio/Nigiro/issues) prima di aprirne una nuova.
+2. Fai fork o crea un branch dedicato a partire da `main`.
+3. Segui le convenzioni descritte in [DEVELOPMENT.md](./DEVELOPMENT.md) e verifica i test unitari con:
+   ```bash
+   ./gradlew :app:testDefaultDebugUnitTest
+   ```
+4. Apri una Pull Request verso il branch `main` di questo repository.
 
-You can contribute in several ways:
-* File bug reports
-* Request new features
-* Propose code changes via pull request
-* Submit translations to https://translate.codeberg.org/engage/wholphin/
+## Licenza
 
-In all cases, be sure to fully explain the issue.
-
-### Code change proposals
-
-You acknowledge that, if applicable, submitting and subsequent acceptance of any pull request you, the code contributor of the pull request, agree and acknowledge that the code will be licensed under [GPLv2](LICENSE).
-
-Please be thoughtful when contributing code and consider the long term maintenance/support aspect for any new features.
-
-See the [developer's guide](./DEVELOPMENT.md) for more information.
-
-
-#### Policy for AI or LLMs
-
-Wholphin has adopted the [Jellyfin LLM/"AI" Development Policy](https://jellyfin.org/docs/general/contributing/llm-policies/). AI/LLM assisted code contributions are permitted under the policy, but the author must undertand and be able to explain the code changes in their own words.
-
-At a minimum, you must disclose the usage any of AI/LLM assistance and you must write the pull request description _without_ AI assistance.
+Ogni contributo inviato a questo repository è rilasciato sotto licenza [GPLv2](LICENSE).

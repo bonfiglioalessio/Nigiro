@@ -1,12 +1,11 @@
 package com.github.damontecres.wholphin.services
 
-import com.github.damontecres.wholphin.data.model.RemoteModulesConfig
-
 import android.content.Context
 import com.github.damontecres.wholphin.data.ServerPreferencesDao
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.data.model.NavPinType
+import com.github.damontecres.wholphin.data.model.RemoteModulesConfig
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.services.hilt.DefaultCoroutineScope
 import com.github.damontecres.wholphin.ui.collectLatestIn

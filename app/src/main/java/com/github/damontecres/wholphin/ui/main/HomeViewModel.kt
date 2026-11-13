@@ -58,6 +58,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.UserItemDataDto
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
@@ -436,6 +437,17 @@ class HomeViewModel
             }
         }
 
+        private fun reloadHome(
+            userDto: ServerUserConfig,
+            config: RemoteWholphinConfig,
+        ) {
+            dataLoadingJob?.cancel()
+            dataLoadingJob =
+                viewModelScope.launchIO {
+                    loadStremioHome(userDto, config)
+                }
+        }
+
         fun setFavorite(
             itemId: UUID,
             favorite: Boolean,
@@ -446,7 +458,25 @@ class HomeViewModel
                     heroSlides =
                         current.heroSlides.map { slide ->
                             if (slide.item.id == itemId) {
-                                slide.copy(isFavorite = favorite)
+                                val updatedUserData =
+                                    (
+                                        slide.item.data.userData ?: UserItemDataDto(
+                                            playbackPositionTicks = 0L,
+                                            playCount = 0,
+                                            isFavorite = favorite,
+                                            lastPlayedDate = null,
+                                            played = false,
+                                            key = itemId.toString(),
+                                            itemId = itemId,
+                                        )
+                                    ).copy(isFavorite = favorite)
+                                slide.copy(
+                                    item =
+                                        slide.item.copy(
+                                            data = slide.item.data.copy(userData = updatedUserData),
+                                        ),
+                                    isFavorite = favorite,
+                                )
                             } else {
                                 slide
                             }
@@ -454,7 +484,9 @@ class HomeViewModel
                 )
             }
             serverRepository.currentUserDto?.let { userDto ->
-                loadStremioHome(userDto, cachedConfig)
+                withContext(WholphinDispatchers.Main) {
+                    reloadHome(userDto, cachedConfig)
+                }
             }
         }
 
@@ -500,7 +532,9 @@ class HomeViewModel
                     serverRepository.currentUser?.id?.let { userId ->
                         latestNextUpService.removeFromNextUp(userId, item)
                         serverRepository.currentUserDto?.let { userDto ->
-                            loadStremioHome(userDto, cachedConfig)
+                            withContext(WholphinDispatchers.Main) {
+                                reloadHome(userDto, cachedConfig)
+                            }
                         }
                     }
                 }

@@ -1,10 +1,10 @@
-# Wholphin developer's guide
+# Nigiro developer's guide
 
 See also the [Contributing](CONTRIBUTING.md) guide for general information on contributing to the project.
 
-##  Overview
+## Overview
 
-This project is an Android TV client for Jellyfin. It is written in Kotlin and uses the official [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin) to interact with the server.
+**Nigiro** is a lightweight, Stremio-inspired Android TV client for Jellyfin forked from [Wholphin](https://github.com/damontecres/Wholphin). It is written in Kotlin and uses the official [Jellyfin Kotlin SDK](https://github.com/jellyfin/jellyfin-sdk-kotlin) to interact with the server.
 
 The app is a single Activity (`MainActivity`) with MVVM architecture.
 

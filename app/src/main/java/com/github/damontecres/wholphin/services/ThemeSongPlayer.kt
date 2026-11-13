@@ -1,7 +1,5 @@
 package com.github.damontecres.wholphin.services
 
-import com.github.damontecres.wholphin.data.model.RemoteConfigRuntime
-
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.datastore.core.DataStore
@@ -11,6 +9,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.github.damontecres.wholphin.data.model.RemoteConfigRuntime
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.ThemeSongVolume
 import com.github.damontecres.wholphin.services.hilt.AuthOkHttpClient

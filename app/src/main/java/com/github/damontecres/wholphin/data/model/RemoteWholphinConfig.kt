@@ -192,6 +192,16 @@ object RemoteConfigUrlResolver {
                     urls.add(customPortUrl.toString())
                 }
                 urls.add(rootNoPort.toString())
+                if (parsed.port == 8096 || parsed.port == 8920) {
+                    val jellyfinPortFallback =
+                        parsed
+                            .newBuilder()
+                            .encodedPath("/wholphin-config.json")
+                            .query(null)
+                            .fragment(null)
+                            .build()
+                    urls.add(jellyfinPortFallback.toString())
+                }
             }
         }
         return urls.toList()

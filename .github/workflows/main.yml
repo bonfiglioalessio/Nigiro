@@ -78,7 +78,7 @@ jobs:
       - name: Upload signed APKs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: wholphin-apks
+          name: nigiro-apks
           path: |
             app/build/outputs/apk/default/release/*.apk
           compression-level: 6
@@ -99,15 +99,13 @@ jobs:
           gh release delete "${{ env.TAG_NAME }}" --cleanup-tag -y || true
 
 
-          echo '### `${{ env.BRANCH_NAME }}` development build
+          echo '### `${{ env.BRANCH_NAME }}` Nigiro build
 
-          This pre-release tracks the development build of Wholphin from the `${{ env.BRANCH_NAME }}` unstable branch.
+          This pre-release tracks the build of Nigiro from the `${{ env.BRANCH_NAME }}` branch.
 
-          See https://github.com/damontecres/Wholphin/releases/latest for the latest stable release.
+          See https://github.com/bonfiglioalessio/Nigiro/releases/latest for the latest stable release.
 
-          If you want to update to this version in-app, change Settings->Advanced->Update URL to https://api.github.com/repos/damontecres/Wholphin/releases/tags/${{ env.TAG_NAME }} (replace `latest` with `tags/${{ env.TAG_NAME }}`).
-
-          [See changes since `${{ env.LATEST_TAG }}`](https://github.com/damontecres/Wholphin/compare/${{ env.LATEST_TAG }}...${{ env.TAG_NAME }})' > ci_release_note.txt
+          [See changes since `${{ env.LATEST_TAG }}`](https://github.com/bonfiglioalessio/Nigiro/compare/${{ env.LATEST_TAG }}...${{ env.TAG_NAME }})' > ci_release_note.txt
 
 
            gh release create "${{ env.TAG_NAME }}" \

@@ -129,7 +129,7 @@ class UpdateChecker
 
         suspend fun getRelease(version: Version): Release? {
             val url =
-                "https://api.github.com/repos/damontecres/Wholphin/releases/tags/v${version.major}.${version.minor}.${version.patch}"
+                "https://api.github.com/repos/bonfiglioalessio/Nigiro/releases/tags/v${version.major}.${version.minor}.${version.patch}"
             return withContext(WholphinDispatchers.IO) {
                 val request =
                     Request
@@ -410,13 +410,15 @@ fun getDownloadUrl(
     val releaseSuffix = if (debug) "-debug" else "-release"
     val preferredNames =
         buildList {
-            add("$ASSET_NAME${releaseSuffix}$abiSuffix.apk")
-            add("$ASSET_NAME$releaseSuffix.apk")
-            if (!debug) {
-                if (abiSuffix.isNotNullOrBlank()) {
-                    add("$ASSET_NAME$abiSuffix.apk")
+            for (prefix in listOf("Nigiro", ASSET_NAME)) {
+                add("$prefix${releaseSuffix}$abiSuffix.apk")
+                add("$prefix$releaseSuffix.apk")
+                if (!debug) {
+                    if (abiSuffix.isNotNullOrBlank()) {
+                        add("$prefix$abiSuffix.apk")
+                    }
+                    add("$prefix.apk")
                 }
-                add("$ASSET_NAME.apk")
             }
         }
     var preferredAsset: JsonObject? = null

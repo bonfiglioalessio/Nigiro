@@ -69,7 +69,7 @@ fun HomeHeroBanner(
     config: RemoteHeroConfig,
     watchFocusRequester: FocusRequester,
     onWatchNow: (BaseItem) -> Unit,
-    onToggleFavorite: (BaseItem) -> Unit,
+    onToggleFavorite: (BaseItem, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (slides.isEmpty()) return
@@ -240,7 +240,7 @@ fun HomeHeroBanner(
                     }
 
                     OutlinedButton(
-                        onClick = { onToggleFavorite(slide.item) },
+                        onClick = { onToggleFavorite(slide.item, !slide.isFavorite) },
                     ) {
                         Text(
                             text = stringResource(R.string.fa_heart),

@@ -24,10 +24,22 @@ class RemoteConfigServiceTest {
     @Test
     fun candidateUrls_strips8096PortAndSubpath() {
         val urls = RemoteConfigUrlResolver.candidateUrls("http://192.168.1.157:8096/jellyfin/")
-        assertEquals(listOf("http://192.168.1.157/wholphin-config.json"), urls)
+        assertEquals(
+            listOf(
+                "http://192.168.1.157/wholphin-config.json",
+                "http://192.168.1.157:8096/wholphin-config.json",
+            ),
+            urls,
+        )
 
         val tailscale = RemoteConfigUrlResolver.candidateUrls("http://100.74.237.31:8096")
-        assertEquals(listOf("http://100.74.237.31/wholphin-config.json"), tailscale)
+        assertEquals(
+            listOf(
+                "http://100.74.237.31/wholphin-config.json",
+                "http://100.74.237.31:8096/wholphin-config.json",
+            ),
+            tailscale,
+        )
 
         val customPort = RemoteConfigUrlResolver.candidateUrls("http://192.168.1.157:8080")
         assertEquals(

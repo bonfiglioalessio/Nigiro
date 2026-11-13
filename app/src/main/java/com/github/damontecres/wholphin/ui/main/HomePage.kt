@@ -261,8 +261,8 @@ fun HomePage(
                 onHeroWatchNow = { item ->
                     viewModel.navigationManager.navigateTo(item.destination())
                 },
-                onHeroToggleFavorite = { item ->
-                    viewModel.setFavorite(item.id, !item.favorite)
+                onHeroToggleFavorite = { item, favorite ->
+                    viewModel.setFavorite(item.id, favorite)
                 },
                 onClickPlatform = { tile ->
                     val targetId = resolvePlatformTargetCollectionId(tile, state.selectedFilter)
@@ -353,7 +353,7 @@ fun StremioHomeContent(
     position: RowColumn,
     onSelectFilter: (HomeMediaFilter) -> Unit,
     onHeroWatchNow: (BaseItem) -> Unit,
-    onHeroToggleFavorite: (BaseItem) -> Unit,
+    onHeroToggleFavorite: (BaseItem, Boolean) -> Unit,
     onClickPlatform: (PlatformTile) -> Unit,
     onFocusPosition: (RowColumn) -> Unit,
     onClickItem: (RowColumn, BaseItem) -> Unit,
@@ -436,12 +436,15 @@ fun StremioHomeContent(
                         .focusRestorer()
                         .focusProperties {
                             onEnter = {
-                                if (currentPosition.row >= 0) {
-                                    rowFocusRequesters.getOrNull(currentPosition.row)?.tryRequestFocus()
-                                } else if (heroSlides.isNotEmpty()) {
-                                    heroFocusRequester.tryRequestFocus()
-                                } else {
-                                    filterFocusRequester.tryRequestFocus()
+                                val rowFocused =
+                                    currentPosition.row >= 0 &&
+                                        rowFocusRequesters.getOrNull(currentPosition.row)?.tryRequestFocus() == true
+                                if (!rowFocused) {
+                                    if (heroSlides.isNotEmpty()) {
+                                        heroFocusRequester.tryRequestFocus()
+                                    } else {
+                                        filterFocusRequester.tryRequestFocus()
+                                    }
                                 }
                             }
                         },

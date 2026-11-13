@@ -72,7 +72,7 @@ configure<ApplicationExtension> {
     compileSdk = libs.versions.compileSdk.getInt()
 
     defaultConfig {
-        applicationId = "com.github.damontecres.wholphin"
+        applicationId = "com.github.bonfiglioalessio.nigiro"
         minSdk = libs.versions.minSdk.getInt()
         targetSdk = libs.versions.targetSdk.getInt()
         versionCode = gitTags.trim().lines().size
@@ -236,7 +236,7 @@ androidComponents {
                         .getFilter(FilterConfiguration.FilterType.ABI)
                         .let { if (it != null) "-${it.identifier}" else "" }
                 val outputFileName =
-                    "Wholphin-${variant.flavorName}-${variant.buildType}-${output.versionName.get()}-${output.versionCode.get()}$abi.apk"
+                    "Nigiro-${variant.flavorName}-${variant.buildType}-${output.versionName.get()}-${output.versionCode.get()}$abi.apk"
                 output.outputFileName = outputFileName
             }
     }
