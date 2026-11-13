@@ -513,7 +513,9 @@ fun StremioHomeContent(
     // Put the focused row (with its title) right below the opaque focused item header, so rows above it
     // are hidden under the header instead of showing as a cut-off strip
     val headerPx = remember(density) { with(density) { FocusedItemHeaderHeight.toPx() } }
-    val bottomRoom = (LocalConfiguration.current.screenHeightDp.dp - FocusedItemHeaderHeight).coerceAtLeast(48.dp)
+    // A full screen of room: scrollToItem must be able to put even the last row at the top, otherwise it stops
+    // short and the scrollBy(-header) below leaves that row too low (posters cut at the bottom)
+    val bottomRoom = LocalConfiguration.current.screenHeightDp.dp
     LaunchedEffect(focusedRowIndex) {
         val row = focusedRowIndex
         if (row < 0) return@LaunchedEffect
