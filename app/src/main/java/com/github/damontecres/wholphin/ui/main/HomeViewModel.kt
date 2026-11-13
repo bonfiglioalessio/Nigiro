@@ -3,32 +3,41 @@ package com.github.damontecres.wholphin.ui.main
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
+import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
+import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
+import com.github.damontecres.wholphin.data.model.RemoteWholphinConfig
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.HomeDataService
-import com.github.damontecres.wholphin.services.HomePageResolvedSettings
-import com.github.damontecres.wholphin.services.HomeSettingsService
+import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.LatestNextUpService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.RemoteConfigService
 import com.github.damontecres.wholphin.services.ServerReportService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.services.deleteItem
+import com.github.damontecres.wholphin.ui.AspectRatio
+import com.github.damontecres.wholphin.ui.Cards
+import com.github.damontecres.wholphin.ui.HomeItemFields
+import com.github.damontecres.wholphin.ui.PrefContentScale
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.combinePair
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.showToast
-import com.github.damontecres.wholphin.ui.util.EmptyStringProvider
+import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
+import com.github.damontecres.wholphin.util.GetItemsRequestHandler
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
 import com.github.damontecres.wholphin.util.WholphinDispatchers
@@ -40,15 +49,16 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -61,9 +71,11 @@ class HomeViewModel
         val navigationManager: NavigationManager,
         val serverRepository: ServerRepository,
         val serverReportService: ServerReportService,
+        private val api: ApiClient,
         private val navDrawerService: NavDrawerService,
-        private val homeSettingsService: HomeSettingsService,
         private val homeDataService: HomeDataService,
+        private val remoteConfigService: RemoteConfigService,
+        private val imageUrlService: ImageUrlService,
         private val favoriteWatchManager: FavoriteWatchManager,
         private val datePlayedService: DatePlayedService,
         private val backdropService: BackdropService,
@@ -75,41 +87,40 @@ class HomeViewModel
         val state: StateFlow<HomeState> = _state
 
         private var dataLoadingJob: Job? = null
+        private var cachedContinueWatching: HomeRowLoadingState.Success? = null
+        private var cachedCatalogByKey: Map<String, CachedPlatformCatalog> = emptyMap()
+        private var cachedConfig: RemoteWholphinConfig = RemoteWholphinConfig.DEFAULT
+        private var hasAppliedInitialFilter = false
 
         init {
             datePlayedService.invalidateAll()
             serverRepository.currentUserDtoFlow
-                .combinePair(homeSettingsService.currentSettings)
-                .collectLatestIn(viewModelScope) { (userDto, settings) ->
-                    Timber.v(
-                        "Got new userDto & settings, userId=%s, settings?=%s",
-                        userDto?.id,
-                        settings != HomePageResolvedSettings.EMPTY,
-                    )
-//                    Timber.v("userDto=%s", userDto)
+                .combinePair(remoteConfigService.config)
+                .collectLatestIn(viewModelScope) { (userDto, remoteConfig) ->
                     dataLoadingJob?.cancel()
                     if (userDto == null) {
-                        Timber.d("UserDto is null")
                         _state.update { HomeState.EMPTY }
                         return@collectLatestIn
                     }
-                    if (settings == HomePageResolvedSettings.EMPTY) {
-                        Timber.d("Home settings are empty")
+                    val userChanged = state.value.userId != null && state.value.userId != userDto.id
+                    if (userChanged) {
+                        hasAppliedInitialFilter = false
+                        cachedContinueWatching = null
+                        cachedCatalogByKey = emptyMap()
                         _state.update { HomeState.EMPTY }
-                        return@collectLatestIn
                     }
-                    if (userDto.id != settings.userId) {
-                        Timber.d("User IDs don't match: %s vs %s", userDto?.id, settings.userId)
-                        _state.update { HomeState.EMPTY }
-                        return@collectLatestIn
-                    }
-                    if (state.value.settings.userId != settings.userId) {
-                        Timber.d("User changed")
-                        _state.update { HomeState.EMPTY }
+                    cachedConfig = remoteConfig
+                    if (!hasAppliedInitialFilter) {
+                        hasAppliedInitialFilter = true
+                        _state.update {
+                            it.copy(
+                                selectedFilter = parseHomeMediaFilter(remoteConfig.home.defaultFilter),
+                            )
+                        }
                     }
                     dataLoadingJob =
                         viewModelScope.launchIO {
-                            loadHomeRows(userDto, settings)
+                            loadStremioHome(userDto, remoteConfig)
                         }
                 }
         }
@@ -118,170 +129,301 @@ class HomeViewModel
             viewModelScope.launchIO {
                 Timber.d("init HomeViewModel")
                 serverRepository.currentUserDto?.let { userDto ->
-                    if (dataLoadingJob?.isActive == false) {
-                        val settings =
-                            homeSettingsService.currentSettings.first { it != HomePageResolvedSettings.EMPTY }
-                        if (userDto.id == settings.userId) {
-                            dataLoadingJob =
-                                viewModelScope.launchIO {
-                                    loadHomeRows(userDto, settings)
-                                }
-                        } else {
-                            Timber.d(
-                                "Init user IDs don't match: %s vs %s",
-                                userDto.id,
-                                settings.userId,
-                            )
-                        }
-                    } else {
-                        Timber.v("Data loading job is active")
+                    if (dataLoadingJob == null || dataLoadingJob?.isActive == false) {
+                        val remoteConfig = remoteConfigService.config.value
+                        dataLoadingJob =
+                            viewModelScope.launchIO {
+                                loadStremioHome(userDto, remoteConfig)
+                            }
                     }
                 }
             }
         }
 
-        suspend fun loadHomeRows(
+        fun setFilter(filter: HomeMediaFilter) {
+            if (_state.value.selectedFilter == filter) return
+            val rows =
+                buildVisibleHomeRows(
+                    continueRow = cachedContinueWatching,
+                    catalogByKey = cachedCatalogByKey,
+                    config = cachedConfig,
+                    filter = filter,
+                )
+            _state.update {
+                it.copy(
+                    selectedFilter = filter,
+                    homeRows = rows,
+                )
+            }
+        }
+
+        private suspend fun loadStremioHome(
             userDto: ServerUserConfig,
-            settings: HomePageResolvedSettings,
+            remoteConfig: RemoteWholphinConfig,
         ) {
-            Timber.i("Starting loadHomeRows")
+            Timber.i("Starting loadStremioHome revision=%s", remoteConfig.configRevision)
             try {
                 val preferences = userPreferencesService.getCurrent()
-                val prefs = preferences.appPreferences.homePagePreferences
+                val homePrefs = preferences.appPreferences.homePagePreferences
+                val libraries = navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
 
-                val libraries =
-                    navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
-
-                val state = state.value
-
-                // Refreshing if a load has already occurred and the rows haven't significantly changed
                 val refresh =
-                    state.loadingState == LoadingState.Success && state.settings == settings
-                Timber.v(
-                    "refresh=%s, state.loadingState=%s, %s rows",
-                    refresh,
-                    state.loadingState,
-                    settings.rows.size,
-                )
+                    state.value.loadingState == LoadingState.Success &&
+                        state.value.userId == userDto.id
                 _state.update {
                     it.copy(
+                        userId = userDto.id,
                         loadingState = if (refresh) LoadingState.Success else LoadingState.Loading,
                         refreshState = LoadingState.Loading,
-                        settings = settings,
-                        homeRows =
-                            if (refresh) {
-                                it.homeRows
-                            } else {
-                                List(settings.rows.size) {
-                                    HomeRowLoadingState.Pending(EmptyStringProvider)
-                                }
-                            },
+                        heroConfig = remoteConfig.home.hero,
+                        platforms =
+                            remoteConfig.home.platforms
+                                .filter { platform -> !platform.isHome }
+                                .map { platform ->
+                                    PlatformTile(
+                                        key = platform.key,
+                                        name = platform.name,
+                                        movieCollectionId = platform.movieCollectionId,
+                                        seriesCollectionId = platform.seriesCollectionId,
+                                        isHome = platform.isHome,
+                                    )
+                                },
                     )
                 }
 
+                val maxItems = remoteConfig.home.maxItemsPerRow.coerceAtLeast(1)
+
+                val continueJob =
+                    viewModelScope.async(WholphinDispatchers.IO) {
+                        if (!remoteConfig.home.includeNativeResumeNextUp) {
+                            null
+                        } else {
+                            try {
+                                val rowConfig =
+                                    HomeRowConfig.ContinueWatchingCombined(
+                                        viewOptions =
+                                            HomeRowViewOptions(
+                                                showTitles = true,
+                                                aspectRatio = AspectRatio.WIDE,
+                                                episodeAspectRatio = AspectRatio.WIDE,
+                                                heightDp = Cards.HEIGHT_EPISODE,
+                                            ),
+                                    )
+                                val result =
+                                    homeDataService.fetchDataForRow(
+                                        row = rowConfig,
+                                        scope = viewModelScope,
+                                        prefs = homePrefs,
+                                        userDto = userDto,
+                                        libraries = libraries,
+                                        limit = maxItems,
+                                        isRefresh = refresh,
+                                    )
+                                result as? HomeRowLoadingState.Success
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "Failed loading Continue Watching / Next Up")
+                                null
+                            }
+                        }
+                    }
+
                 val semaphore = Semaphore(4)
-
-                val deferred =
-                    settings.rows
-                        .map { row ->
-                            viewModelScope.async(WholphinDispatchers.IO) {
-                                semaphore.withPermit {
-                                    Timber.v("Fetching row: %s", row)
-                                    try {
-                                        homeDataService.fetchDataForRow(
-                                            row = row.config,
-                                            scope = viewModelScope,
-                                            prefs = prefs,
-                                            userDto = userDto,
-                                            libraries = libraries,
-                                            limit = prefs.maxItemsPerRow,
-                                            isRefresh = refresh,
-                                        )
-                                    } catch (ex: InvalidStatusException) {
-                                        if (ex.status == 404) {
-                                            Timber.w(ex, "404 on row %s", row)
-                                            HomeRowLoadingState.Success(
-                                                row.title,
-                                                emptyList(),
-                                            )
-                                        } else {
-                                            Timber.e(
-                                                ex,
-                                                "Error %s on row %s",
-                                                ex.status,
-                                                row,
-                                            )
-                                            HomeRowLoadingState.Error(
-                                                row.title,
-                                                exception = ex,
-                                            )
-                                        }
-                                    } catch (ex: Exception) {
-                                        Timber.e(ex, "Error on row %s", row)
-                                        HomeRowLoadingState.Error(
-                                            row.title,
-                                            exception = ex,
-                                        )
-                                    }
-                                }
+                val platformDeferred =
+                    remoteConfig.home.platforms.map { platform ->
+                        viewModelScope.async(WholphinDispatchers.IO) {
+                            semaphore.withPermit {
+                                val movies =
+                                    fetchBoxSetItems(
+                                        userId = userDto.id,
+                                        collectionId = platform.movieCollectionId,
+                                        limit = maxItems,
+                                    )
+                                val series =
+                                    fetchBoxSetItems(
+                                        userId = userDto.id,
+                                        collectionId = platform.seriesCollectionId,
+                                        limit = maxItems,
+                                    )
+                                platform.key to CachedPlatformCatalog(movies = movies, series = series)
                             }
                         }
+                    }
 
-                if (refresh) {
-                    // Replace rows as they complete
-                    val remaining = deferred.withIndex().toMutableList()
-                    while (remaining.isNotEmpty()) {
-                        val (rowIndex, rowData) =
-                            select {
-                                // "Return" the first remaining that is completed
-                                remaining
-                                    .forEach { (rowIndex, deferred) ->
-                                        deferred.onAwait { rowIndex to it }
-                                    }
-                            }
-                        Timber.v("Got row data index=%s", rowIndex)
-                        remaining.removeIf { it.index == rowIndex }
-                        _state.update { state ->
-                            val newRows =
-                                state.homeRows.toMutableList().apply {
-                                    set(rowIndex, rowData)
-                                }
-                            state.copy(
-                                homeRows = newRows,
-                            )
-                        }
-                    }
-                    _state.update {
-                        it.copy(
-                            loadingState = LoadingState.Success,
-                            refreshState = LoadingState.Success,
-                        )
-                    }
-                } else {
-                    val rows = deferred.awaitAll()
-                    Timber.v("Got all rows")
-                    _state.update {
-                        it.copy(
-                            loadingState = LoadingState.Success,
-                            refreshState = LoadingState.Success,
-                            homeRows = rows,
-                        )
-                    }
+                cachedContinueWatching = continueJob.await()
+                cachedCatalogByKey = platformDeferred.awaitAll().toMap()
+                cachedConfig = remoteConfig
+
+                val activeFilter = _state.value.selectedFilter
+                val rows =
+                    buildVisibleHomeRows(
+                        continueRow = cachedContinueWatching,
+                        catalogByKey = cachedCatalogByKey,
+                        config = remoteConfig,
+                        filter = activeFilter,
+                    )
+                val heroSlides = buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey)
+
+                _state.update {
+                    it.copy(
+                        loadingState = LoadingState.Success,
+                        refreshState = LoadingState.Success,
+                        homeRows = rows,
+                        heroSlides = heroSlides,
+                        heroConfig = remoteConfig.home.hero,
+                    )
                 }
-                Timber.d("Home page load complete")
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
-                Timber.e(ex, "Exception during home page loading")
+                Timber.e(ex, "Exception during Stremio home load")
                 if (state.value.loadingState == LoadingState.Success) {
                     showToast(context, "Error refreshing home: ${ex.localizedMessage}")
                     _state.update { it.copy(refreshState = LoadingState.Error(ex)) }
                 } else {
-                    _state.update {
-                        it.copy(loadingState = LoadingState.Error(ex))
-                    }
+                    _state.update { it.copy(loadingState = LoadingState.Error(ex)) }
                 }
             }
+        }
+
+        private suspend fun fetchBoxSetItems(
+            userId: UUID,
+            collectionId: String?,
+            limit: Int,
+        ): List<BaseItem> {
+            val uuid =
+                collectionId
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let {
+                        runCatching { UUID.fromString(it) }.getOrNull()
+                    } ?: return emptyList()
+            return try {
+                val request =
+                    GetItemsRequest(
+                        userId = userId,
+                        parentId = uuid,
+                        limit = limit,
+                        fields = HomeItemFields,
+                    )
+                GetItemsRequestHandler
+                    .execute(api, request)
+                    .content.items
+                    .map { BaseItem(it, false) }
+            } catch (ex: InvalidStatusException) {
+                Timber.w(ex, "Status %s fetching collection %s", ex.status, collectionId)
+                emptyList()
+            } catch (ex: Exception) {
+                Timber.w(ex, "Error fetching collection %s", collectionId)
+                emptyList()
+            }
+        }
+
+        private fun buildVisibleHomeRows(
+            continueRow: HomeRowLoadingState.Success?,
+            catalogByKey: Map<String, CachedPlatformCatalog>,
+            config: RemoteWholphinConfig,
+            filter: HomeMediaFilter,
+        ): List<HomeRowLoadingState> {
+            val rows = mutableListOf<HomeRowLoadingState>()
+            if (continueRow != null && continueRow.items.isNotEmpty()) {
+                rows.add(continueRow)
+            }
+            val posterOptions =
+                HomeRowViewOptions(
+                    heightDp = Cards.HEIGHT_2X3_DP,
+                    spacing = 16,
+                    contentScale = PrefContentScale.FILL,
+                    aspectRatio = AspectRatio.TALL,
+                    showTitles = true,
+                    useSeries = false,
+                )
+            val maxItems = config.home.maxItemsPerRow.coerceAtLeast(1)
+            val specs = buildStremioHomeRowSpecs(config.home.platforms, filter)
+            for (spec in specs) {
+                val items = selectPlatformRowItems(catalogByKey[spec.key], filter, maxItems)
+                if (items.isNotEmpty()) {
+                    val targetCollectionId =
+                        when (filter) {
+                            HomeMediaFilter.MOVIE -> spec.movieCollectionId
+                            HomeMediaFilter.SERIES -> spec.seriesCollectionId
+                            HomeMediaFilter.ALL ->
+                                if (spec.movieCollectionId != null && spec.seriesCollectionId == null) {
+                                    spec.movieCollectionId
+                                } else if (spec.seriesCollectionId != null && spec.movieCollectionId == null) {
+                                    spec.seriesCollectionId
+                                } else {
+                                    null
+                                }
+                        }
+                    val rowConfig =
+                        targetCollectionId?.let { idStr ->
+                            runCatching { UUID.fromString(idStr) }.getOrNull()?.let { uuid ->
+                                HomeRowConfig.ByParent(
+                                    parentId = uuid,
+                                    recursive = false,
+                                    viewOptions = posterOptions,
+                                )
+                            }
+                        }
+                    rows.add(
+                        HomeRowLoadingState.Success(
+                            title = StringStringProvider(spec.title),
+                            items = items,
+                            viewOptions = posterOptions,
+                            rowType = rowConfig,
+                            showViewMore = rowConfig != null && items.size >= maxItems,
+                        ),
+                    )
+                }
+            }
+            return rows
+        }
+
+        private fun buildHeroSlidesFromConfig(
+            config: RemoteWholphinConfig,
+            catalogByKey: Map<String, CachedPlatformCatalog>,
+        ): List<HeroSlide> {
+            if (!config.home.hero.enabled) return emptyList()
+            val heroPlatform =
+                config.home.platforms.firstOrNull { it.key == config.home.hero.sourceKey }
+                    ?: config.home.platforms.firstOrNull { it.isHome }
+                    ?: return emptyList()
+            val catalog = catalogByKey[heroPlatform.key] ?: return emptyList()
+            val pool =
+                interleavePlatformItems(
+                    movies = catalog.movies,
+                    series = catalog.series,
+                    maxItems = config.home.hero.count.coerceAtLeast(1),
+                )
+            val badgeLabel = context.getString(R.string.hero_top10_badge)
+            val movieLabel = context.getString(R.string.home_filter_movies)
+            val seriesLabel = context.getString(R.string.home_filter_series)
+            return buildHeroSlides(
+                items = pool,
+                count = config.home.hero.count,
+                badgeLabel = badgeLabel,
+                backdropUrlFor = { item ->
+                    imageUrlService.getItemImageUrl(
+                        item = item,
+                        imageType = ImageType.BACKDROP,
+                        fillWidth = 1280,
+                        fillHeight = null,
+                        useSeriesForPrimary = false,
+                    ) ?: imageUrlService.getItemImageUrl(
+                        item = item,
+                        imageType = ImageType.PRIMARY,
+                        fillWidth = 960,
+                        fillHeight = null,
+                        useSeriesForPrimary = false,
+                    )
+                },
+                typeLabelFor = { item ->
+                    when (item.type) {
+                        BaseItemKind.SERIES -> seriesLabel
+                        BaseItemKind.MOVIE -> movieLabel
+                        else -> null
+                    }
+                },
+            )
         }
 
         fun setWatched(
@@ -299,8 +441,20 @@ class HomeViewModel
             favorite: Boolean,
         ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
             favoriteWatchManager.setFavorite(itemId, favorite)
-            withContext(WholphinDispatchers.Main) {
-                init()
+            _state.update { current ->
+                current.copy(
+                    heroSlides =
+                        current.heroSlides.map { slide ->
+                            if (slide.item.id == itemId) {
+                                slide.copy(isFavorite = favorite)
+                            } else {
+                                slide
+                            }
+                        },
+                )
+            }
+            serverRepository.currentUserDto?.let { userDto ->
+                loadStremioHome(userDto, cachedConfig)
             }
         }
 
@@ -345,7 +499,9 @@ class HomeViewModel
                 viewModelScope.launchDefault {
                     serverRepository.currentUser?.id?.let { userId ->
                         latestNextUpService.removeFromNextUp(userId, item)
-                        init()
+                        serverRepository.currentUserDto?.let { userDto ->
+                            loadStremioHome(userDto, cachedConfig)
+                        }
                     }
                 }
             } else {
@@ -355,26 +511,26 @@ class HomeViewModel
     }
 
 data class HomeState(
+    val userId: UUID?,
     val loadingState: LoadingState,
     val refreshState: LoadingState,
     val homeRows: List<HomeRowLoadingState>,
-    val settings: HomePageResolvedSettings,
+    val heroSlides: List<HeroSlide>,
+    val heroConfig: RemoteHeroConfig,
+    val platforms: List<PlatformTile>,
+    val selectedFilter: HomeMediaFilter,
 ) {
     companion object {
         val EMPTY =
             HomeState(
-                LoadingState.Pending,
-                LoadingState.Pending,
-                emptyList(),
-                HomePageResolvedSettings.EMPTY,
+                userId = null,
+                loadingState = LoadingState.Pending,
+                refreshState = LoadingState.Pending,
+                homeRows = emptyList(),
+                heroSlides = emptyList(),
+                heroConfig = RemoteHeroConfig(),
+                platforms = emptyList(),
+                selectedFilter = HomeMediaFilter.ALL,
             )
     }
 }
-
-/**
- * Whether a row is a "is watching" type
- */
-private fun isWatchingRow(row: HomeRowConfig) =
-    row is HomeRowConfig.ContinueWatching ||
-        row is HomeRowConfig.NextUp ||
-        row is HomeRowConfig.ContinueWatchingCombined

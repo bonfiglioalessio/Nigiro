@@ -780,4 +780,15 @@
     <string name="home_settings_source_web">Client web utente</string>
     <string name="managed_by_server">Gestito dal server</string>
     <string name="chosen_by">Scelto da %1$s</string>
+    <string name="hero_watch_now">Guarda ora</string>
+    <string name="hero_favorite_add">Preferiti</string>
+    <string name="hero_favorite_remove">Nei preferiti</string>
+    <string name="hero_next_slide">Successivo</string>
+    <string name="hero_top10_badge">Top 10 Italia</string>
+    <string name="home_filter_all">Tutti</string>
+    <string name="home_filter_movies">Film</string>
+    <string name="home_filter_series">Serie TV</string>
+    <string name="home_platforms_title">Piattaforme</string>
+    <string name="platform_choose_category_title">Apri %1$s</string>
+    <string name="platform_choose_category_message">Scegli se aprire i Film o le Serie TV.</string>
 </resources>

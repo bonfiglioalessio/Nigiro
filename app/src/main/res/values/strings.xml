@@ -987,4 +987,15 @@
     <string name="home_settings_source_web">User web client</string>
     <string name="managed_by_server">Managed by server</string>
     <string name="error">Error</string>
+    <string name="hero_watch_now">Watch now</string>
+    <string name="hero_favorite_add">Favorite</string>
+    <string name="hero_favorite_remove">Favorited</string>
+    <string name="hero_next_slide">Next</string>
+    <string name="hero_top10_badge">Top 10 Italia</string>
+    <string name="home_filter_all">All</string>
+    <string name="home_filter_movies">Movies</string>
+    <string name="home_filter_series">Series</string>
+    <string name="home_platforms_title">Platforms</string>
+    <string name="platform_choose_category_title">Open %1$s</string>
+    <string name="platform_choose_category_message">Choose whether to browse Movies or TV Series.</string>
 </resources>

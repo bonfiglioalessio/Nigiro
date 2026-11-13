@@ -48,6 +48,7 @@ import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
 import org.jellyfin.sdk.model.api.ImageType
+import java.util.Locale
 
 /**
  * Displays an image as a card. If no image is available, the name will be shown instead
@@ -181,6 +182,38 @@ fun BannerCard(
                     fontSize = 16.sp,
                     fontFamily = FontAwesome,
                 )
+            }
+            val ratingText =
+                remember(item?.id, item?.data?.communityRating) {
+                    item
+                        ?.data
+                        ?.communityRating
+                        ?.takeIf { it > 0f }
+                        ?.let { String.format(Locale.US, "★ %.1f", it) }
+                }
+            if (ratingText != null) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(
+                                start = 6.dp,
+                                end = 6.dp,
+                                top = 6.dp,
+                                bottom = if (playPercent > 0 && playPercent < 100) 10.dp else 6.dp,
+                            ).background(
+                                AppColors.TransparentBlack50,
+                                shape = RoundedCornerShape(25),
+                            ),
+                ) {
+                    Text(
+                        text = ratingText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                    )
+                }
             }
             if (playPercent > 0 && playPercent < 100) {
                 Box(

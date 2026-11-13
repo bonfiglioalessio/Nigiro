@@ -1,12 +1,15 @@
 package com.github.damontecres.wholphin.ui.main
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,8 +19,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -34,32 +40,43 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.tv.material3.Border
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
+import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
 import com.github.damontecres.wholphin.ui.cards.GenreCard
 import com.github.damontecres.wholphin.ui.cards.ItemRow
+import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.cards.StudioCard
 import com.github.damontecres.wholphin.ui.cards.ViewMoreCard
+import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.ContextMenu
 import com.github.damontecres.wholphin.ui.components.ContextMenuActions
@@ -91,6 +108,7 @@ import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.DateTime
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.CollectionType
 import timber.log.Timber
 import java.util.UUID
 import kotlin.time.Duration
@@ -127,12 +145,27 @@ fun HomePage(
             var showContextMenu by remember { mutableStateOf<ContextMenu?>(null) }
             var showPlaylistDialog by remember { mutableStateOf<UUID?>(null) }
             var overviewDialog by remember { mutableStateOf<ItemDetailsDialogInfo?>(null) }
+            var platformChoice by remember { mutableStateOf<PlatformTile?>(null) }
 
             val playlistState by playlistViewModel.playlistState.collectAsState()
             var position by rememberPosition()
 
             val onFocusPosition = remember { { it: RowColumn -> position = it } }
             val currentHomePrefs by rememberUpdatedState(preferences.appPreferences.homePagePreferences)
+            val openCollectionById =
+                remember {
+                    { collectionId: String ->
+                        runCatching { UUID.fromString(collectionId) }.getOrNull()?.let { uuid ->
+                            viewModel.navigationManager.navigateTo(
+                                Destination.MediaItem(
+                                    itemId = uuid,
+                                    type = BaseItemKind.BOX_SET,
+                                    collectionType = CollectionType.BOXSETS,
+                                ),
+                            )
+                        }
+                    }
+                }
             val onClickItem =
                 remember {
                     { clickedPosition: RowColumn, item: BaseItem ->
@@ -207,27 +240,63 @@ fun HomePage(
             val onClickViewMore =
                 remember {
                     { _: RowColumn, row: HomeRowLoadingState.Success ->
-                        viewModel.navigationManager.navigateTo(
-                            Destination.MoreHomeRow(row.title, row.rowType!!, row.items.size),
-                        )
+                        row.rowType?.let { rowConfig ->
+                            viewModel.navigationManager.navigateTo(
+                                Destination.MoreHomeRow(row.title, rowConfig, row.items.size),
+                            )
+                        }
                     }
                 }
 
-            HomePageContent(
+            val enableBackdropUpdate =
+                preferences.appPreferences.interfacePreferences.backdropStyle != BackdropStyle.BACKDROP_NONE
+            StremioHomeContent(
+                heroSlides = state.heroSlides,
+                heroConfig = state.heroConfig,
+                platforms = state.platforms,
+                selectedFilter = state.selectedFilter,
                 homeRows = homeRows,
                 position = position,
+                onSelectFilter = viewModel::setFilter,
+                onHeroWatchNow = { item ->
+                    viewModel.navigationManager.navigateTo(item.destination())
+                },
+                onHeroToggleFavorite = { item ->
+                    viewModel.setFavorite(item.id, !item.favorite)
+                },
+                onClickPlatform = { tile ->
+                    val targetId = resolvePlatformTargetCollectionId(tile, state.selectedFilter)
+                    if (targetId != null) {
+                        openCollectionById(targetId)
+                    } else if (needsPlatformTypeChoice(tile, state.selectedFilter)) {
+                        platformChoice = tile
+                    }
+                },
                 onFocusPosition = onFocusPosition,
                 onClickItem = onClickItem,
                 onLongClickItem = onLongClickItem,
                 onClickPlay = onClickPlay,
-                loadingState = refreshing,
                 showClock = preferences.appPreferences.interfacePreferences.showClock,
-                onUpdateBackdrop = viewModel::updateBackdrop,
-                showLogo = preferences.appPreferences.interfacePreferences.showLogos,
-                showViewMore = true,
+                onUpdateBackdrop = { item ->
+                    if (enableBackdropUpdate) {
+                        viewModel.updateBackdrop(item)
+                    }
+                },
+                loadingState = refreshing,
                 onClickViewMore = onClickViewMore,
                 modifier = modifier,
             )
+
+            platformChoice?.let { tile ->
+                PlatformCategoryChoiceDialog(
+                    platform = tile,
+                    onDismissRequest = { platformChoice = null },
+                    onSelectCollection = { collectionId ->
+                        platformChoice = null
+                        openCollectionById(collectionId)
+                    },
+                )
+            }
             overviewDialog?.let { info ->
                 ItemDetailsDialog(
                     info = info,
@@ -272,6 +341,556 @@ val HomeRowLoadingState?.isContinueWatchingNextUp: Boolean
                 row?.rowType is HomeRowConfig.NextUp ||
                 row?.rowType is HomeRowConfig.ContinueWatchingCombined
         }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun StremioHomeContent(
+    heroSlides: List<HeroSlide>,
+    heroConfig: com.github.damontecres.wholphin.data.model.RemoteHeroConfig,
+    platforms: List<PlatformTile>,
+    selectedFilter: HomeMediaFilter,
+    homeRows: List<HomeRowLoadingState>,
+    position: RowColumn,
+    onSelectFilter: (HomeMediaFilter) -> Unit,
+    onHeroWatchNow: (BaseItem) -> Unit,
+    onHeroToggleFavorite: (BaseItem) -> Unit,
+    onClickPlatform: (PlatformTile) -> Unit,
+    onFocusPosition: (RowColumn) -> Unit,
+    onClickItem: (RowColumn, BaseItem) -> Unit,
+    onLongClickItem: (RowColumn, BaseItem) -> Unit,
+    onClickPlay: (RowColumn, BaseItem) -> Unit,
+    showClock: Boolean,
+    onUpdateBackdrop: (BaseItem) -> Unit,
+    loadingState: LoadingState?,
+    onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusedItem =
+        remember(homeRows, position) {
+            (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)?.items?.getOrNull(
+                position.column,
+            )
+        }
+    val rowFocusRequesters = remember(homeRows.size) { List(homeRows.size) { FocusRequester() } }
+    val heroFocusRequester = remember { FocusRequester() }
+    val filterFocusRequester = remember { FocusRequester() }
+    var firstFocused by remember { mutableStateOf(false) }
+
+    val listState = rememberLazyListState()
+    val currentPosition by rememberUpdatedState(position)
+    val currentOnFocusPosition by rememberUpdatedState(onFocusPosition)
+    val currentOnClickPlay by rememberUpdatedState(onClickPlay)
+
+    LaunchedEffect(heroSlides.size, homeRows.size) {
+        if (!firstFocused && (heroSlides.isNotEmpty() || homeRows.isNotEmpty())) {
+            if (heroSlides.isNotEmpty()) {
+                heroFocusRequester.tryRequestFocus()
+                firstFocused = true
+                delay(30)
+                listState.scrollToItem(0)
+            } else {
+                val firstRowIdx =
+                    homeRows.indexOfFirstOrNull { it is HomeRowLoadingState.Success && it.items.isNotEmpty() }
+                if (firstRowIdx != null) {
+                    rowFocusRequesters[firstRowIdx].tryRequestFocus()
+                    firstFocused = true
+                } else {
+                    filterFocusRequester.tryRequestFocus()
+                    firstFocused = true
+                }
+            }
+        }
+    }
+    LaunchedEffect(onUpdateBackdrop, focusedItem) {
+        focusedItem?.let { onUpdateBackdrop.invoke(it) }
+    }
+
+    val continueRowIndex =
+        remember(homeRows) {
+            if (homeRows.firstOrNull().isContinueWatchingNextUp) 0 else -1
+        }
+    val catalogStartIndex = if (continueRowIndex == 0) 1 else 0
+    val catalogRows =
+        remember(homeRows, catalogStartIndex) {
+            if (catalogStartIndex < homeRows.size) homeRows.subList(catalogStartIndex, homeRows.size) else emptyList()
+        }
+
+    val density = LocalDensity.current
+    val spaceAbovePx =
+        remember(density) {
+            with(density) { 44.dp.toPx() }
+        }
+    val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
+
+    Box(modifier = modifier) {
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides ScrollToTopBringIntoViewSpec(spaceAbovePx),
+        ) {
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = Cards.height2x3),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .focusRestorer()
+                        .focusProperties {
+                            onEnter = {
+                                if (currentPosition.row >= 0) {
+                                    rowFocusRequesters.getOrNull(currentPosition.row)?.tryRequestFocus()
+                                } else if (heroSlides.isNotEmpty()) {
+                                    heroFocusRequester.tryRequestFocus()
+                                } else {
+                                    filterFocusRequester.tryRequestFocus()
+                                }
+                            }
+                        },
+            ) {
+                if (heroSlides.isNotEmpty()) {
+                    item(key = "stremio_hero") {
+                        CompositionLocalProvider(
+                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                        ) {
+                            HomeHeroBanner(
+                                slides = heroSlides,
+                                config = heroConfig,
+                                watchFocusRequester = heroFocusRequester,
+                                onWatchNow = onHeroWatchNow,
+                                onToggleFavorite = onHeroToggleFavorite,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                        }
+                    }
+                }
+
+                if (continueRowIndex == 0) {
+                    val continueRow = homeRows[0]
+                    item(key = "stremio_continue_watching") {
+                        CompositionLocalProvider(
+                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                        ) {
+                            HomeRowItemContent(
+                                rowIndex = 0,
+                                row = continueRow,
+                                rowFocusRequester = rowFocusRequesters[0],
+                                showViewMore = true,
+                                showEmptyRows = false,
+                                currentPosition = currentPosition,
+                                currentOnFocusPosition = currentOnFocusPosition,
+                                currentOnClickPlay = currentOnClickPlay,
+                                onClickItem = onClickItem,
+                                onLongClickItem = onLongClickItem,
+                                onClickViewMore = onClickViewMore,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                        }
+                    }
+                }
+
+                item(key = "stremio_filter_bar") {
+                    CompositionLocalProvider(
+                        LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                    ) {
+                        HomeMediaFilterBar(
+                            selectedFilter = selectedFilter,
+                            onSelectFilter = onSelectFilter,
+                            firstButtonFocusRequester = filterFocusRequester,
+                        )
+                    }
+                }
+
+                if (platforms.isNotEmpty()) {
+                    item(key = "stremio_platforms_row") {
+                        CompositionLocalProvider(
+                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                        ) {
+                            PlatformsRow(
+                                platforms = platforms,
+                                activeFilter = selectedFilter,
+                                onClickPlatform = onClickPlatform,
+                            )
+                        }
+                    }
+                }
+
+                itemsIndexed(
+                    items = catalogRows,
+                    key = { idx, row ->
+                        val title = (row as? HomeRowLoadingState.Success)?.title?.toString() ?: "row"
+                        "catalog_${catalogStartIndex + idx}_$title"
+                    },
+                ) { catalogIdx, row ->
+                    val actualRowIndex = catalogStartIndex + catalogIdx
+                    CompositionLocalProvider(
+                        LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                    ) {
+                        HomeRowItemContent(
+                            rowIndex = actualRowIndex,
+                            row = row,
+                            rowFocusRequester = rowFocusRequesters[actualRowIndex],
+                            showViewMore = true,
+                            showEmptyRows = false,
+                            currentPosition = currentPosition,
+                            currentOnFocusPosition = currentOnFocusPosition,
+                            currentOnClickPlay = currentOnClickPlay,
+                            onClickItem = onClickItem,
+                            onLongClickItem = onLongClickItem,
+                            onClickViewMore = onClickViewMore,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+        when (loadingState) {
+            LoadingState.Pending,
+            LoadingState.Loading,
+            -> {
+                Box(
+                    modifier =
+                        Modifier
+                            .padding(if (showClock) 40.dp else 20.dp)
+                            .size(40.dp)
+                            .align(Alignment.TopEnd),
+                ) {
+                    CircularProgress(Modifier.fillMaxSize())
+                }
+            }
+
+            else -> {}
+        }
+    }
+}
+
+@Composable
+private fun HomeMediaFilterBar(
+    selectedFilter: HomeMediaFilter,
+    onSelectFilter: (HomeMediaFilter) -> Unit,
+    firstButtonFocusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val filters =
+        listOf(
+            HomeMediaFilter.ALL to stringResource(R.string.home_filter_all),
+            HomeMediaFilter.MOVIE to stringResource(R.string.home_filter_movies),
+            HomeMediaFilter.SERIES to stringResource(R.string.home_filter_series),
+        )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .focusGroup()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        filters.forEachIndexed { idx, (filter, label) ->
+            val selected = filter == selectedFilter
+            Button(
+                onClick = { onSelectFilter(filter) },
+                colors =
+                    ButtonDefaults.colors(
+                        containerColor =
+                            if (selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.White.copy(alpha = 0.12f)
+                            },
+                        contentColor =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = Color.Black,
+                    ),
+                modifier =
+                    if (idx == 0) {
+                        Modifier.focusRequester(firstButtonFocusRequester)
+                    } else {
+                        Modifier
+                    },
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlatformsRow(
+    platforms: List<PlatformTile>,
+    activeFilter: HomeMediaFilter,
+    onClickPlatform: (PlatformTile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        ItemRowTitle(stringResource(R.string.home_platforms_title))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusGroup(),
+        ) {
+            items(platforms, key = { it.key }) { tile ->
+                PlatformTileCard(
+                    tile = tile,
+                    activeFilter = activeFilter,
+                    onClick = { onClickPlatform(tile) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlatformTileCard(
+    tile: PlatformTile,
+    activeFilter: HomeMediaFilter,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent =
+        when (tile.key.lowercase()) {
+            "netflix" -> Color(0xFFB81D24)
+            "prime" -> Color(0xFF0078A8)
+            "disney" -> Color(0xFF113CCF)
+            "apple" -> Color(0xFF2B2D36)
+            "sky" -> Color(0xFF0B5CAD)
+            "para" -> Color(0xFF0057D9)
+            else -> Color(0xFF282B36)
+        }
+    val subLabel =
+        when (activeFilter) {
+            HomeMediaFilter.MOVIE -> stringResource(R.string.home_filter_movies)
+            HomeMediaFilter.SERIES -> stringResource(R.string.home_filter_series)
+            HomeMediaFilter.ALL -> "${stringResource(R.string.home_filter_movies)} · ${stringResource(R.string.home_filter_series)}"
+        }
+    val shape = RoundedCornerShape(10.dp)
+    Card(
+        onClick = onClick,
+        shape = CardDefaults.shape(shape),
+        colors = CardDefaults.colors(containerColor = accent),
+        border =
+            CardDefaults.border(
+                focusedBorder =
+                    Border(
+                        border = BorderStroke(2.dp, Color.White),
+                        shape = shape,
+                    ),
+            ),
+        modifier = modifier.size(width = 170.dp, height = 68.dp),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.Start,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = tile.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlatformCategoryChoiceDialog(
+    platform: PlatformTile,
+    onDismissRequest: () -> Unit,
+    onSelectCollection: (String) -> Unit,
+) {
+    BasicDialog(onDismissRequest = onDismissRequest) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(24.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.platform_choose_category_title, platform.name),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.platform_choose_category_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                platform.movieCollectionId?.let { movieId ->
+                    Button(onClick = { onSelectCollection(movieId) }) {
+                        Text(stringResource(R.string.home_filter_movies))
+                    }
+                }
+                platform.seriesCollectionId?.let { seriesId ->
+                    Button(onClick = { onSelectCollection(seriesId) }) {
+                        Text(stringResource(R.string.home_filter_series))
+                    }
+                }
+                OutlinedButton(onClick = onDismissRequest) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeRowItemContent(
+    rowIndex: Int,
+    row: HomeRowLoadingState,
+    rowFocusRequester: FocusRequester,
+    showViewMore: Boolean,
+    showEmptyRows: Boolean,
+    currentPosition: RowColumn,
+    currentOnFocusPosition: (RowColumn) -> Unit,
+    currentOnClickPlay: (RowColumn, BaseItem) -> Unit,
+    onClickItem: (RowColumn, BaseItem) -> Unit,
+    onLongClickItem: (RowColumn, BaseItem) -> Unit,
+    onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (val r = row) {
+        is HomeRowLoadingState.Loading,
+        is HomeRowLoadingState.Pending,
+        -> {
+            FocusableItemRow(
+                title = r.title.getString(),
+                subtitle = stringResource(R.string.loading),
+                modifier = modifier,
+            )
+        }
+
+        is HomeRowLoadingState.Error -> {
+            FocusableItemRow(
+                title = r.title.getString(),
+                subtitle = r.localizedMessage,
+                isError = true,
+                modifier = modifier,
+            )
+        }
+
+        is HomeRowLoadingState.Success -> {
+            if (r.items.isNotEmpty()) {
+                val viewOptions = r.viewOptions
+                ItemRow(
+                    title = r.title.getString(),
+                    items = r.items,
+                    onClickItem =
+                        remember(rowIndex, onClickItem) {
+                            { index, item ->
+                                onClickItem.invoke(
+                                    RowColumn(rowIndex, index),
+                                    item,
+                                )
+                            }
+                        },
+                    onLongClickItem =
+                        remember(rowIndex, onLongClickItem) {
+                            { index, item ->
+                                onLongClickItem.invoke(
+                                    RowColumn(rowIndex, index),
+                                    item,
+                                )
+                            }
+                        },
+                    modifier =
+                        modifier
+                            .fillMaxWidth()
+                            .focusGroup()
+                            .focusRequester(rowFocusRequester),
+                    horizontalPadding = viewOptions.spacing.dp,
+                    cardContent = { index, item, cardModifier, onClick, onLongClick ->
+                        val onFocus =
+                            remember(rowIndex, index) {
+                                { isFocused: Boolean ->
+                                    if (isFocused) {
+                                        currentOnFocusPosition(RowColumn(rowIndex, index))
+                                    }
+                                }
+                            }
+                        val onKey =
+                            remember(item) {
+                                { event: KeyEvent ->
+                                    if (isPlayKeyUp(event) && item?.type?.playable == true) {
+                                        Timber.v("Clicked play on ${item.id}")
+                                        currentOnClickPlay(currentPosition, item)
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                            }
+                        HomePageCardContent(
+                            index = index,
+                            item = item,
+                            onClick = onClick,
+                            onLongClick = onLongClick,
+                            viewOptions = viewOptions,
+                            modifier =
+                                cardModifier
+                                    .onFocusChanged { onFocus(it.isFocused) }
+                                    .onKeyEvent { onKey(it) },
+                        )
+                    },
+                    showViewMore = showViewMore && r.showViewMore,
+                    viewMoreCardContent = { mod ->
+                        HomePageViewMoreCard(
+                            isEpisode = r.items.last()?.type == BaseItemKind.EPISODE,
+                            onClick = {
+                                onClickViewMore.invoke(
+                                    RowColumn(rowIndex, r.items.size),
+                                    r,
+                                )
+                            },
+                            onLongClick = {},
+                            viewOptions = viewOptions,
+                            modifier =
+                                mod.onFocusChanged {
+                                    if (it.isFocused) {
+                                        currentOnFocusPosition.invoke(
+                                            RowColumn(rowIndex, r.items.size),
+                                        )
+                                    }
+                                },
+                        )
+                    },
+                )
+            } else if (showEmptyRows) {
+                FocusableItemRow(
+                    title = r.title.getString(),
+                    subtitle = stringResource(R.string.no_results),
+                    modifier = modifier,
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -381,138 +1000,20 @@ fun HomePageContent(
                         CompositionLocalProvider(
                             LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
                         ) {
-                            when (val r = row) {
-                                is HomeRowLoadingState.Loading,
-                                is HomeRowLoadingState.Pending,
-                                -> {
-                                    FocusableItemRow(
-                                        title = r.title.getString(),
-                                        subtitle = stringResource(R.string.loading),
-                                        modifier = rowModifier,
-                                    )
-                                }
-
-                                is HomeRowLoadingState.Error -> {
-                                    FocusableItemRow(
-                                        title = r.title.getString(),
-                                        subtitle = r.localizedMessage,
-                                        isError = true,
-                                        modifier = rowModifier,
-                                    )
-                                }
-
-                                is HomeRowLoadingState.Success -> {
-                                    if (row.items.isNotEmpty()) {
-                                        val viewOptions = row.viewOptions
-                                        ItemRow(
-                                            title = row.title.getString(),
-                                            items = row.items,
-                                            onClickItem =
-                                                remember(rowIndex, onClickItem) {
-                                                    { index, item ->
-                                                        onClickItem.invoke(
-                                                            RowColumn(
-                                                                rowIndex,
-                                                                index,
-                                                            ),
-                                                            item,
-                                                        )
-                                                    }
-                                                },
-                                            onLongClickItem =
-                                                remember(rowIndex, onLongClickItem) {
-                                                    { index, item ->
-                                                        onLongClickItem.invoke(
-                                                            RowColumn(rowIndex, index),
-                                                            item,
-                                                        )
-                                                    }
-                                                },
-                                            modifier =
-                                                rowModifier
-                                                    .fillMaxWidth()
-                                                    .focusGroup()
-                                                    .focusRequester(rowFocusRequesters[rowIndex]),
-                                            horizontalPadding = viewOptions.spacing.dp,
-                                            cardContent = { index, item, cardModifier, onClick, onLongClick ->
-                                                val onFocus =
-                                                    remember(rowIndex, index) {
-                                                        { isFocused: Boolean ->
-                                                            if (isFocused) {
-                                                                currentOnFocusPosition(
-                                                                    RowColumn(
-                                                                        rowIndex,
-                                                                        index,
-                                                                    ),
-                                                                )
-                                                            }
-                                                        }
-                                                    }
-                                                val onKey =
-                                                    remember(item) {
-                                                        { event: KeyEvent ->
-                                                            if (isPlayKeyUp(event) && item?.type?.playable == true) {
-                                                                Timber.v("Clicked play on ${item.id}")
-                                                                currentOnClickPlay(
-                                                                    currentPosition,
-                                                                    item,
-                                                                )
-                                                                true
-                                                            } else {
-                                                                false
-                                                            }
-                                                        }
-                                                    }
-                                                HomePageCardContent(
-                                                    index = index,
-                                                    item = item,
-                                                    onClick = onClick,
-                                                    onLongClick = onLongClick,
-                                                    viewOptions = viewOptions,
-                                                    modifier =
-                                                        cardModifier
-                                                            .onFocusChanged { onFocus(it.isFocused) }
-                                                            .onKeyEvent { onKey(it) },
-                                                )
-                                            },
-                                            showViewMore = showViewMore && row.showViewMore,
-                                            viewMoreCardContent = { mod ->
-                                                HomePageViewMoreCard(
-                                                    isEpisode = row.items.last()?.type == BaseItemKind.EPISODE,
-                                                    onClick = {
-                                                        onClickViewMore.invoke(
-                                                            RowColumn(
-                                                                rowIndex,
-                                                                r.items.size,
-                                                            ),
-                                                            r,
-                                                        )
-                                                    },
-                                                    onLongClick = {},
-                                                    viewOptions = viewOptions,
-                                                    modifier =
-                                                        mod.onFocusChanged {
-                                                            if (it.isFocused) {
-                                                                currentOnFocusPosition.invoke(
-                                                                    RowColumn(
-                                                                        rowIndex,
-                                                                        r.items.size,
-                                                                    ),
-                                                                )
-                                                            }
-                                                        },
-                                                )
-                                            },
-                                        )
-                                    } else if (showEmptyRows) {
-                                        FocusableItemRow(
-                                            title = r.title.getString(),
-                                            subtitle = stringResource(R.string.no_results),
-                                            modifier = rowModifier,
-                                        )
-                                    }
-                                }
-                            }
+                            HomeRowItemContent(
+                                rowIndex = rowIndex,
+                                row = row,
+                                rowFocusRequester = rowFocusRequesters[rowIndex],
+                                showViewMore = showViewMore,
+                                showEmptyRows = showEmptyRows,
+                                currentPosition = currentPosition,
+                                currentOnFocusPosition = currentOnFocusPosition,
+                                currentOnClickPlay = currentOnClickPlay,
+                                onClickItem = onClickItem,
+                                onLongClickItem = onLongClickItem,
+                                onClickViewMore = onClickViewMore,
+                                modifier = rowModifier,
+                            )
                         }
                     }
                 }
