@@ -1,4 +1,4 @@
-name: Create release
+name: Nigiro Release
 
 on:
   push:
@@ -10,8 +10,7 @@ defaults:
     shell: bash
 
 env:
-  APK_SHORT_NAME: Wholphin.apk
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1024m'"
   TAG_NAME: ${{ github.ref_name }}
 
 jobs:
@@ -20,64 +19,31 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout the code
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: 0 # Need the tags to build
+          fetch-depth: 0
       - name: Setup
         uses: ./.github/actions/setup
-      - name: Build app
-        id: buildapp
+      - name: Test & Build Release APK
         env:
           KEY_ALIAS: "${{ secrets.KEY_ALIAS }}"
           KEY_PASSWORD: "${{ secrets.KEY_PASSWORD }}"
           KEY_STORE_PASSWORD: "${{ secrets.KEY_STORE_PASSWORD }}"
           SIGNING_KEY: "${{ secrets.SIGNING_KEY }}"
-          ORG_GRADLE_PROJECT_WholphinExtensionsUsername: "${{ secrets.EXTENSIONS_USERNAME }}"
-          ORG_GRADLE_PROJECT_WholphinExtensionsPassword: "${{ secrets.EXTENSIONS_PASSWORD }}"
         run: |
-          ./gradlew clean bundleAppstoreRelease
-          ./gradlew bundleFiretvRelease
-          ./gradlew assembleDefaultRelease
-      - name: Verify signatures
-        run: |
-          echo "Verify APK signatures"
-          find app/build/outputs \( -name '*.apk' -or -name '*.aab' \)
-          find app/build/outputs \( -name '*.apk' \) -print0 | xargs -0 -n1 ${{env.ANDROID_SDK_ROOT}}/build-tools/${{ env.BUILD_TOOLS_VERSION }}/apksigner verify --verbose --print-certs
-      - name: Copy APK to shorter names
-        id: apks
-        run: |
-          find app/build/outputs/apk -name '*.apk' -print0 |
-            while IFS= read -r -d '' line; do
-              # Wholphin-default-release-0.2.9-62-g5c12e03-16-arm64-v8a.apk => Wholphin-arm64-v8a.apk
-              short_name="$(echo $line | sed -E 's/-default-release-[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-g[a-fA-F0-9]+-[0-9]+//')"
-              echo "$line => $short_name"
-              cp "$line" "$short_name"
-            done
-      - name: Checksums
-        run: |
-          echo "SHA256 checksums:"
-          find app/build/outputs \( -name '*.apk' -or -name '*.aab' \) -print0 | xargs -0 sha256sum
-      - name: Upload AAB
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: AAB
-          path: |
-            app/build/outputs/bundle/**/*.aab
-          compression-level: 0
-      - name: Upload mapping files
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: mapping
-          path: |
-            app/build/outputs/**/mapping.txt
-          compression-level: 6
-      - name: Create GitHub release
+          ./gradlew :app:testDefaultDebugUnitTest :app:assembleDefaultRelease --no-daemon --max-workers=2
+          shopt -s nullglob
+          for apk in app/build/outputs/apk/default/release/*.apk; do
+            if [[ "$(basename "$apk")" != "Nigiro-release-armeabi-v7a.apk" ]]; then
+              cp "$apk" "app/build/outputs/apk/default/release/Nigiro-release-armeabi-v7a.apk"
+              break
+            fi
+          done
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          shopt -s globstar
-
           gh release create "${{ env.TAG_NAME }}" \
-            --latest --title "${{ env.TAG_NAME }}" --verify-tag -n "" --draft \
-            app/build/outputs/apk/**/*.apk
+            --latest --title "Nigiro ${{ env.TAG_NAME }}" --verify-tag --generate-notes \
+            app/build/outputs/apk/default/release/*.apk

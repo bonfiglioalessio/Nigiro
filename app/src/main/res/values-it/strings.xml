@@ -791,4 +791,5 @@
     <string name="home_platforms_title">Piattaforme</string>
     <string name="platform_choose_category_title">Apri %1$s</string>
     <string name="platform_choose_category_message">Scegli se aprire i Film o le Serie TV.</string>
+    <string name="currently_streaming_on">Disponibile in streaming su</string>
 </resources>
