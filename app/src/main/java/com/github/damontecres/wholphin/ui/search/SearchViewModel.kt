@@ -139,7 +139,10 @@ class SearchViewModel
                             isFavorite = true,
                             recursive = true,
                             includeItemTypes = listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES),
-                            fields = SlimItemFields + listOf(ItemFields.PATH),
+                            // Provider ids and sources let a streamed favorite be matched to its downloaded copy
+                            fields =
+                                SlimItemFields +
+                                    listOf(ItemFields.PATH, ItemFields.PROVIDER_IDS, ItemFields.MEDIA_SOURCES),
                             sortBy = listOf(ItemSortBy.DATE_CREATED),
                             sortOrder = listOf(SortOrder.DESCENDING),
                             limit = 20,

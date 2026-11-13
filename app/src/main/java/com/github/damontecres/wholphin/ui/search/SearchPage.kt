@@ -833,6 +833,8 @@ private fun SearchFocusedHeader(itemProvider: () -> BaseItem?) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
+            // Keep long titles clear of the clock
+            modifier = Modifier.padding(end = 96.dp),
         ) {
             Text(
                 text = item.name.orEmpty(),

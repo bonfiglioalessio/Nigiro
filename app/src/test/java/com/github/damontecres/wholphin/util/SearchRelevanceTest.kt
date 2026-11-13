@@ -81,10 +81,18 @@ class SearchRelevanceTest {
         val obscure = rated("Dune Drifter", 4.1f)
         val popular = rated("Dune: Parte due", 8.2f)
         val wordMatch = rated("Children of Dune", 9.0f)
+        // A few 9/10 votes and no metadata: below the well-known title despite the higher rating
+        val fewVotes = rated("Dune Surfer", 9.0f)
+        every { popular.data.overview } returns "Paul Atreides..."
+        every { popular.data.genres } returns listOf("Fantascienza")
+        every { obscure.data.overview } returns "..."
+        every { obscure.data.genres } returns listOf("Azione")
+        every { fewVotes.data.overview } returns null
+        every { fewVotes.data.genres } returns null
 
         assertEquals(
-            listOf(popular, obscure, wordMatch),
-            SearchRelevance.filterAndSort(listOf(wordMatch, obscure, popular), "dune"),
+            listOf(popular, obscure, fewVotes, wordMatch),
+            SearchRelevance.filterAndSort(listOf(wordMatch, fewVotes, obscure, popular), "dune"),
         )
     }
 

@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.util
 
 import com.github.damontecres.wholphin.data.model.BaseItem
 import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
 import java.text.Normalizer
 import java.util.Locale
 
@@ -47,7 +48,9 @@ object SearchRelevance {
     /**
      * Prioritizes title matches and drops unrelated fuzzy noise whenever at least one item
      * matches the query in its normalized title. Within the same kind of match (exact or prefix,
-     * word or substring, fuzzy) the most popular titles come first: highest rating, then newest.
+     * word or substring, fuzzy) the most popular titles come first. There are no vote counts, so an obscure
+     * title with a few 9/10 votes would win on rating alone: well-known titles have complete metadata (overview,
+     * backdrop, clear logo, genres), so that comes first, then rating, then the newest.
      */
     fun filterAndSort(
         items: List<BaseItem>,
@@ -65,10 +68,21 @@ object SearchRelevance {
                 item to minOf(score(item, query), originalScore)
             }.sortedWith(
                 compareBy<Pair<BaseItem, Int>> { matchBand(it.second) }
+                    .thenByDescending { metadataCompleteness(it.first) }
                     .thenByDescending { it.first.data.communityRating ?: -1f }
                     .thenByDescending { it.first.data.productionYear ?: 0 }
                     .thenBy { it.second },
             ).map { it.first }
+    }
+
+    private fun metadataCompleteness(item: BaseItem): Int {
+        val data = item.data
+        return listOf(
+            !data.overview.isNullOrBlank(),
+            !data.backdropImageTags.isNullOrEmpty(),
+            data.imageTags?.containsKey(ImageType.LOGO) == true,
+            !data.genres.isNullOrEmpty(),
+        ).count { it }
     }
 
     // 0: exact or prefix, 1: word start, substring or regex, 2: fuzzy
