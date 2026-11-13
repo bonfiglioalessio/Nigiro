@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
@@ -104,7 +104,7 @@ fun GridCard(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
             )
         }
-        AnimatedVisibility(showTitle) {
+        val titleContent: @Composable () -> Unit = {
             SlidingCardText(focused) {
                 Text(
                     text = item?.title ?: "",
@@ -132,6 +132,11 @@ fun GridCard(
                             .enableMarquee(focusedAfterDelay),
                 )
             }
+        }
+        if (LocalInterfaceCustomization.current.enableAnimations) {
+            AnimatedVisibility(showTitle) { titleContent() }
+        } else if (showTitle) {
+            titleContent()
         }
     }
 }

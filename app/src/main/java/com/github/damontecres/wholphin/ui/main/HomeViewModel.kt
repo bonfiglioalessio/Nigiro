@@ -9,6 +9,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
+import com.github.damontecres.wholphin.data.model.RemotePlatformConfig
 import com.github.damontecres.wholphin.data.model.RemoteWholphinConfig
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
@@ -228,30 +229,24 @@ class HomeViewModel
                         }
                     }
 
-                val semaphore = Semaphore(4)
-                val platformDeferred =
-                    remoteConfig.home.platforms.map { platform ->
+                val heroSourceKey = remoteConfig.home.hero.sourceKey
+                val (immediatePlatforms, deferredPlatforms) =
+                    remoteConfig.home.platforms.partition { platform ->
+                        platform.isHome || platform.key == heroSourceKey
+                    }
+
+                val immediateSemaphore = Semaphore(4)
+                val immediateDeferred =
+                    immediatePlatforms.map { platform ->
                         viewModelScope.async(WholphinDispatchers.IO) {
-                            semaphore.withPermit {
-                                val movies =
-                                    fetchBoxSetItems(
-                                        userId = userDto.id,
-                                        collectionId = platform.movieCollectionId,
-                                        limit = maxItems,
-                                    )
-                                val series =
-                                    fetchBoxSetItems(
-                                        userId = userDto.id,
-                                        collectionId = platform.seriesCollectionId,
-                                        limit = maxItems,
-                                    )
-                                platform.key to CachedPlatformCatalog(movies = movies, series = series)
+                            immediateSemaphore.withPermit {
+                                platform.key to fetchPlatformCatalog(userDto.id, platform, maxItems)
                             }
                         }
                     }
 
                 cachedContinueWatching = continueJob.await()
-                cachedCatalogByKey = platformDeferred.awaitAll().toMap()
+                cachedCatalogByKey = immediateDeferred.awaitAll().toMap()
                 cachedConfig = remoteConfig
 
                 val activeFilter = _state.value.selectedFilter
@@ -267,11 +262,45 @@ class HomeViewModel
                 _state.update {
                     it.copy(
                         loadingState = LoadingState.Success,
-                        refreshState = LoadingState.Success,
+                        refreshState =
+                            if (deferredPlatforms.isEmpty()) {
+                                LoadingState.Success
+                            } else {
+                                LoadingState.Loading
+                            },
                         homeRows = rows,
                         heroSlides = heroSlides,
                         heroConfig = remoteConfig.home.hero,
                     )
+                }
+
+                if (deferredPlatforms.isNotEmpty()) {
+                    val backgroundSemaphore = Semaphore(2)
+                    val deferredResults =
+                        deferredPlatforms
+                            .map { platform ->
+                                viewModelScope.async(WholphinDispatchers.IO) {
+                                    backgroundSemaphore.withPermit {
+                                        platform.key to fetchPlatformCatalog(userDto.id, platform, maxItems)
+                                    }
+                                }
+                            }.awaitAll()
+                            .toMap()
+                    cachedCatalogByKey = cachedCatalogByKey + deferredResults
+                    val currentFilter = _state.value.selectedFilter
+                    val updatedRows =
+                        buildVisibleHomeRows(
+                            continueRow = cachedContinueWatching,
+                            catalogByKey = cachedCatalogByKey,
+                            config = remoteConfig,
+                            filter = currentFilter,
+                        )
+                    _state.update {
+                        it.copy(
+                            refreshState = LoadingState.Success,
+                            homeRows = updatedRows,
+                        )
+                    }
                 }
             } catch (ex: CancellationException) {
                 throw ex
@@ -284,6 +313,16 @@ class HomeViewModel
                     _state.update { it.copy(loadingState = LoadingState.Error(ex)) }
                 }
             }
+        }
+
+        private suspend fun fetchPlatformCatalog(
+            userId: UUID,
+            platform: RemotePlatformConfig,
+            limit: Int,
+        ): CachedPlatformCatalog {
+            val movies = fetchBoxSetItems(userId, platform.movieCollectionId, limit)
+            val series = fetchBoxSetItems(userId, platform.seriesCollectionId, limit)
+            return CachedPlatformCatalog(movies = movies, series = series)
         }
 
         private suspend fun fetchBoxSetItems(

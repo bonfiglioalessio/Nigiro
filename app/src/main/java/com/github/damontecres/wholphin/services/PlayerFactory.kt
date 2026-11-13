@@ -13,7 +13,9 @@ import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
 import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
@@ -121,7 +123,13 @@ class PlayerFactory
                                 MediaExtensionStatus.MES_DISABLED -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
                                 else -> DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
                             }
-                        val dataSourceFactory = DefaultDataSource.Factory(context)
+                        val httpDataSourceFactory =
+                            DefaultHttpDataSource
+                                .Factory()
+                                .setAllowCrossProtocolRedirects(true)
+                                .setConnectTimeoutMs(15_000)
+                                .setReadTimeoutMs(25_000)
+                        val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
                         val extractorsFactory = createExtractorsFactory()
 
                         // Applied outermost so that a profile 7 track is advertised as 8.1 whichever
@@ -172,8 +180,20 @@ class PlayerFactory
                                 disableAudioOffload = disableAudioOffload,
                             )
 
+                        val loadControl =
+                            DefaultLoadControl
+                                .Builder()
+                                .setBufferDurationsMs(
+                                    15_000,
+                                    35_000,
+                                    1_500,
+                                    3_000,
+                                ).setPrioritizeTimeOverSizeThresholds(true)
+                                .build()
+
                         ExoPlayer
                             .Builder(context)
+                            .setLoadControl(loadControl)
                             .setMediaSourceFactory(mediaSourceFactory)
                             .setRenderersFactory(renderersFactory)
                             .setTrackSelector(trackSelector)

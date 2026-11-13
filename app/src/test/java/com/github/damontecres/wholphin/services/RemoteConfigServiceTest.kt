@@ -39,7 +39,9 @@ class RemoteConfigServiceTest {
         val urls = RemoteConfigUrlResolver.candidateUrls("http://192.168.1.157:8096/jellyfin/")
         assertEquals(
             listOf(
+                "http://192.168.1.157/nigiro-config.json",
                 "http://192.168.1.157/wholphin-config.json",
+                "http://192.168.1.157:8096/nigiro-config.json",
                 "http://192.168.1.157:8096/wholphin-config.json",
             ),
             urls,
@@ -48,7 +50,9 @@ class RemoteConfigServiceTest {
         val tailscale = RemoteConfigUrlResolver.candidateUrls("http://100.74.237.31:8096")
         assertEquals(
             listOf(
+                "http://100.74.237.31/nigiro-config.json",
                 "http://100.74.237.31/wholphin-config.json",
+                "http://100.74.237.31:8096/nigiro-config.json",
                 "http://100.74.237.31:8096/wholphin-config.json",
             ),
             tailscale,
@@ -57,7 +61,9 @@ class RemoteConfigServiceTest {
         val customPort = RemoteConfigUrlResolver.candidateUrls("http://192.168.1.157:8080")
         assertEquals(
             listOf(
+                "http://192.168.1.157:8080/nigiro-config.json",
                 "http://192.168.1.157:8080/wholphin-config.json",
+                "http://192.168.1.157/nigiro-config.json",
                 "http://192.168.1.157/wholphin-config.json",
             ),
             customPort,

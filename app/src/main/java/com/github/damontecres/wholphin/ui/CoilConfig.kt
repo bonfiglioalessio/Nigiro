@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui
 
+import android.os.Process
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import coil3.ImageLoader
@@ -77,7 +78,8 @@ fun CoilConfig(
             .Builder(ctx)
             .apply {
                 if (enableCache) {
-                    memoryCache(MemoryCache.Builder().maxSizePercent(ctx).build())
+                    val memPercent = if (Process.is64Bit()) 0.20 else 0.14
+                    memoryCache(MemoryCache.Builder().maxSizePercent(ctx, memPercent).build())
                     diskCache(
                         DiskCache
                             .Builder()

@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.cards
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -138,12 +137,8 @@ fun SeasonCard(
     aspectRatio: Float = AspectRatios.TALL,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
-    // Do not use `by` here, this way we are Defer reads and recompositions to only when modifier calculates
-    val spaceBetween =
-        animateDpAsState(
-            if (focused) spaceBetweenFocused else spaceBetweenUnfocused,
-            label = "spaceBetween",
-        )
+    // Do not use `by` here, this way we defer reads and recompositions to only when modifier calculates
+    val spaceBetween = rememberCardSpaceState(focused, spaceBetweenFocused, spaceBetweenUnfocused)
 
     val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
     val aspectRationToUse = aspectRatio.coerceAtLeast(AspectRatios.MIN)

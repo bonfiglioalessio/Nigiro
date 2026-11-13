@@ -9,14 +9,14 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
-import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.asDrawable
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.BuildConfig
 import java.io.IOException
 
 class ImageProvider : ContentProvider() {
-    private val imageLoader by lazy { context?.let { ImageLoader(it) } }
+    private val imageLoader by lazy { context?.let { SingletonImageLoader.get(it) } }
 
     override fun onCreate() = true
 

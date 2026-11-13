@@ -173,34 +173,38 @@ object RemoteConfigUrlResolver {
                 }
             val parsed = withScheme.toHttpUrlOrNull()
             if (parsed != null) {
+                fun addConfigPaths(base: okhttp3.HttpUrl) {
+                    urls.add(
+                        base
+                            .newBuilder()
+                            .encodedPath("/nigiro-config.json")
+                            .query(null)
+                            .fragment(null)
+                            .build()
+                            .toString(),
+                    )
+                    urls.add(
+                        base
+                            .newBuilder()
+                            .encodedPath("/wholphin-config.json")
+                            .query(null)
+                            .fragment(null)
+                            .build()
+                            .toString(),
+                    )
+                }
+
                 val rootNoPort =
                     parsed
                         .newBuilder()
                         .port(if (parsed.isHttps) 443 else 80)
-                        .encodedPath("/wholphin-config.json")
-                        .query(null)
-                        .fragment(null)
                         .build()
                 if (parsed.port != 80 && parsed.port != 443 && parsed.port != 8096 && parsed.port != 8920) {
-                    val customPortUrl =
-                        parsed
-                            .newBuilder()
-                            .encodedPath("/wholphin-config.json")
-                            .query(null)
-                            .fragment(null)
-                            .build()
-                    urls.add(customPortUrl.toString())
+                    addConfigPaths(parsed)
                 }
-                urls.add(rootNoPort.toString())
+                addConfigPaths(rootNoPort)
                 if (parsed.port == 8096 || parsed.port == 8920) {
-                    val jellyfinPortFallback =
-                        parsed
-                            .newBuilder()
-                            .encodedPath("/wholphin-config.json")
-                            .query(null)
-                            .fragment(null)
-                            .build()
-                    urls.add(jellyfinPortFallback.toString())
+                    addConfigPaths(parsed)
                 }
             }
         }
