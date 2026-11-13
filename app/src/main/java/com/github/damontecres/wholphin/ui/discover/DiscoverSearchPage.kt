@@ -53,12 +53,13 @@ import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.rememberInt
 import com.github.damontecres.wholphin.ui.search.SearchCombinedResults
+import com.github.damontecres.wholphin.ui.search.SearchPendingBanner
 import com.github.damontecres.wholphin.ui.search.SearchResult
+import com.github.damontecres.wholphin.ui.search.SearchSubmitButton
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
 import javax.inject.Inject
@@ -77,8 +78,11 @@ class DiscoverSearchViewModel
         private var searchJob: Job? = null
         var currentQuery: String = ""
 
-        fun search(query: String) {
-            if (query == currentQuery) {
+        fun search(
+            query: String,
+            force: Boolean = false,
+        ) {
+            if (query == currentQuery && !force) {
                 return
             }
             currentQuery = query
@@ -117,9 +121,12 @@ fun DiscoverSearchPage(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val seerrResults by viewModel.seerrResults.collectAsState()
-    var immediateSearchQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    var submittedQuery by rememberSaveable {
+        mutableStateOf(viewModel.currentQuery.takeIf { it.isNotBlank() })
+    }
     var query by rememberSaveable { mutableStateOf(viewModel.currentQuery) }
     var position by rememberInt(-1)
+    var isSearchActive by remember { mutableStateOf(false) }
 
     // Start with current preferences, but collect updates when view options change
     val prefs =
@@ -141,22 +148,13 @@ fun DiscoverSearchPage(
     }
 
     fun triggerImmediateSearch(searchQuery: String) {
-        immediateSearchQuery = searchQuery
-        viewModel.search(searchQuery)
+        val trimmed = searchQuery.trim()
+        submittedQuery = trimmed.takeIf { it.isNotBlank() }
+        isSearchActive = false
+        keyboardController?.hide()
+        viewModel.search(trimmed, force = true)
     }
 
-    LaunchedEffect(query) {
-        when {
-            immediateSearchQuery == query -> {
-                immediateSearchQuery = null
-            }
-
-            else -> {
-                delay(750L)
-                viewModel.search(query)
-            }
-        }
-    }
     val gridFocusRequester = remember { FocusRequester() }
     val textFieldFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -175,7 +173,6 @@ fun DiscoverSearchPage(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            var isSearchActive by remember { mutableStateOf(false) }
             var isTextFieldFocused by remember { mutableStateOf(false) }
 
             BackHandler(isTextFieldFocused) {
@@ -241,8 +238,17 @@ fun DiscoverSearchPage(
                                 }
                             },
                 )
+
+                SearchSubmitButton(
+                    onClick = { triggerImmediateSearch(query) },
+                    modifier = Modifier.padding(start = 12.dp),
+                )
             }
         }
+        SearchPendingBanner(
+            query = query,
+            submittedQuery = submittedQuery,
+        )
         SearchCombinedResults(
             result = seerrResults,
             focusRequester = gridFocusRequester,

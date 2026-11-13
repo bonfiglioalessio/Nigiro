@@ -104,6 +104,7 @@
     <string name="tv_guide">Guida TV</string>
     <string name="show">Mostra</string>
     <string name="searching">Ricerca in corso…</string>
+    <string name="search_pending_prompt">Premi Cerca per cercare «%s»</string>
     <string name="decimal_seconds">%.2f secondi</string>
     <string name="commercial">Commerciale</string>
     <string name="community_rating">Valutazione community</string>

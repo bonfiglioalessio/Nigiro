@@ -16,11 +16,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +54,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.tv.material3.Button
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -76,11 +82,56 @@ import com.github.damontecres.wholphin.ui.onMain
 import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.WholphinDispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
-import kotlin.time.Duration.Companion.milliseconds
+
+internal fun shouldShowPendingPrompt(
+    query: String,
+    submittedQuery: String?,
+): Boolean = query.isNotBlank() && query.trim() != submittedQuery?.trim()
+
+@Composable
+internal fun SearchSubmitButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = stringResource(R.string.search))
+    }
+}
+
+@Composable
+internal fun SearchPendingBanner(
+    query: String,
+    submittedQuery: String?,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = shouldShowPendingPrompt(query, submittedQuery),
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+        modifier = modifier,
+    ) {
+        Text(
+            text = stringResource(R.string.search_pending_prompt, query.trim()),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+    }
+}
 
 internal const val SEARCH_ROW = 0
 internal const val TAB_ROW = SEARCH_ROW + 1
@@ -118,7 +169,8 @@ fun SearchPage(
     var showViewOptions by rememberSaveable { mutableStateOf(false) }
     var showFilterTypeDialog by rememberSaveable { mutableStateOf(false) }
     var searchClicked by rememberSaveable(query) { mutableStateOf(false) }
-    var immediateSearchQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    var isSearchActive by remember { mutableStateOf(false) }
     var showProgramDialog by remember { mutableStateOf(false) }
 
     val position by viewModel.position.collectAsState()
@@ -136,22 +188,27 @@ fun SearchPage(
         }
     }
 
-    fun triggerImmediateSearch(searchQuery: String) {
-        immediateSearchQuery = searchQuery
-        searchClicked = true
-        viewModel.search(searchQuery, combinedMode)
+    fun triggerImmediateSearch(
+        searchQuery: String,
+        force: Boolean = true,
+    ) {
+        val trimmed = searchQuery.trim()
+        submittedQuery = trimmed.takeIf { it.isNotBlank() }
+        isSearchActive = false
+        keyboardController?.hide()
+        searchClicked = trimmed.isNotBlank()
+        viewModel.search(trimmed, combinedMode, force = force)
     }
 
-    LaunchedEffect(query, combinedMode) {
-        when {
-            immediateSearchQuery == query -> {
-                immediateSearchQuery = null
-            }
+    LaunchedEffect(initialQuery) {
+        if (initialQuery.isNotBlank() && submittedQuery == null) {
+            triggerImmediateSearch(initialQuery, force = false)
+        }
+    }
 
-            else -> {
-                delay(750.milliseconds)
-                viewModel.search(query, combinedMode)
-            }
+    LaunchedEffect(combinedMode) {
+        submittedQuery?.takeIf { it.isNotBlank() }?.let { activeQuery ->
+            viewModel.search(activeQuery, combinedMode, force = false)
         }
     }
     LaunchedEffect(Unit) {
@@ -263,7 +320,6 @@ fun SearchPage(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            var isSearchActive by remember { mutableStateOf(false) }
             var isTextFieldFocused by remember { mutableStateOf(false) }
             val textFieldFocusRequester = remember { FocusRequester() }
 
@@ -332,6 +388,11 @@ fun SearchPage(
                             },
                 )
 
+                SearchSubmitButton(
+                    onClick = { triggerImmediateSearch(query) },
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+
                 ExpandableFaButton(
                     title = R.string.view_options,
                     iconStringRes = R.string.fa_sliders,
@@ -340,6 +401,10 @@ fun SearchPage(
                 )
             }
         }
+        SearchPendingBanner(
+            query = query,
+            submittedQuery = submittedQuery,
+        )
         AnimatedVisibility(
             visible = showTabs,
             enter = expandVertically(),

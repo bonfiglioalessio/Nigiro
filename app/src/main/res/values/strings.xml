@@ -113,6 +113,7 @@
     <string name="search_and_download"><![CDATA[Search & Download]]></string>
     <string name="search">Search</string>
     <string name="searching">Searching…</string>
+    <string name="search_pending_prompt">Press Search to look up \"%s\"</string>
     <string name="voice_search">Voice search</string>
     <string name="voice_starting">Starting</string>
     <string name="voice_search_prompt">Speak to search</string>
