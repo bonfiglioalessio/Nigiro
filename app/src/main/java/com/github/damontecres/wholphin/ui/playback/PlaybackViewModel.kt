@@ -49,6 +49,7 @@ import com.github.damontecres.wholphin.preferences.enabled
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.DeviceProfileService
 import com.github.damontecres.wholphin.services.ImageUrlService
+import com.github.damontecres.wholphin.services.LocalTwinService
 import com.github.damontecres.wholphin.services.MusicService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PlayerFactory
@@ -115,6 +116,7 @@ import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.api.sockets.subscribe
 import org.jellyfin.sdk.model.DeviceInfo
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaSegmentType
@@ -166,6 +168,7 @@ class PlaybackViewModel
         private val imageUrlService: ImageUrlService,
         private val screensaverService: ScreensaverService,
         private val musicService: MusicService,
+        private val localTwinService: LocalTwinService,
         @Assisted private val destination: Destination,
     ) : ViewModel(),
         Player.Listener,
@@ -351,7 +354,7 @@ class PlaybackViewModel
                     }
                 }
             this.itemId = itemId
-            val queriedItem = api.userLibraryApi.getItem(itemId).content
+            val queriedItem = preferLocalCopy(api.userLibraryApi.getItem(itemId).content)
             val playlistItem =
                 if (queriedItem.type.playable) {
                     PlaylistItem.Media(BaseItem(queriedItem, false))
@@ -446,6 +449,35 @@ class PlaybackViewModel
                         )
                     }
                 }
+            }
+        }
+
+        /**
+         * A streamed (Gelato) movie that was also downloaded to the server plays from the local file,
+         * unless the user explicitly chose one of the streamed versions
+         */
+        private suspend fun preferLocalCopy(item: BaseItemDto): BaseItemDto {
+            if (destination !is Destination.Playback || !localTwinService.isStreamOnly(item)) return item
+            return try {
+                val chosenSourceId =
+                    serverRepository.currentUser
+                        ?.let { itemPlaybackDao.getItem(it, item.id) }
+                        ?.sourceId
+                val choseStream =
+                    chosenSourceId != null &&
+                        item.mediaSources.orEmpty().any { it.id?.toUUIDOrNull() == chosenSourceId }
+                if (choseStream) {
+                    item
+                } else {
+                    localTwinService.findLocalTwin(item)?.also {
+                        Timber.i("Playing local copy %s instead of streamed item %s", it.id, item.id)
+                    } ?: item
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not check for a local copy of %s", item.id)
+                item
             }
         }
 

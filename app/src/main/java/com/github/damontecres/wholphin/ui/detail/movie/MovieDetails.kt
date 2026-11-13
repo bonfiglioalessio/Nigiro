@@ -69,7 +69,6 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.extensions.ticks
-import org.jellyfin.sdk.model.serializer.toUUID
 import java.util.UUID
 import kotlin.time.Duration
 
@@ -111,12 +110,7 @@ fun MovieDetails(
                 },
                 onSendMediaInfo = viewModel.serverReportService::sendMediaReportFor,
                 onDeleteItem = viewModel::deleteItem,
-                onChooseVersion = { item, source ->
-                    viewModel.savePlayVersion(
-                        item,
-                        source.id!!.toUUID(),
-                    )
-                },
+                onChooseVersion = viewModel::chooseVersion,
                 onChooseTracks = { result ->
                     viewModel.saveTrackSelection(
                         result.item,
@@ -372,10 +366,15 @@ fun MovieDetailsContent(
                         canDelete = canDelete,
                         onConfirmDelete = onConfirmDelete,
                         chooseVersionParams =
-                            remember(state.chosenStreams, movie, onChooseVersion) {
+                            remember(state.chosenStreams, movie, state.localCopy, onChooseVersion) {
                                 ChooseVersionParams(
                                     chosenStreams = state.chosenStreams,
-                                    mediaSources = movie.data.mediaSources.orEmpty(),
+                                    // The downloaded copy (if any) first, then the streamed versions
+                                    mediaSources =
+                                        state.localCopy
+                                            ?.data
+                                            ?.mediaSources
+                                            .orEmpty() + movie.data.mediaSources.orEmpty(),
                                     onChooseVersion = onChooseVersion,
                                 )
                             },

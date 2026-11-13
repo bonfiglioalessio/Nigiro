@@ -16,6 +16,7 @@ import com.github.damontecres.wholphin.data.model.Trailer
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.LocalTwinService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
@@ -46,8 +47,10 @@ import kotlinx.coroutines.flow.update
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.libraryApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 
@@ -71,6 +74,7 @@ class MovieViewModel
         private val userPreferencesService: UserPreferencesService,
         private val backdropService: BackdropService,
         private val mediaManagementService: MediaManagementService,
+        private val localTwinService: LocalTwinService,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -127,6 +131,25 @@ class MovieViewModel
                     )
                 }
                 backdropService.submit(movie)
+                viewModelScope.launchIO {
+                    // A streamed (Gelato) movie downloaded via Seerr is a separate item: offer & play its local file
+                    val localCopy = localTwinService.findLocalTwin(movie.data)?.let { BaseItem(it) } ?: return@launchIO
+                    val explicitStream =
+                        chosenStreams?.itemPlayback?.sourceId?.let { sourceId ->
+                            movie.data.mediaSources.orEmpty().any { it.id?.toUUIDOrNull() == sourceId }
+                        } == true
+                    val chosen =
+                        if (explicitStream) {
+                            chosenStreams
+                        } else {
+                            itemPlaybackRepository.getSelectedTracks(
+                                localCopy.id,
+                                localCopy,
+                                userPreferencesService.getCurrent(),
+                            )
+                        }
+                    _state.update { it.copy(localCopy = localCopy, chosenStreams = chosen) }
+                }
                 viewModelScope.launchIO {
                     trailerService.getLocalTrailers(movie).letNotEmpty { localTrailers ->
                         _state.update {
@@ -217,6 +240,42 @@ class MovieViewModel
             }
         }
 
+        /**
+         * The user chose a version: either the local copy or one of the item's own (streamed) sources
+         */
+        fun chooseVersion(
+            item: BaseItem,
+            source: MediaSourceInfo,
+        ) {
+            val localCopy = state.value.localCopy
+            if (localCopy != null && localCopy.data.mediaSources.orEmpty().any { it.id == source.id }) {
+                chooseLocalCopy(item, localCopy)
+            } else {
+                val sourceId = source.id?.toUUIDOrNull()
+                if (sourceId != null) {
+                    savePlayVersion(item, sourceId)
+                } else {
+                    Timber.w("Cannot save version with non-UUID id %s", source.id)
+                }
+            }
+        }
+
+        private fun chooseLocalCopy(
+            item: BaseItem,
+            localCopy: BaseItem,
+        ) {
+            viewModelScope.launchIO {
+                val prefs = userPreferencesService.getCurrent()
+                // Forget the streamed version chosen for this item, so playback uses the local file again
+                itemPlaybackRepository
+                    .getSelectedTracks(item.id, item, prefs)
+                    ?.takeIf { it.itemPlayback?.sourceId != null }
+                    ?.let { itemPlaybackRepository.deleteChosenStreams(it) }
+                val chosen = itemPlaybackRepository.getSelectedTracks(localCopy.id, localCopy, prefs)
+                _state.update { it.copy(chosenStreams = chosen) }
+            }
+        }
+
         fun savePlayVersion(
             item: BaseItem,
             sourceId: UUID,
@@ -302,6 +361,10 @@ data class MovieState(
     val discovered: List<DiscoverItem> = emptyList(),
     val chosenStreams: ChosenStreams? = null,
     val canDelete: Boolean = false,
+    /**
+     * The downloaded copy of a streamed (Gelato) movie, if any
+     */
+    val localCopy: BaseItem? = null,
 ) {
     val movie: BaseItem? = (loading as? DataLoadingState.Success<BaseItem>)?.data
 }
