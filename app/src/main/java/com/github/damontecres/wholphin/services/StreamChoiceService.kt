@@ -6,6 +6,7 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.ActivationFlag
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.RelativeMediaStream
+import com.github.damontecres.wholphin.data.model.RemoteConfigRuntime
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoice
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoiceType
 import com.github.damontecres.wholphin.data.model.TrackChoiceParentType
@@ -580,9 +581,20 @@ fun getPreferredLanguage(
                 throw IllegalArgumentException("Only audio or subtitle supported, not $type")
             }
         }
+    val remoteFallback =
+        when (type) {
+            MediaStreamType.AUDIO -> RemoteConfigRuntime.current?.playback?.preferredAudioLanguage
+            MediaStreamType.SUBTITLE -> RemoteConfigRuntime.current?.playback?.preferredSubtitleLanguage
+            else -> null
+        }?.takeIf { it.isNotNullOrBlank() }
+
     return when (pref) {
-        UserProfileSettings.USE_USER_PROFILE -> profileLang
+        UserProfileSettings.USE_USER_PROFILE, null -> {
+            profileLang?.takeIf { it.isNotNullOrBlank() } ?: remoteFallback
+        }
+
         UserProfileSettings.PREFER_ANY_LANGUAGE -> null
+
         else -> pref
     }?.takeIf { it.isNotNullOrBlank() }
 }

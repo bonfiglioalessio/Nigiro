@@ -212,6 +212,8 @@ message InterfacePreferences {
   bool show_logos = 13;
   SearchPreferences search_preferences = 14;
   repeated DisplayToggle display_toggles = 15;
+  bool enable_animations = 16;
+  bool show_tv_settings = 17;
 }
 
 message AdvancedPreferences {

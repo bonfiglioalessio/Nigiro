@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -19,6 +20,7 @@ import com.github.damontecres.wholphin.data.model.JellyfinUser
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.services.RemoteConfigService
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.launchIO
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,9 +35,14 @@ class ApplicationContentViewModel
     @Inject
     constructor(
         val backdropService: BackdropService,
+        private val remoteConfigService: RemoteConfigService,
     ) : ViewModel() {
         fun clearBackdrop() {
             viewModelScope.launchIO { backdropService.clearBackdrop() }
+        }
+
+        fun refreshRemoteConfig(serverUrl: String) {
+            viewModelScope.launchIO { remoteConfigService.refreshForServer(serverUrl) }
         }
     }
 
@@ -54,6 +61,9 @@ fun ApplicationContent(
     enableTopScrim: Boolean = true,
     viewModel: ApplicationContentViewModel = hiltViewModel(),
 ) {
+    LaunchedEffect(server.url) {
+        viewModel.refreshRemoteConfig(server.url)
+    }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     Box(
         modifier = modifier,

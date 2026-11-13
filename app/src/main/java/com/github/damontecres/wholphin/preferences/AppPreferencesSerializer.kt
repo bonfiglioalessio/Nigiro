@@ -92,13 +92,14 @@ class AppPreferencesSerializer
                         InterfacePreferences
                             .newBuilder()
                             .apply {
-                                playThemeSongs = AppPreference.PlayThemeMusic.defaultValue
+                                playThemeSongs = ThemeSongVolume.DISABLED
                                 appThemeColors = AppPreference.ThemeColors.defaultValue
-                                navDrawerSwitchOnFocus =
-                                    AppPreference.NavDrawerSwitchOnFocus.defaultValue
+                                navDrawerSwitchOnFocus = false
                                 showClock = AppPreference.ShowClock.defaultValue
-                                backdropStyle = AppPreference.BackdropStylePref.defaultValue
+                                backdropStyle = BackdropStyle.BACKDROP_NONE
                                 showLogos = AppPreference.ShowLogos.defaultValue
+                                enableAnimations = false
+                                showTvSettings = false
                                 clearDisplayToggles()
                                 addAllDisplayToggles(AppPreference.DisplayTogglesPref.defaultValue)
 
