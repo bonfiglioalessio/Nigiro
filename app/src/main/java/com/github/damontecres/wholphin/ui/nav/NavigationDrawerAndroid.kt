@@ -60,6 +60,8 @@ import androidx.tv.material3.NavigationDrawerItemColors
 import androidx.tv.material3.NavigationDrawerItemDefaults
 import androidx.tv.material3.NavigationDrawerScope
 import androidx.tv.material3.rememberDrawerState
+import com.github.damontecres.wholphin.preferences.AppThemeColors
+import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 
 /**
@@ -120,13 +122,21 @@ private fun DrawerSheet(
             Modifier
         }
     val flatContainerColor = MaterialTheme.colorScheme.surface
+    // Nigiro theme: same full-height gradient as the page, so the sidebar has no visible edge
+    val isNigiroTheme = LocalTheme.current == AppThemeColors.NIGIRO
     val hairlineColor = MaterialTheme.colorScheme.border.copy(alpha = 0.28f)
     val internalModifier =
         Modifier
             .focusRequester(focusRequester)
             .then(sizeModifier)
             .fillMaxHeight()
-            .background(flatContainerColor)
+            .then(
+                if (isNigiroTheme) {
+                    Modifier.background(NigiroBackgroundBrush)
+                } else {
+                    Modifier.background(flatContainerColor)
+                },
+            )
             // adding passed-in modifier here to ensure animateContentSize is called before other
             // size based modifiers.
             .then(modifier)
@@ -142,14 +152,16 @@ private fun DrawerSheet(
         NavigationDrawerScopeImpl(drawerState.currentValue == DrawerValue.Open).apply {
             content(drawerState.currentValue)
         }
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(1.dp)
-                    .background(hairlineColor),
-        )
+        if (!isNigiroTheme) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .width(1.dp)
+                        .background(hairlineColor),
+            )
+        }
     }
 }
 

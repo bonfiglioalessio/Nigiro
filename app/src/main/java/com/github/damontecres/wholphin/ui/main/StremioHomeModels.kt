@@ -23,6 +23,7 @@ data class HeroSlide(
     val overview: String?,
     val backdropUrl: String?,
     val isFavorite: Boolean,
+    val logoUrl: String? = null,
 )
 
 data class PlatformTile(
@@ -154,6 +155,7 @@ internal fun buildHeroSlides(
     badgeLabel: String,
     backdropUrlFor: (BaseItem) -> String?,
     typeLabelFor: (BaseItem) -> String?,
+    logoUrlFor: (BaseItem) -> String? = { null },
 ): List<HeroSlide> {
     val limit = count.coerceAtLeast(1)
     return items.take(limit).mapIndexed { index, item ->
@@ -171,6 +173,7 @@ internal fun buildHeroSlides(
             overview = item.data.overview,
             backdropUrl = backdropUrlFor(item),
             isFavorite = item.favorite,
+            logoUrl = logoUrlFor(item),
         )
     }
 }

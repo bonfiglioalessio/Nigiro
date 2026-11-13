@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -711,11 +712,13 @@ private fun HomeMediaFilterBar(
                         .height(30.dp)
                         .then(if (idx == 0) Modifier.focusRequester(firstButtonFocusRequester) else Modifier),
             ) {
-                Text(
-                    text = label,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                )
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxHeight()) {
+                    Text(
+                        text = label,
+                        fontSize = 14.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
             }
         }
     }

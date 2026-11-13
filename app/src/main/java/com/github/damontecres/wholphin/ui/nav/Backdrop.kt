@@ -154,7 +154,7 @@ internal fun shouldDrawBackdropImage(
     }
 }
 
-private val NigiroBackgroundBrush =
+internal val NigiroBackgroundBrush =
     Brush.verticalGradient(
         0f to NigiroPalette.BackgroundTop,
         0.6f to NigiroPalette.Background,

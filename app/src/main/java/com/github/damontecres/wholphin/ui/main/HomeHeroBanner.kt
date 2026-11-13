@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -191,16 +192,28 @@ fun HomeHeroBanner(
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
-            Text(
-                text = slide.title,
-                fontSize = 36.sp,
-                lineHeight = 40.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.width(560.dp),
-            )
+            var logoFailed by remember(slide.logoUrl) { mutableStateOf(false) }
+            if (!slide.logoUrl.isNullOrBlank() && !logoFailed) {
+                AsyncImage(
+                    model = slide.logoUrl,
+                    contentDescription = slide.title,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomStart,
+                    onError = { logoFailed = true },
+                    modifier = Modifier.size(width = 360.dp, height = 96.dp),
+                )
+            } else {
+                Text(
+                    text = slide.title,
+                    fontSize = 36.sp,
+                    lineHeight = 40.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.width(560.dp),
+                )
+            }
             if (meta.isNotBlank()) {
                 Text(
                     text = meta,
@@ -325,8 +338,15 @@ private fun HeroButton(
         scale = ButtonDefaults.scale(focusedScale = 1.05f),
         contentPadding = PaddingValues(horizontal = 22.dp),
         modifier = modifier.height(NigiroDimens.ButtonHeight),
-        content = content,
-    )
+    ) {
+        // The button has a fixed height, so the content has to fill it to be centered
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxHeight(),
+            content = content,
+        )
+    }
 }
 
 private fun runtimeText(item: BaseItem): String? {

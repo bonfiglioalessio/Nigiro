@@ -169,10 +169,12 @@ class HomeViewModel
                     config = cachedConfig,
                     filter = filter,
                 )
+            val heroSlides = buildHeroSlidesFromConfig(cachedConfig, cachedCatalogByKey, filter)
             _state.update {
                 it.copy(
                     selectedFilter = filter,
                     homeRows = rows,
+                    heroSlides = heroSlides,
                 )
             }
         }
@@ -480,6 +482,7 @@ class HomeViewModel
         private fun buildHeroSlidesFromConfig(
             config: RemoteWholphinConfig,
             catalogByKey: Map<String, CachedPlatformCatalog>,
+            filter: HomeMediaFilter = _state.value.selectedFilter,
         ): List<HeroSlide> {
             if (!config.home.hero.enabled) return emptyList()
             val heroPlatform =
@@ -488,9 +491,10 @@ class HomeViewModel
                     ?: return emptyList()
             val catalog = catalogByKey[heroPlatform.key] ?: return emptyList()
             val pool =
+                // The hero follows the Movies/Series filter too, so changing it visibly changes the page
                 interleavePlatformItems(
-                    movies = catalog.movies,
-                    series = catalog.series,
+                    movies = if (filter == HomeMediaFilter.SERIES) emptyList() else catalog.movies,
+                    series = if (filter == HomeMediaFilter.MOVIE) emptyList() else catalog.series,
                     maxItems = config.home.hero.count.coerceAtLeast(1),
                 )
             val badgeLabel = context.getString(R.string.hero_top10_badge)
@@ -514,6 +518,20 @@ class HomeViewModel
                         fillHeight = null,
                         useSeriesForPrimary = false,
                     )
+                },
+                logoUrlFor = { item ->
+                    // Clear logo instead of the title text, only when the item has one
+                    if (item.data.imageTags?.containsKey(ImageType.LOGO) == true) {
+                        imageUrlService.getItemImageUrl(
+                            item = item,
+                            imageType = ImageType.LOGO,
+                            fillWidth = 720,
+                            fillHeight = 200,
+                            useSeriesForPrimary = false,
+                        )
+                    } else {
+                        null
+                    }
                 },
                 typeLabelFor = { item ->
                     when (item.type) {

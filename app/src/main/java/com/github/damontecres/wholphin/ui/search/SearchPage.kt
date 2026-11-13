@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -331,131 +332,47 @@ fun SearchPage(
             }
         }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    // Keyboard on the left, results on the right: typing never needs the system keyboard
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(start = NigiroDimens.ContentStart, top = 24.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxWidth(),
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.focusGroup(),
         ) {
-            var isTextFieldFocused by remember { mutableStateOf(false) }
-            val textFieldFocusRequester = remember { FocusRequester() }
-
-            BackHandler(isTextFieldFocused) {
-                when {
-                    isSearchActive -> {
-                        isSearchActive = false
-                        keyboardController?.hide()
-                    }
-
-                    else -> {
-                        focusManager.moveFocus(FocusDirection.Next)
-                    }
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd, top = 24.dp)
-                        .focusGroup()
-                        .focusRestorer(textFieldFocusRequester)
-                        .focusRequester(focusRequesters[SEARCH_ROW]),
-            ) {
-                AnimatedVisibility(
-                    visible = voiceSearchButtonVisible,
-                    enter = if (animationsEnabled) fadeIn() + expandHorizontally(expandFrom = Alignment.End) else EnterTransition.None,
-                    exit = if (animationsEnabled) fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End) else ExitTransition.None,
-                ) {
-                    VoiceSearchButton(
-                        onSpeechResult = { spokenText ->
-                            query = spokenText
-                            triggerImmediateSearch(spokenText)
-                        },
-                        voiceInputManager = viewModel.voiceInputManager,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-                }
-
-                SearchEditTextBox(
-                    value = query,
-                    onValueChange = {
-                        isSearchActive = true
-                        query = it
-                    },
-                    onSearchClick = { triggerImmediateSearch(query) },
-                    readOnly = !isSearchActive,
-                    height = 56.dp,
-                    placeholder = stringResource(R.string.search_placeholder),
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .focusRequester(textFieldFocusRequester)
-                            .onFocusChanged { state ->
-                                isTextFieldFocused = state.isFocused
-                                if (!state.isFocused) isSearchActive = false
-                            }.onPreviewKeyEvent { event ->
-                                val isActivationKey =
-                                    event.key in listOf(Key.DirectionCenter, Key.Enter)
-                                if (event.type == KeyEventType.KeyUp && isActivationKey && !isSearchActive) {
-                                    isSearchActive = true
-                                    keyboardController?.show()
-                                    true
-                                } else {
-                                    false
-                                }
-                            },
-                )
-
-                SearchSubmitButton(
-                    onClick = { triggerImmediateSearch(query) },
-                    modifier = Modifier.padding(start = 12.dp),
-                )
-
-                ExpandableFaButton(
-                    title = R.string.view_options,
-                    iconStringRes = R.string.fa_sliders,
-                    onClick = { showViewOptions = true },
-                    modifier = Modifier.padding(start = 12.dp),
-                )
-            }
-        }
-        SearchPendingBanner(
-            query = query,
-            submittedQuery = submittedQuery,
-        )
-        AnimatedVisibility(
-            visible = showTabs,
-            enter = if (animationsEnabled) expandVertically() else EnterTransition.None,
-            exit = if (animationsEnabled) shrinkVertically() else ExitTransition.None,
-        ) {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                tabs = tabs,
-                onClick = {
-                    selectedTab = it
-                    val row =
-                        when (selectedTab) {
-                            0 -> COMBINED_ROW
-                            else -> SEERR_ROW
+            SearchQueryDisplay(query = query)
+            SearchKeyboard(
+                onChar = { query += it },
+                onSpace = { if (query.isNotEmpty() && !query.endsWith(" ")) query += " " },
+                onBackspace = { query = query.dropLast(1) },
+                onClear = { query = "" },
+                onSubmit = { triggerImmediateSearch(query) },
+                firstKeyFocusRequester = focusRequesters[SEARCH_ROW],
+                voiceKey =
+                    if (voiceSearchButtonVisible) {
+                        {
+                            VoiceSearchButton(
+                                onSpeechResult = { spokenText ->
+                                    query = spokenText
+                                    triggerImmediateSearch(spokenText)
+                                },
+                                voiceInputManager = viewModel.voiceInputManager,
+                            )
                         }
-                    setPosition(RowColumn(row, 0))
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp)
-                        .onFocusChanged {
-                            if (it.hasFocus) setPosition(RowColumn(TAB_ROW, 0))
-                        },
+                    } else {
+                        null
+                    },
             )
         }
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
         ) {
 //            SideEffect {
 //                Timber.v("isLibraryTab=%s, combinedMode=%s", isLibraryTab, combinedMode)
@@ -771,6 +688,8 @@ private fun <T : CardGridItem> SearchGrid(
                 onPlayItem.invoke(index, item)
             },
             letterPosition = { -1 },
+            // Narrower area next to the keyboard
+            columns = 4,
             gridFocusRequester = focusRequester,
             showJumpButtons = false,
             showLetterButtons = false,
@@ -782,7 +701,7 @@ private fun <T : CardGridItem> SearchGrid(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
+                    .padding(start = 0.dp, end = NigiroDimens.ContentEnd),
             cardContent = cardContent,
         )
     }
@@ -906,7 +825,7 @@ private fun SearchFocusedHeader(itemProvider: () -> BaseItem?) {
             Modifier
                 .fillMaxWidth()
                 .height(36.dp)
-                .padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
+                .padding(start = 0.dp, end = NigiroDimens.ContentEnd),
     ) {
         if (item == null) return@Row
         Text(
@@ -965,12 +884,12 @@ private fun SearchIdleContent(
             Column(verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap)) {
                 ItemRowTitle(
                     stringResource(R.string.recent_searches),
-                    startPadding = NigiroDimens.ContentStart,
+                    startPadding = 0.dp,
                     style = NigiroDimens.RowTitle,
                 )
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
+                    contentPadding = PaddingValues(start = 0.dp, end = NigiroDimens.ContentEnd),
                     modifier = Modifier.focusGroup(),
                 ) {
                     itemsIndexed(recentSearches, key = { _, it -> it }) { index, recent ->
@@ -1020,8 +939,8 @@ private fun SearchIdleContent(
                 },
                 horizontalPadding = NigiroDimens.CardGap,
                 itemKey = { it.id.toString() },
-                contentStartPadding = NigiroDimens.ContentStart,
-                titleStartPadding = NigiroDimens.ContentStart,
+                contentStartPadding = 0.dp,
+                titleStartPadding = 0.dp,
                 titleStyle = NigiroDimens.RowTitle,
                 titleGap = NigiroDimens.TitleGap - 8.dp,
                 modifier =

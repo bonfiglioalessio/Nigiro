@@ -1015,4 +1015,6 @@
     <string name="search_placeholder">Search movies and series</string>
     <string name="recent_searches">Recent searches</string>
     <string name="favorites_and_on_disk">Favorites and on disk</string>
+    <string name="keyboard_space">Space</string>
+    <string name="keyboard_clear">Clear</string>
 </resources>
