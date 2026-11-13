@@ -792,4 +792,7 @@
     <string name="platform_choose_category_title">Apri %1$s</string>
     <string name="platform_choose_category_message">Scegli se aprire i Film o le Serie TV.</string>
     <string name="currently_streaming_on">Disponibile in streaming su</string>
+    <string name="artist_source">Origine artista</string>
+    <string name="convert_dovi_profile_7">Converti Dolby Vision Profilo 7 in 8.1</string>
+    <string name="convert_dovi_profile_7_summary">Riscrive il Profilo 7 dual-layer in Profilo 8.1 single-layer prima del decoder per la riproduzione diretta sui dispositivi che supportano il Profilo 8 ma non il Profilo 7</string>
 </resources>
