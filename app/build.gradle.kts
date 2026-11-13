@@ -179,9 +179,24 @@ configure<ApplicationExtension> {
             // Disable split abis when building bundles
             isEnable = !isBuildingBundle.get()
 
+            val abiFilterList =
+                providers
+                    .gradleProperty("abiFilters")
+                    .orElse("armeabi-v7a")
+                    .get()
+                    .split(",")
+                    .map(String::trim)
+                    .filter(String::isNotEmpty)
+            val universalApkEnabled =
+                providers
+                    .gradleProperty("universalApk")
+                    .orElse("false")
+                    .get()
+                    .toBoolean()
+
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
+            include(*abiFilterList.toTypedArray())
+            isUniversalApk = universalApkEnabled
         }
     }
     packaging {

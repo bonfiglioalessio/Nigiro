@@ -53,8 +53,8 @@ jobs:
           KEY_STORE_PASSWORD: "${{ secrets.KEY_STORE_PASSWORD }}"
           SIGNING_KEY: "${{ secrets.SIGNING_KEY }}"
         run: |
-          ./gradlew testDefaultDebugUnitTest --no-daemon --max-workers=2
-          ./gradlew assembleDefaultRelease --no-daemon --max-workers=2
+          ./gradlew :app:testDefaultDebugUnitTest --no-daemon --max-workers=2
+          ./gradlew :app:assembleDefaultRelease --no-daemon --max-workers=2
 
       - name: Verify signatures
         run: |
