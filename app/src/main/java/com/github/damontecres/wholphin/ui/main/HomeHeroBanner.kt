@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,7 +70,6 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
-import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -271,11 +272,15 @@ fun HomeHeroBanner(
                             }
                         },
                 ) {
-                    Text(
-                        text = stringResource(R.string.fa_heart),
-                        fontFamily = FontAwesome,
-                        fontSize = 16.sp,
-                        color = if (slide.isFavorite) NigiroPalette.Pink else LocalContentColor.current,
+                    // Outline when not a favorite, filled pink when it is
+                    Icon(
+                        imageVector = if (slide.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription =
+                            stringResource(
+                                if (slide.isFavorite) R.string.hero_favorite_remove else R.string.hero_favorite_add,
+                            ),
+                        tint = if (slide.isFavorite) NigiroPalette.Pink else LocalContentColor.current,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
                 if (slides.size > 1) {
