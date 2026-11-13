@@ -10,19 +10,25 @@ import java.util.EnumSet
  */
 data class InterfaceCustomization(
     val enabledDisplayToggles: EnumSet<DisplayToggle>,
+    val enableAnimations: Boolean = false,
 ) {
     constructor(prefs: AppPreferences) : this(
-        prefs.interfacePreferences.displayTogglesList.let {
-            if (it.isEmpty()) {
-                EnumSet.noneOf(DisplayToggle::class.java)
-            } else {
-                EnumSet.copyOf(it)
-            }
-        },
+        enabledDisplayToggles =
+            prefs.interfacePreferences.displayTogglesList.let {
+                if (it.isEmpty()) {
+                    EnumSet.noneOf(DisplayToggle::class.java)
+                } else {
+                    EnumSet.copyOf(it)
+                }
+            },
+        enableAnimations = prefs.interfacePreferences.enableAnimations,
     )
 }
 
 val LocalInterfaceCustomization =
     staticCompositionLocalOf<InterfaceCustomization> {
-        InterfaceCustomization(EnumSet.allOf(DisplayToggle::class.java))
+        InterfaceCustomization(
+            enabledDisplayToggles = EnumSet.allOf(DisplayToggle::class.java),
+            enableAnimations = false,
+        )
     }

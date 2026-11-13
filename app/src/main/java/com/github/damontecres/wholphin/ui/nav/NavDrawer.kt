@@ -87,6 +87,7 @@ import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.setup.UserIconCardImage
 import com.github.damontecres.wholphin.ui.spacedByWithFooter
 import com.github.damontecres.wholphin.ui.theme.LocalTheme
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.ui.toServerString
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -309,23 +310,30 @@ fun NavDrawer(
         viewModel.setShowMore(false)
     }
 
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
     val closedDrawerWidth = CollapsedDrawerItemWidth
     val openDrawerWidth = ExpandedDrawerItemWidth
-    val offset by animateIntOffsetAsState(
-        targetValue =
-            IntOffset(
-                x =
-                    with(density) {
-                        if (drawerState.isOpen) (openDrawerWidth - closedDrawerWidth).roundToPx() else 0
-                    },
-                y = 0,
-            ),
-        animationSpec =
-            spring(
-                stiffness = DrawerAnimationStiffness,
-                visibilityThreshold = IntOffset.VisibilityThreshold,
-            ),
-    )
+    val targetOffset =
+        IntOffset(
+            x =
+                with(density) {
+                    if (drawerState.isOpen) (openDrawerWidth - closedDrawerWidth).roundToPx() else 0
+                },
+            y = 0,
+        )
+    val offset =
+        if (enableAnimations) {
+            animateIntOffsetAsState(
+                targetValue = targetOffset,
+                animationSpec =
+                    spring(
+                        stiffness = DrawerAnimationStiffness,
+                        visibilityThreshold = IntOffset.VisibilityThreshold,
+                    ),
+            ).value
+        } else {
+            targetOffset
+        }
 
     ModalNavigationDrawer(
         modifier = modifier,
@@ -357,11 +365,7 @@ fun NavDrawer(
                         },
                         modifier = Modifier,
                     )
-                    AnimatedVisibility(
-                        visible = serviceState.nowPlayingEnabled,
-                        enter = expandVertically(expandFrom = Alignment.Top),
-                        exit = shrinkVertically(shrinkTowards = Alignment.Top),
-                    ) {
+                    val nowPlayingContent: @Composable () -> Unit = {
                         val interactionSource = remember { MutableInteractionSource() }
                         IconNavItem(
                             text = stringResource(R.string.now_playing),
@@ -381,6 +385,17 @@ fun NavDrawer(
                                         Modifier.focusRequester(focusRequester),
                                     ),
                         )
+                    }
+                    if (enableAnimations) {
+                        AnimatedVisibility(
+                            visible = serviceState.nowPlayingEnabled,
+                            enter = expandVertically(expandFrom = Alignment.Top),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                        ) {
+                            nowPlayingContent()
+                        }
+                    } else if (serviceState.nowPlayingEnabled) {
+                        nowPlayingContent()
                     }
                     LazyColumn(
                         state = navDrawerListState,
@@ -519,23 +534,25 @@ fun NavDrawer(
                                 )
                             }
                         }
-                        item {
-                            val interactionSource = remember { MutableInteractionSource() }
-                            IconNavItem(
-                                text = stringResource(R.string.settings),
-                                icon = Icons.Default.Settings,
-                                selected = false,
-                                drawerOpen = isOpen,
-                                interactionSource = interactionSource,
-                                onClick = {
-                                    viewModel.navigationManager.navigateTo(
-                                        Destination.Settings(
-                                            PreferenceScreenOption.BASIC,
-                                        ),
-                                    )
-                                },
-                                modifier = Modifier,
-                            )
+                        if (preferences.appPreferences.interfacePreferences.showTvSettings) {
+                            item {
+                                val interactionSource = remember { MutableInteractionSource() }
+                                IconNavItem(
+                                    text = stringResource(R.string.settings),
+                                    icon = Icons.Default.Settings,
+                                    selected = false,
+                                    drawerOpen = isOpen,
+                                    interactionSource = interactionSource,
+                                    onClick = {
+                                        viewModel.navigationManager.navigateTo(
+                                            Destination.Settings(
+                                                PreferenceScreenOption.BASIC,
+                                            ),
+                                        )
+                                    },
+                                    modifier = Modifier,
+                                )
+                            }
                         }
                     }
                 }

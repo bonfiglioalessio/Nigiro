@@ -2,6 +2,8 @@
 
 package com.github.damontecres.wholphin.ui.nav
 
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -77,78 +79,18 @@ fun Backdrop(
     useExistingImageAsPlaceholder: Boolean = false,
     crossfadeDuration: Duration = 800.milliseconds,
 ) {
-    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
     val baseBackgroundColor = MaterialTheme.colorScheme.background
-    if (backdrop.hasColors &&
-        (backdropStyle == BackdropStyle.BACKDROP_DYNAMIC_COLOR || backdropStyle == BackdropStyle.UNRECOGNIZED)
-    ) {
-        val animPrimary by animateColorAsState(
-            backdrop.primaryColor,
-            animationSpec = tween(1250),
-            label = "dynamic_backdrop_primary",
-        )
-        val animSecondary by animateColorAsState(
-            backdrop.secondaryColor,
-            animationSpec = tween(1250),
-            label = "dynamic_backdrop_secondary",
-        )
-        val animTertiary by animateColorAsState(
-            backdrop.tertiaryColor,
-            animationSpec = tween(1250),
-            label = "dynamic_backdrop_tertiary",
-        )
-        Box(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .drawBehind {
-                        drawRect(color = baseBackgroundColor)
-                        val start = if (isRtl) size.width else 0f
-                        val end = if (isRtl) 0f else size.width
-                        // Top Left (Vibrant/Muted)
-                        drawRect(
-                            brush =
-                                Brush.radialGradient(
-                                    colors = listOf(animSecondary, Color.Transparent),
-                                    center = Offset(start, 0f),
-                                    radius = size.width * 0.8f,
-                                ),
-                        )
-                        // Bottom Right (DarkVibrant/DarkMuted)
-                        drawRect(
-                            brush =
-                                Brush.radialGradient(
-                                    colors = listOf(animPrimary, Color.Transparent),
-                                    center = Offset(end, size.height),
-                                    radius = size.width * 0.8f,
-                                ),
-                        )
-                        // Bottom Left (Dark / Bridge)
-                        drawRect(
-                            brush =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            baseBackgroundColor,
-                                            Color.Transparent,
-                                        ),
-                                    center = Offset(start, size.height),
-                                    radius = size.width * 0.8f,
-                                ),
-                        )
-                        // Top Right (Under Image - Vibrant/Bright)
-                        drawRect(
-                            brush =
-                                Brush.radialGradient(
-                                    colors = listOf(animTertiary, Color.Transparent),
-                                    center = Offset(end, 0f),
-                                    radius = size.width * 0.8f,
-                                ),
-                        )
-                    },
-        )
-    }
-    if (backdropStyle != BackdropStyle.BACKDROP_NONE) {
+
+    // Flat Litefin background: skip multi-layer animated radial gradients and Offscreen/BlendMode passes
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(baseBackgroundColor),
+    )
+
+    if (shouldDrawBackdropImage(backdropStyle, backdrop.imageUrl, enableAnimations)) {
         Box(
             modifier = modifier.fillMaxSize(),
         ) {
@@ -158,60 +100,55 @@ fun Backdrop(
                         .Builder(LocalContext.current)
                         .data(backdrop.imageUrl)
                         .useExistingImageAsPlaceholder(useExistingImageAsPlaceholder)
-                        .transitionFactory(CrossFadeFactory(crossfadeDuration))
-                        .build(),
+                        .apply {
+                            if (enableAnimations) {
+                                transitionFactory(CrossFadeFactory(crossfadeDuration))
+                            }
+                        }.build(),
                 contentDescription = null,
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 alignment = Alignment.TopEnd,
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
                         .fillMaxHeight(.7f)
                         .fillMaxWidth(.7f)
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                         .drawWithContent {
-                            val start = if (isRtl) size.width else 0f
                             drawContent()
                             if (drawerIsOpen) {
                                 drawRect(
-                                    brush = SolidColor(Color.Black),
-                                    alpha = .75f,
+                                    color = Color.Black.copy(alpha = 0.75f),
                                 )
-                            }
-                            // Subtle top scrim for system UI readability (clock, tabs)
-                            if (enableTopScrim) {
+                            } else if (enableTopScrim) {
                                 drawRect(
                                     brush =
                                         Brush.verticalGradient(
-                                            colorStops =
-                                                arrayOf(
-                                                    0f to Color.Black.copy(alpha = TOP_SCRIM_ALPHA),
-                                                    TOP_SCRIM_END_FRACTION to Color.Transparent,
+                                            colors =
+                                                listOf(
+                                                    Color.Black.copy(alpha = TOP_SCRIM_ALPHA),
+                                                    Color.Transparent,
+                                                    baseBackgroundColor,
                                                 ),
                                         ),
-                                    blendMode = BlendMode.Multiply,
                                 )
                             }
-                            drawRect(
-                                brush =
-                                    Brush.horizontalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black),
-                                        startX = start,
-                                        endX = size.width * 0.6f,
-                                    ),
-                                blendMode = BlendMode.DstIn,
-                            )
-                            drawRect(
-                                brush =
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Black, Color.Transparent),
-                                        startY = 0f,
-                                        endY = size.height,
-                                    ),
-                                blendMode = BlendMode.DstIn,
-                            )
                         },
             )
         }
+    }
+}
+
+internal fun shouldDrawBackdropImage(
+    backdropStyle: BackdropStyle,
+    imageUrl: String?,
+    enableAnimations: Boolean,
+): Boolean {
+    if (imageUrl.isNullOrBlank()) return false
+    return when (backdropStyle) {
+        BackdropStyle.BACKDROP_NONE -> false
+        BackdropStyle.BACKDROP_IMAGE_ONLY -> true
+        BackdropStyle.BACKDROP_DYNAMIC_COLOR,
+        BackdropStyle.UNRECOGNIZED,
+        -> enableAnimations
     }
 }

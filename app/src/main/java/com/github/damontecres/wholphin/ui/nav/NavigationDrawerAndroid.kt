@@ -56,6 +56,7 @@ import androidx.tv.material3.NavigationDrawerItemColors
 import androidx.tv.material3.NavigationDrawerItemDefaults
 import androidx.tv.material3.NavigationDrawerScope
 import androidx.tv.material3.rememberDrawerState
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 
 /**
  * This is a re-implementation of [androidx.tv.material3.ModalNavigationDrawer].
@@ -101,16 +102,24 @@ private fun DrawerSheet(
         initializationComplete = true
     }
 
-    val internalModifier =
-        Modifier
-            .focusRequester(focusRequester)
-            .animateContentSize(
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val sizeModifier =
+        if (enableAnimations) {
+            Modifier.animateContentSize(
                 animationSpec =
                     spring(
                         stiffness = DrawerAnimationStiffness,
                         visibilityThreshold = IntSize.VisibilityThreshold,
                     ),
-            ).fillMaxHeight()
+            )
+        } else {
+            Modifier
+        }
+    val internalModifier =
+        Modifier
+            .focusRequester(focusRequester)
+            .then(sizeModifier)
+            .fillMaxHeight()
             // adding passed-in modifier here to ensure animateContentSize is called before other
             // size based modifiers.
             .then(modifier)
@@ -154,16 +163,22 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
     interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit,
 ) {
-    val animatedWidth by
-        animateDpAsState(
-            targetValue =
-                if (hasFocus) {
-                    ExpandedDrawerItemWidth
-                } else {
-                    CollapsedDrawerItemWidth
-                },
-            label = "NavigationDrawerItem width open/closed state of the drawer item",
-        )
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val targetWidth =
+        if (hasFocus) {
+            ExpandedDrawerItemWidth
+        } else {
+            CollapsedDrawerItemWidth
+        }
+    val animatedWidth =
+        if (enableAnimations) {
+            animateDpAsState(
+                targetValue = targetWidth,
+                label = "NavigationDrawerItem width open/closed state of the drawer item",
+            ).value
+        } else {
+            targetWidth
+        }
     val navDrawerItemHeight =
         if (supportingContent == null) {
             NavigationDrawerItemDefaults.ContainerHeightOneLine

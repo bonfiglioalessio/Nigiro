@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.services
 
+import com.github.damontecres.wholphin.data.model.RemoteModulesConfig
+
 import android.content.Context
 import com.github.damontecres.wholphin.data.ServerPreferencesDao
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -52,6 +54,7 @@ class NavDrawerService
         private val serverPreferencesDao: ServerPreferencesDao,
         private val seerrServerRepository: SeerrServerRepository,
         private val musicService: MusicService,
+        private val remoteConfigService: RemoteConfigService,
     ) {
         private val _state = MutableStateFlow(NavDrawerItemState())
         val state: StateFlow<NavDrawerItemState> = _state
@@ -62,7 +65,8 @@ class NavDrawerService
                 serverRepository.currentUserFlow,
                 serverRepository.currentUserDtoFlow,
                 seerrServerRepository.active,
-            ) { user, userDto, discoverActive ->
+                remoteConfigService.config,
+            ) { user, userDto, discoverActive, _ ->
                 Triple(user, userDto, discoverActive)
             }.collectLatestIn(coroutineScope) { (user, userDto, discoverActive) ->
                 Timber.d(
@@ -91,10 +95,11 @@ class NavDrawerService
                     Timber.v("MusicService updated")
                     when (music.status) {
                         NowPlayingStatus.PLAYING -> {
+                            val musicEnabled = remoteConfigService.config.value.ui.modules.music
                             _state.update {
                                 it.copy(
-                                    nowPlayingEnabled = true,
-                                    nowPlayingTitle = music.currentItemTitle,
+                                    nowPlayingEnabled = musicEnabled,
+                                    nowPlayingTitle = if (musicEnabled) music.currentItemTitle else null,
                                 )
                             }
                         }
@@ -133,8 +138,9 @@ class NavDrawerService
                 api.userViewsApi
                     .getUserViews(userId = userId)
                     .content.items
+            val modules = remoteConfigService.config.value.ui.modules
             val recordingFolders =
-                if (tvAccess) {
+                if (tvAccess && modules.liveTv) {
                     try {
                         api.liveTvApi
                             .getRecordingFolders(userId = userId)
@@ -154,7 +160,10 @@ class NavDrawerService
                 }
             val libraries =
                 userViews
-                    .filter { it.collectionType in supportedCollectionTypes || it.id in recordingFolders }
+                    .filter {
+                        isCollectionTypeAllowed(it.collectionType, modules) ||
+                            (modules.liveTv && it.id in recordingFolders)
+                    }
                     .map {
                         Library(
                             itemId = it.id,
@@ -192,10 +201,11 @@ class NavDrawerService
             userDto: ServerUserConfig,
             discoverActive: Boolean,
         ) {
+            val modules = remoteConfigService.config.value.ui.modules
             val builtins =
                 buildList {
                     add(NavDrawerItem.Favorites)
-                    if (discoverActive) add(NavDrawerItem.Discover)
+                    if (isDiscoverAllowed(discoverActive, modules)) add(NavDrawerItem.Discover)
                 }
             val allLibraries = getAllUserLibraries(user.id, userDto.tvAccess)
             val libraries =
@@ -261,3 +271,20 @@ data class NavDrawerItemState(
 )
 
 val UserDto.tvAccess: Boolean get() = policy?.enableLiveTvAccess == true
+
+internal fun isCollectionTypeAllowed(
+    collectionType: CollectionType?,
+    modules: RemoteModulesConfig,
+): Boolean =
+    when (collectionType) {
+        CollectionType.LIVETV -> modules.liveTv
+        CollectionType.MUSIC, CollectionType.MUSICVIDEOS -> modules.music
+        CollectionType.PHOTOS -> modules.photos
+        in supportedCollectionTypes -> true
+        else -> false
+    }
+
+internal fun isDiscoverAllowed(
+    discoverActiveInServer: Boolean,
+    modules: RemoteModulesConfig,
+): Boolean = discoverActiveInServer && modules.discover

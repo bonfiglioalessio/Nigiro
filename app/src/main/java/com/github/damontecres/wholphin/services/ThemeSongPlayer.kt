@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.services
 
+import com.github.damontecres.wholphin.data.model.RemoteConfigRuntime
+
 import android.content.Context
 import androidx.annotation.OptIn
 import androidx.datastore.core.DataStore
@@ -67,12 +69,16 @@ class ThemeSongPlayer
             scope.launch {
                 mutex.withLock {
                     state.value.job?.join()
+                    val volumePref =
+                        preferences.data
+                            .first()
+                            .interfacePreferences.playThemeSongs
+                    val musicEnabled = RemoteConfigRuntime.current?.ui?.modules?.music ?: false
+                    if (!shouldPlayThemeSong(musicEnabled, volumePref)) {
+                        return@withLock
+                    }
                     val volumeLevel =
-                        when (
-                            preferences.data
-                                .first()
-                                .interfacePreferences.playThemeSongs
-                        ) {
+                        when (volumePref) {
                             ThemeSongVolume.UNRECOGNIZED,
                             ThemeSongVolume.DISABLED,
                             -> return@withLock
@@ -146,3 +152,11 @@ data class ThemeSongState(
     val itemId: UUID? = null,
     val job: Job? = null,
 )
+
+internal fun shouldPlayThemeSong(
+    modulesMusic: Boolean,
+    volume: ThemeSongVolume,
+): Boolean =
+    modulesMusic &&
+        volume != ThemeSongVolume.DISABLED &&
+        volume != ThemeSongVolume.UNRECOGNIZED
