@@ -733,7 +733,7 @@ private fun PlatformsRow(
 ) {
     Column(
         // The row's vertical content padding (room for the focus scale) completes the title gap
-        verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap - 6.dp),
+        verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap),
         modifier = modifier.fillMaxWidth(),
     ) {
         ItemRowTitle(
@@ -972,8 +972,8 @@ private fun HomeRowItemContent(
                     contentStartPadding = NigiroDimens.ContentStart,
                     titleStartPadding = NigiroDimens.ContentStart,
                     titleStyle = NigiroDimens.RowTitle,
-                    // The row's 8 dp top padding (room for the focus scale) completes the title gap
-                    titleGap = NigiroDimens.TitleGap - 8.dp,
+                    // Plus the row's 8 dp top padding: room for the focused card's scale-up below the title
+                    titleGap = NigiroDimens.TitleGap,
                     viewMoreCardContent = { mod ->
                         HomePageViewMoreCard(
                             isEpisode = r.items.last()?.type == BaseItemKind.EPISODE,
