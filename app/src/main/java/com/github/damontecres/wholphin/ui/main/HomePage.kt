@@ -52,6 +52,7 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -511,6 +512,7 @@ fun StremioHomeContent(
     // Put the focused row (with its title) right below the opaque focused item header, so rows above it
     // are hidden under the header instead of showing as a cut-off strip
     val headerPx = remember(density) { with(density) { FocusedItemHeaderHeight.toPx() } }
+    val bottomRoom = (LocalConfiguration.current.screenHeightDp.dp - FocusedItemHeaderHeight).coerceAtLeast(48.dp)
     LaunchedEffect(focusedRowIndex) {
         val row = focusedRowIndex
         if (row < 0) return@LaunchedEffect
@@ -534,7 +536,9 @@ fun StremioHomeContent(
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
-                contentPadding = PaddingValues(bottom = 48.dp),
+                // Room below the last row so it too can scroll up under the focused item header
+                // (eg a platform filter leaves only two rows)
+                contentPadding = PaddingValues(bottom = bottomRoom),
                 modifier =
                     Modifier
                         .fillMaxSize()

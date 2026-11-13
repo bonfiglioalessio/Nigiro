@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -88,7 +89,7 @@ fun FocusedItemHeader(
     val backdropRequest =
         remember(backdropItem?.id) {
             backdropItem?.let {
-                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 960)?.let { url ->
+                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 1280)?.let { url ->
                     ImageRequest
                         .Builder(context)
                         .data(url)
@@ -111,7 +112,8 @@ fun FocusedItemHeader(
                 model = backdropRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter,
+                // Slightly above center: faces sit there in most backdrops
+                alignment = BiasAlignment(0f, -0.35f),
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -194,7 +196,8 @@ fun FocusedItemHeader(
     }
 }
 
-val FocusedItemHeaderHeight = 196.dp
+// About half the 540 dp screen, leaving room for the focused row title and full posters below
+val FocusedItemHeaderHeight = 280.dp
 
 @Composable
 fun OnDiskBadge(modifier: Modifier = Modifier) {
