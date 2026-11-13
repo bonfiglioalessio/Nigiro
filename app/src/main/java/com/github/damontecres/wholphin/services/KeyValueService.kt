@@ -55,6 +55,17 @@ class KeyValueService
                 } ?: defaultValue
             }
 
+        /** Returns the decoded per-user preference value, or null when the key has never been written. */
+        inline fun <reified T : Any> getOrNull(
+            userId: UUID,
+            key: String,
+        ): Flow<T?> =
+            dataStore.data.map { preferences ->
+                preferences[stringPreferencesKey("${userId}_$key")]?.let {
+                    json.decodeFromString<T>(serializer<T>(), it)
+                }
+            }
+
         suspend inline fun <reified T> save(
             key: String,
             value: T,

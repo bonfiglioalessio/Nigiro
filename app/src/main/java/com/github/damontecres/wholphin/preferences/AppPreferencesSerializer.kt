@@ -106,7 +106,8 @@ class AppPreferencesSerializer
                                     SearchPreferences
                                         .newBuilder()
                                         .apply {
-                                            combinedSearchResults = false
+                                            combinedSearchResults = true
+                                            separateSearchResults = false
                                             showVoiceSearchButton = true
                                         }.build()
 

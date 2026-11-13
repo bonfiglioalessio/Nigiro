@@ -93,7 +93,7 @@ class SearchViewModel
         val position = MutableStateFlow(RowColumn(0, 0))
 
         private var currentQuery: String? = null
-        private var combinedMode = false
+        private var combinedMode = true
 
         private val _programDialogState = MutableStateFlow(ProgramDialogState())
         val programDialogState: StateFlow<ProgramDialogState> = _programDialogState
@@ -115,16 +115,15 @@ class SearchViewModel
                     serverRepository.currentUser?.id?.let { userId ->
                         try {
                             keyValueService
-                                .get<List<BaseItemKind>>(
+                                .getOrNull<List<BaseItemKind>>(
                                     userId,
                                     EXCLUDED_SEARCHABLE_TYPES_KEY,
-                                    emptyList(),
                                 ).firstOrNull()
                         } catch (ex: Exception) {
                             Timber.e(ex, "Error occurred fetching excluded search types")
-                            emptyList()
+                            null
                         }
-                    } ?: emptyList()
+                    } ?: DEFAULT_EXCLUDED_SEARCH_TYPES
                 val discoverEnabled =
                     serverRepository.currentUser?.id?.let { userId ->
                         try {
@@ -278,10 +277,7 @@ class SearchViewModel
                                 api.itemsApi.getItems(request).toBaseItems(api, false)
                             }
                         }
-                    val sorted =
-                        items.sortedWith(
-                            compareBy<BaseItem> { SearchRelevance.score(it, query) },
-                        )
+                    val sorted = SearchRelevance.filterAndSort(items, query)
                     Timber.v("Search finished for %s, %s results", type, sorted.size)
                     _state.value.results[type] = SearchResult.Success(sorted)
                 } catch (ex: CancellationException) {
@@ -311,10 +307,7 @@ class SearchViewModel
                         result.items.map {
                             BaseItem(it, false)
                         }
-                    val sorted =
-                        items.sortedWith(
-                            compareBy<BaseItem> { SearchRelevance.score(it, query) },
-                        )
+                    val sorted = SearchRelevance.filterAndSort(items, query)
                     Timber.v("searchCombined complete %s results", sorted.size)
                     _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
                 } catch (ex: Exception) {
@@ -329,6 +322,7 @@ class SearchViewModel
                 appPreferences.updateData {
                     it.updateSearchPreferences {
                         combinedSearchResults = enabled
+                        separateSearchResults = !enabled
                     }
                 }
             }
@@ -605,7 +599,7 @@ data class SearchState(
     val discoverEnabled: Boolean = true,
 )
 
-private val allSearchableTypes =
+internal val allSearchableTypes =
     listOf(
         BaseItemKind.MOVIE,
         BaseItemKind.SERIES,
@@ -623,5 +617,8 @@ private val allSearchableTypes =
         BaseItemKind.PHOTO,
         BaseItemKind.PHOTO_ALBUM,
     )
+
+internal val DEFAULT_EXCLUDED_SEARCH_TYPES =
+    allSearchableTypes.filterNot { it == BaseItemKind.MOVIE || it == BaseItemKind.SERIES }
 
 private const val SEARCH_LIMIT = 50

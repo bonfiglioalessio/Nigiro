@@ -105,7 +105,7 @@ fun SearchPage(
         viewModel.userPreferencesService.flow
             .collectAsState(userPreferences)
             .value.appPreferences.interfacePreferences.searchPreferences
-    val combinedMode = prefs.combinedSearchResults
+    val combinedMode = !prefs.separateSearchResults
     val voiceSearchButtonVisible = prefs.showVoiceSearchButton
 
 //    val query = rememberTextFieldState()
