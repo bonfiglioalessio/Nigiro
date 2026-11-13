@@ -115,18 +115,13 @@ internal fun SearchPendingBanner(
     submittedQuery: String?,
     modifier: Modifier = Modifier,
 ) {
-    AnimatedVisibility(
-        visible = shouldShowPendingPrompt(query, submittedQuery),
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
-        modifier = modifier,
-    ) {
+    if (shouldShowPendingPrompt(query, submittedQuery)) {
         Text(
             text = stringResource(R.string.search_pending_prompt, query.trim()),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
-                Modifier
+                modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp),
         )

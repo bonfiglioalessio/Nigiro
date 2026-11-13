@@ -17,7 +17,7 @@ concurrency:
 
 env:
   BRANCH_NAME: ${{ github.ref_name }}
-  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx12g -XX:MaxMetaspaceSize=1024m'"
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx6g -XX:MaxMetaspaceSize=1024m'"
 
 jobs:
   build:
@@ -53,7 +53,8 @@ jobs:
           KEY_STORE_PASSWORD: "${{ secrets.KEY_STORE_PASSWORD }}"
           SIGNING_KEY: "${{ secrets.SIGNING_KEY }}"
         run: |
-          ./gradlew clean testDefaultDebugUnitTest assembleDefaultRelease
+          ./gradlew testDefaultDebugUnitTest --no-daemon --max-workers=2
+          ./gradlew assembleDefaultRelease --no-daemon --max-workers=2
 
       - name: Verify signatures
         run: |
