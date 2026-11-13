@@ -196,6 +196,7 @@ fun SeriesOverview(
                 series = st.data,
                 seasons = state.seasons,
                 episodes = state.episodes,
+                localEpisodes = state.localEpisodes,
                 chosenStreams = chosenStreams,
                 peopleInEpisode = state.peopleInEpisode.people,
                 seasonExtras = state.extras,

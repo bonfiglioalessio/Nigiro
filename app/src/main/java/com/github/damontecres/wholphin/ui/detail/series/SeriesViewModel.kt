@@ -17,6 +17,7 @@ import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.ExtrasService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.LocalTwinService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.PeopleFavorites
@@ -60,8 +61,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -101,6 +104,7 @@ class SeriesViewModel
         private val backdropService: BackdropService,
         private val seerrService: SeerrService,
         private val mediaManagementService: MediaManagementService,
+        private val localTwinService: LocalTwinService,
         @Assisted val seriesId: UUID,
         @Assisted val seasonEpisodeIds: SeasonEpisodeIds?,
         @Assisted val seriesPageType: SeriesPageType,
@@ -120,6 +124,22 @@ class SeriesViewModel
         val position = MutableStateFlow(SeriesOverviewPosition(0, 0))
 
         init {
+            // Streamed (Gelato) episodes that also have a downloaded copy get the disk icon: one lookup per season
+            viewModelScope.launchIO {
+                state
+                    .map { (it.episodes as? EpisodeList.Success)?.seasonId to it.series.successValue }
+                    .distinctUntilChanged()
+                    .collectLatest { (seasonId, series) ->
+                        if (seasonId == null || series == null) return@collectLatest
+                        val seasonNumber =
+                            state.value.seasons
+                                .firstOrNull { it?.id == seasonId }
+                                ?.data
+                                ?.indexNumber ?: return@collectLatest
+                        val numbers = localTwinService.localEpisodeNumbers(series.data, seasonNumber)
+                        _state.update { it.copy(localEpisodes = LocalEpisodes(seasonId, numbers)) }
+                    }
+            }
             viewModelScope.launchIO {
                 Timber.v("Start")
                 addCloseable { themeSongPlayer.stop() }
@@ -892,4 +912,13 @@ data class SeriesState(
     val discovered: List<DiscoverItem> = emptyList(),
     val discoverSeries: DiscoverItem? = null,
     val chosenStreams: ChosenStreams? = null,
+    val localEpisodes: LocalEpisodes? = null,
+)
+
+/**
+ * Episode numbers of [seasonId] with a downloaded copy
+ */
+data class LocalEpisodes(
+    val seasonId: UUID,
+    val numbers: Set<Int>,
 )

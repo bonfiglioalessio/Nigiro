@@ -105,34 +105,78 @@ class LocalTwinService
                 Timber.i("Found local copy %s for streamed movie %s (%s)", it, item.id, item.name)
             }
 
+        // (streamed series id, season number) -> episode numbers with a downloaded copy
+        private val seasonCache = ConcurrentHashMap<Pair<UUID, Int>, Pair<Set<Int>, Long>>()
+
+        /**
+         * Episode numbers of a season of a streamed series that also have a downloaded copy (empty if none),
+         * with a single lookup for the whole season
+         */
+        suspend fun localEpisodeNumbers(
+            series: BaseItemDto,
+            season: Int,
+        ): Set<Int> {
+            // A downloaded series already shows its own files
+            if (series.isLocalFile()) return emptySet()
+            val key = series.id to season
+            seasonCache[key]?.takeIf { System.currentTimeMillis() - it.second < CACHE_MS }?.let { return it.first }
+            return try {
+                searchMutex
+                    .withLock {
+                        val localSeriesId = localSeriesIdFor(series.id) ?: return@withLock emptySet()
+                        localEpisodes(localSeriesId, season)
+                            .flatMap { ep ->
+                                val start = ep.indexNumber ?: return@flatMap emptyList()
+                                (start..(ep.indexNumberEnd ?: start)).toList()
+                            }.toSet()
+                    }.also { seasonCache[key] = it to System.currentTimeMillis() }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Local episodes lookup failed for %s S%s", series.id, season)
+                emptySet()
+            }
+        }
+
+        private suspend fun localSeriesIdFor(seriesId: UUID): UUID? {
+            val cachedSeries = seriesCache[seriesId]?.takeIf { it.isFresh }
+            return if (cachedSeries != null) {
+                cachedSeries.twinId
+            } else {
+                val series = api.userLibraryApi.getItem(seriesId).content
+                searchByIds(series, BaseItemKind.SERIES)
+                    .also { seriesCache[seriesId] = CacheEntry(it, System.currentTimeMillis()) }
+            }
+        }
+
+        // Downloaded episodes of a season of a local series
+        private suspend fun localEpisodes(
+            localSeriesId: UUID,
+            season: Int,
+        ): List<BaseItemDto> {
+            val userId = serverRepository.currentUser?.id ?: return emptyList()
+            return GetEpisodesRequestHandler
+                .execute(
+                    api,
+                    GetEpisodesRequest(
+                        seriesId = localSeriesId,
+                        userId = userId,
+                        season = season,
+                        isMissing = false,
+                        fields = listOf(ItemFields.PATH),
+                        enableImages = false,
+                        enableUserData = false,
+                    ),
+                ).content.items
+                .filter { it.parentIndexNumber == season && it.isLocalFile() }
+        }
+
         private suspend fun searchEpisodeTwin(episode: BaseItemDto): UUID? {
             val seriesId = episode.seriesId ?: return null
             val season = episode.parentIndexNumber ?: return null
             val number = episode.indexNumber ?: return null
-            val cachedSeries = seriesCache[seriesId]?.takeIf { it.isFresh }
-            val localSeriesId =
-                if (cachedSeries != null) {
-                    cachedSeries.twinId
-                } else {
-                    val series = api.userLibraryApi.getItem(seriesId).content
-                    searchByIds(series, BaseItemKind.SERIES)
-                        .also { seriesCache[seriesId] = CacheEntry(it, System.currentTimeMillis()) }
-                } ?: return null
-            val userId = serverRepository.currentUser?.id ?: return null
-            val episodes =
-                GetEpisodesRequestHandler
-                    .execute(
-                        api,
-                        GetEpisodesRequest(
-                            seriesId = localSeriesId,
-                            userId = userId,
-                            season = season,
-                            isMissing = false,
-                            fields = listOf(ItemFields.PATH),
-                            enableImages = false,
-                            enableUserData = false,
-                        ),
-                    ).content.items
+            val localSeriesId = localSeriesIdFor(seriesId) ?: return null
+            val episodes = localEpisodes(localSeriesId, season)
             return episodes
                 .firstOrNull { candidate ->
                     candidate.parentIndexNumber == season &&

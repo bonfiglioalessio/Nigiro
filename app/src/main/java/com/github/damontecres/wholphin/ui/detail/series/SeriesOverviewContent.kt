@@ -81,6 +81,7 @@ fun SeriesOverviewContent(
     series: BaseItem,
     seasons: List<BaseItem?>,
     episodes: EpisodeList,
+    localEpisodes: LocalEpisodes?,
     seasonExtras: List<ExtrasItem>,
     chosenStreams: ChosenStreams?,
     peopleInEpisode: List<Person>,
@@ -313,7 +314,12 @@ fun SeriesOverviewContent(
                                     interactionSource = interactionSource,
                                     cardHeight = 120.dp,
                                     useSeriesForPrimary = false,
-                                    onDisk = episode?.isOnDisk() == true,
+                                    onDisk =
+                                        episode?.isOnDisk() == true ||
+                                            (
+                                                localEpisodes?.seasonId == eps.seasonId &&
+                                                    episode?.data?.indexNumber in localEpisodes.numbers
+                                            ),
                                 )
                             }
                         }
