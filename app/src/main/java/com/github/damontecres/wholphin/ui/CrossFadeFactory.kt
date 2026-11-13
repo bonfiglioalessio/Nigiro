@@ -11,7 +11,7 @@ import kotlin.time.DurationUnit
 /**
  * Similar to [coil3.transition.CrossfadeTransition.Factory] but always cross fades even if loading from memory
  */
-class CrossFadeFactory(
+data class CrossFadeFactory(
     val duration: Duration,
 ) : Transition.Factory {
     override fun create(

@@ -48,13 +48,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -95,6 +97,10 @@ class HomeViewModel
         private var cachedConfig: RemoteWholphinConfig = RemoteWholphinConfig.DEFAULT
         private var hasAppliedInitialFilter = false
 
+        // When the platform catalogs were last fully loaded, see CATALOG_TTL_MS
+        private var catalogsLoadedAtMs: Long = 0L
+        private val catalogMutex = Mutex()
+
         init {
             datePlayedService.invalidateAll()
             serverRepository.currentUserDtoFlow
@@ -112,6 +118,7 @@ class HomeViewModel
                         cachedCatalogByKey = emptyMap()
                         _state.update { HomeState.EMPTY }
                     }
+                    val configChanged = remoteConfig != cachedConfig
                     cachedConfig = remoteConfig
                     if (!hasAppliedInitialFilter) {
                         hasAppliedInitialFilter = true
@@ -123,7 +130,7 @@ class HomeViewModel
                     }
                     dataLoadingJob =
                         viewModelScope.launchIO {
-                            loadStremioHome(userDto, remoteConfig)
+                            loadStremioHome(userDto, remoteConfig, forceCatalogs = configChanged || userChanged)
                         }
                 }
         }
@@ -140,6 +147,16 @@ class HomeViewModel
                             }
                     }
                 }
+            }
+        }
+
+        /**
+         * Reload everything, eg from the error page
+         */
+        fun retry() {
+            serverRepository.currentUserDto?.let { userDto ->
+                _state.update { it.copy(loadingState = LoadingState.Loading) }
+                reloadHome(userDto, cachedConfig, forceCatalogs = true)
             }
         }
 
@@ -160,19 +177,28 @@ class HomeViewModel
             }
         }
 
+        private fun catalogsAreFresh(): Boolean =
+            cachedCatalogByKey.isNotEmpty() &&
+                System.currentTimeMillis() - catalogsLoadedAtMs < CATALOG_TTL_MS
+
+        /**
+         * Loads the home page. The platform catalogs change rarely (Gelato/Top 10 collections), so while they are
+         * fresh only the Continue Watching / Next Up row is refreshed, eg when coming back from playback.
+         */
         private suspend fun loadStremioHome(
             userDto: ServerUserConfig,
             remoteConfig: RemoteWholphinConfig,
+            forceCatalogs: Boolean = false,
         ) {
-            Timber.i("Starting loadStremioHome revision=%s", remoteConfig.configRevision)
+            Timber.i("Starting loadStremioHome revision=%s, forceCatalogs=%s", remoteConfig.configRevision, forceCatalogs)
             try {
-                val preferences = userPreferencesService.getCurrent()
-                val homePrefs = preferences.appPreferences.homePagePreferences
-                val libraries = navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
-
                 val refresh =
                     state.value.loadingState == LoadingState.Success &&
                         state.value.userId == userDto.id
+                if (refresh && !forceCatalogs && catalogsAreFresh()) {
+                    refreshContinueWatching(userDto, remoteConfig)
+                    return
+                }
                 _state.update {
                     it.copy(
                         userId = userDto.id,
@@ -210,120 +236,53 @@ class HomeViewModel
                 }
 
                 val maxItems = remoteConfig.home.maxItemsPerRow.coerceAtLeast(1)
-
-                val continueJob =
-                    viewModelScope.async(WholphinDispatchers.IO) {
-                        if (!remoteConfig.home.includeNativeResumeNextUp) {
-                            null
-                        } else {
-                            try {
-                                val rowConfig =
-                                    HomeRowConfig.ContinueWatchingCombined(
-                                        viewOptions =
-                                            HomeRowViewOptions(
-                                                showTitles = true,
-                                                aspectRatio = AspectRatio.WIDE,
-                                                episodeAspectRatio = AspectRatio.WIDE,
-                                                heightDp = Cards.HEIGHT_EPISODE,
-                                            ),
-                                    )
-                                val result =
-                                    homeDataService.fetchDataForRow(
-                                        row = rowConfig,
-                                        scope = viewModelScope,
-                                        prefs = homePrefs,
-                                        userDto = userDto,
-                                        libraries = libraries,
-                                        limit = maxItems,
-                                        isRefresh = refresh,
-                                    )
-                                result as? HomeRowLoadingState.Success
-                            } catch (ex: Exception) {
-                                Timber.w(ex, "Failed loading Continue Watching / Next Up")
-                                null
-                            }
-                        }
-                    }
-
                 val heroSourceKey = remoteConfig.home.hero.sourceKey
                 val (immediatePlatforms, deferredPlatforms) =
                     remoteConfig.home.platforms.partition { platform ->
                         platform.isHome || platform.key == heroSourceKey
                     }
 
-                val immediateSemaphore = Semaphore(4)
-                val immediateDeferred =
-                    immediatePlatforms.map { platform ->
-                        viewModelScope.async(WholphinDispatchers.IO) {
-                            immediateSemaphore.withPermit {
-                                platform.key to fetchPlatformCatalog(userDto.id, platform, maxItems)
+                coroutineScope {
+                    val continueJob = async { fetchContinueWatching(userDto, remoteConfig, refresh) }
+                    val immediate =
+                        immediatePlatforms.map { platform ->
+                            async {
+                                platform.key to fetchPlatformCatalog(userDto.id, platform, maxItems, cachedCatalogByKey[platform.key])
                             }
                         }
+                    continueJob.await().onSuccess { cachedContinueWatching = it }
+                    val immediateCatalogs = immediate.awaitAll().toMap()
+                    catalogMutex.withLock {
+                        // Merge, so platforms not reloaded yet keep their rows instead of disappearing
+                        cachedCatalogByKey = cachedCatalogByKey + immediateCatalogs
+                        publishRowsLocked(remoteConfig)
+                        _state.update { it.copy(heroSlides = buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey)) }
                     }
 
-                cachedContinueWatching = continueJob.await()
-                cachedCatalogByKey = immediateDeferred.awaitAll().toMap()
-                cachedConfig = remoteConfig
-
-                val activeFilter = _state.value.selectedFilter
-                val rows =
-                    buildVisibleHomeRows(
-                        continueRow = cachedContinueWatching,
-                        catalogByKey = cachedCatalogByKey,
-                        config = remoteConfig,
-                        filter = activeFilter,
-                    )
-                val heroSlides = buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey)
-
-                _state.update {
-                    it.copy(
-                        loadingState = LoadingState.Success,
-                        refreshState =
-                            if (deferredPlatforms.isEmpty()) {
-                                LoadingState.Success
-                            } else {
-                                LoadingState.Loading
-                            },
-                        homeRows = rows,
-                        heroSlides = heroSlides,
-                        heroConfig = remoteConfig.home.hero,
-                    )
-                }
-
-                if (deferredPlatforms.isNotEmpty()) {
-                    val backgroundSemaphore = Semaphore(2)
-                    val deferredResults =
-                        deferredPlatforms
-                            .map { platform ->
-                                viewModelScope.async(WholphinDispatchers.IO) {
-                                    backgroundSemaphore.withPermit {
-                                        platform.key to fetchPlatformCatalog(userDto.id, platform, maxItems)
+                    // Each platform row is shown as soon as it's loaded instead of waiting for the slowest
+                    val semaphore = Semaphore(2)
+                    deferredPlatforms
+                        .map { platform ->
+                            async {
+                                semaphore.withPermit {
+                                    val catalog =
+                                        fetchPlatformCatalog(userDto.id, platform, maxItems, cachedCatalogByKey[platform.key])
+                                    catalogMutex.withLock {
+                                        cachedCatalogByKey = cachedCatalogByKey + (platform.key to catalog)
+                                        publishRowsLocked(remoteConfig)
                                     }
                                 }
-                            }.awaitAll()
-                            .toMap()
-                    cachedCatalogByKey = cachedCatalogByKey + deferredResults
-                    val currentFilter = _state.value.selectedFilter
-                    val updatedRows =
-                        buildVisibleHomeRows(
-                            continueRow = cachedContinueWatching,
-                            catalogByKey = cachedCatalogByKey,
-                            config = remoteConfig,
-                            filter = currentFilter,
-                        )
-                    _state.update {
-                        it.copy(
-                            refreshState = LoadingState.Success,
-                            homeRows = updatedRows,
-                        )
-                    }
+                            }
+                        }.awaitAll()
                 }
+                catalogsLoadedAtMs = System.currentTimeMillis()
+                _state.update { it.copy(refreshState = LoadingState.Success) }
             } catch (ex: CancellationException) {
                 throw ex
             } catch (ex: Exception) {
                 Timber.e(ex, "Exception during Stremio home load")
                 if (state.value.loadingState == LoadingState.Success) {
-                    showToast(context, "Error refreshing home: ${ex.localizedMessage}")
+                    showToast(context, context.getString(R.string.home_refresh_error))
                     _state.update { it.copy(refreshState = LoadingState.Error(ex)) }
                 } else {
                     _state.update { it.copy(loadingState = LoadingState.Error(ex)) }
@@ -331,21 +290,99 @@ class HomeViewModel
             }
         }
 
+        /**
+         * Rebuilds the visible rows from the cached data. Must hold [catalogMutex].
+         */
+        private fun publishRowsLocked(config: RemoteWholphinConfig) {
+            val rows =
+                buildVisibleHomeRows(
+                    continueRow = cachedContinueWatching,
+                    catalogByKey = cachedCatalogByKey,
+                    config = config,
+                    filter = _state.value.selectedFilter,
+                )
+            _state.update { it.copy(loadingState = LoadingState.Success, homeRows = rows) }
+        }
+
+        private suspend fun refreshContinueWatching(
+            userDto: ServerUserConfig,
+            config: RemoteWholphinConfig,
+        ) {
+            _state.update { it.copy(refreshState = LoadingState.Loading) }
+            fetchContinueWatching(userDto, config, isRefresh = true).onSuccess { cachedContinueWatching = it }
+            catalogMutex.withLock { publishRowsLocked(config) }
+            _state.update { it.copy(refreshState = LoadingState.Success) }
+        }
+
+        /**
+         * @return the row (null if disabled or empty), or a failure to keep showing the previous row
+         */
+        private suspend fun fetchContinueWatching(
+            userDto: ServerUserConfig,
+            config: RemoteWholphinConfig,
+            isRefresh: Boolean,
+        ): Result<HomeRowLoadingState.Success?> {
+            if (!config.home.includeNativeResumeNextUp) return Result.success(null)
+            return try {
+                val preferences = userPreferencesService.getCurrent()
+                val libraries = navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
+                val rowConfig =
+                    HomeRowConfig.ContinueWatchingCombined(
+                        viewOptions =
+                            HomeRowViewOptions(
+                                showTitles = true,
+                                aspectRatio = AspectRatio.WIDE,
+                                episodeAspectRatio = AspectRatio.WIDE,
+                                heightDp = Cards.HEIGHT_EPISODE,
+                            ),
+                    )
+                val result =
+                    homeDataService.fetchDataForRow(
+                        row = rowConfig,
+                        scope = viewModelScope,
+                        prefs = preferences.appPreferences.homePagePreferences,
+                        userDto = userDto,
+                        libraries = libraries,
+                        limit = config.home.maxItemsPerRow.coerceAtLeast(1),
+                        isRefresh = isRefresh,
+                    )
+                when (result) {
+                    is HomeRowLoadingState.Success -> Result.success(result)
+                    is HomeRowLoadingState.Error -> Result.failure(result.exception ?: Exception(result.message))
+                    else -> Result.success(null)
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Failed loading Continue Watching / Next Up")
+                Result.failure(ex)
+            }
+        }
+
         private suspend fun fetchPlatformCatalog(
             userId: UUID,
             platform: RemotePlatformConfig,
             limit: Int,
-        ): CachedPlatformCatalog {
-            val movies = fetchBoxSetItems(userId, platform.movieCollectionId, limit)
-            val series = fetchBoxSetItems(userId, platform.seriesCollectionId, limit)
-            return CachedPlatformCatalog(movies = movies, series = series)
-        }
+            previous: CachedPlatformCatalog?,
+        ): CachedPlatformCatalog =
+            coroutineScope {
+                val movies = async { fetchBoxSetItems(userId, platform.movieCollectionId, limit) }
+                val series = async { fetchBoxSetItems(userId, platform.seriesCollectionId, limit) }
+                // On error keep what was shown before rather than removing the row
+                CachedPlatformCatalog(
+                    movies = movies.await() ?: previous?.movies.orEmpty(),
+                    series = series.await() ?: previous?.series.orEmpty(),
+                )
+            }
 
+        /**
+         * @return the items, or null if they could not be fetched
+         */
         private suspend fun fetchBoxSetItems(
             userId: UUID,
             collectionId: String?,
             limit: Int,
-        ): List<BaseItem> {
+        ): List<BaseItem>? {
             val uuid =
                 collectionId
                     ?.takeIf { it.isNotBlank() }
@@ -357,17 +394,20 @@ class HomeViewModel
                         parentId = uuid,
                         limit = limit,
                         fields = HomeItemFields,
+                        enableTotalRecordCount = false,
                     )
                 GetItemsRequestHandler
                     .execute(api, request)
                     .content.items
                     .map { BaseItem(it, false) }
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: InvalidStatusException) {
                 Timber.w(ex, "Status %s fetching collection %s", ex.status, collectionId)
-                emptyList()
+                null
             } catch (ex: Exception) {
                 Timber.w(ex, "Error fetching collection %s", collectionId)
-                emptyList()
+                null
             }
         }
 
@@ -483,19 +523,20 @@ class HomeViewModel
             played: Boolean,
         ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
             favoriteWatchManager.setWatched(itemId, played)
-            withContext(WholphinDispatchers.Main) {
-                init()
-            }
+            updateItemInPlace(itemId) { it.copy(played = played) }
+            // Watched status changes what is in Continue Watching / Next Up
+            serverRepository.currentUserDto?.let { refreshContinueWatching(it, cachedConfig) }
         }
 
         private fun reloadHome(
             userDto: ServerUserConfig,
             config: RemoteWholphinConfig,
+            forceCatalogs: Boolean = false,
         ) {
             dataLoadingJob?.cancel()
             dataLoadingJob =
                 viewModelScope.launchIO {
-                    loadStremioHome(userDto, config)
+                    loadStremioHome(userDto, config, forceCatalogs)
                 }
         }
 
@@ -504,40 +545,54 @@ class HomeViewModel
             favorite: Boolean,
         ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
             favoriteWatchManager.setFavorite(itemId, favorite)
-            _state.update { current ->
-                current.copy(
-                    heroSlides =
-                        current.heroSlides.map { slide ->
-                            if (slide.item.id == itemId) {
-                                val updatedUserData =
-                                    (
-                                        slide.item.data.userData ?: UserItemDataDto(
-                                            playbackPositionTicks = 0L,
-                                            playCount = 0,
-                                            isFavorite = favorite,
-                                            lastPlayedDate = null,
-                                            played = false,
-                                            key = itemId.toString(),
-                                            itemId = itemId,
-                                        )
-                                    ).copy(isFavorite = favorite)
-                                slide.copy(
-                                    item =
-                                        slide.item.copy(
-                                            data = slide.item.data.copy(userData = updatedUserData),
-                                        ),
-                                    isFavorite = favorite,
-                                )
-                            } else {
-                                slide
-                            }
-                        },
+            updateItemInPlace(itemId) { it.copy(isFavorite = favorite) }
+        }
+
+        private fun BaseItem.withUserData(block: (UserItemDataDto) -> UserItemDataDto): BaseItem {
+            val current =
+                data.userData ?: UserItemDataDto(
+                    playbackPositionTicks = 0L,
+                    playCount = 0,
+                    isFavorite = false,
+                    lastPlayedDate = null,
+                    played = false,
+                    key = id.toString(),
+                    itemId = id,
                 )
-            }
-            serverRepository.currentUserDto?.let { userDto ->
-                withContext(WholphinDispatchers.Main) {
-                    reloadHome(userDto, cachedConfig)
+            return copy(data = data.copy(userData = block(current)))
+        }
+
+        /**
+         * Updates an item everywhere it is shown without reloading the whole page
+         */
+        private suspend fun updateItemInPlace(
+            itemId: UUID,
+            block: (UserItemDataDto) -> UserItemDataDto,
+        ) {
+            catalogMutex.withLock {
+                fun List<BaseItem>.updated() = map { if (it.id == itemId) it.withUserData(block) else it }
+                cachedCatalogByKey =
+                    cachedCatalogByKey.mapValues { (_, catalog) ->
+                        catalog.copy(movies = catalog.movies.updated(), series = catalog.series.updated())
+                    }
+                cachedContinueWatching =
+                    cachedContinueWatching?.let { row ->
+                        row.copy(items = row.items.map { if (it?.id == itemId) it.withUserData(block) else it })
+                    }
+                _state.update { current ->
+                    current.copy(
+                        heroSlides =
+                            current.heroSlides.map { slide ->
+                                if (slide.item.id == itemId) {
+                                    val item = slide.item.withUserData(block)
+                                    slide.copy(item = item, isFavorite = item.data.userData?.isFavorite == true)
+                                } else {
+                                    slide
+                                }
+                            },
+                    )
                 }
+                publishRowsLocked(cachedConfig)
             }
         }
 
@@ -583,15 +638,20 @@ class HomeViewModel
                     serverRepository.currentUser?.id?.let { userId ->
                         latestNextUpService.removeFromNextUp(userId, item)
                         serverRepository.currentUserDto?.let { userDto ->
-                            withContext(WholphinDispatchers.Main) {
-                                reloadHome(userDto, cachedConfig)
-                            }
+                            refreshContinueWatching(userDto, cachedConfig)
                         }
                     }
                 }
             } else {
                 Timber.w("Item is not an episode %s", item.id)
             }
+        }
+
+        companion object {
+            /**
+             * How long the platform catalogs are reused before reloading them
+             */
+            const val CATALOG_TTL_MS = 20 * 60 * 1000L
         }
     }
 

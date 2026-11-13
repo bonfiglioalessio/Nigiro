@@ -4,6 +4,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -81,6 +83,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
 import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -243,8 +246,10 @@ fun SearchPage(
     val positionCallback = { columns: Int, index: Int ->
         showHeader = index < columns
     }
+    // Based on the submitted query, so the tabs don't flicker while typing
     val showTabs =
-        seerrActive && state.discoverEnabled && query.isNotBlank() && showHeader && combinedMode
+        seerrActive && state.discoverEnabled && !submittedQuery.isNullOrBlank() && showHeader && combinedMode
+    val animationsEnabled = LocalInterfaceCustomization.current.enableAnimations
     val isLibraryTab = selectedTab == 0
 
     LaunchedEffect(seerrActive, query) {
@@ -343,8 +348,8 @@ fun SearchPage(
             ) {
                 AnimatedVisibility(
                     visible = voiceSearchButtonVisible,
-                    enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
-                    exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End),
+                    enter = if (animationsEnabled) fadeIn() + expandHorizontally(expandFrom = Alignment.End) else EnterTransition.None,
+                    exit = if (animationsEnabled) fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End) else ExitTransition.None,
                 ) {
                     VoiceSearchButton(
                         onSpeechResult = { spokenText ->
@@ -402,8 +407,8 @@ fun SearchPage(
         )
         AnimatedVisibility(
             visible = showTabs,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
+            enter = if (animationsEnabled) expandVertically() else EnterTransition.None,
+            exit = if (animationsEnabled) shrinkVertically() else ExitTransition.None,
         ) {
             TabRow(
                 selectedTabIndex = selectedTab,

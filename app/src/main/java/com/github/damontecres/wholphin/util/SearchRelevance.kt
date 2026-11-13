@@ -41,11 +41,7 @@ object SearchRelevance {
         if (normQ.isEmpty()) {
             return rawName.contains(query.lowercase(Locale.getDefault()))
         }
-        val normName = normalize(name)
-        return normName == normQ ||
-            normName.startsWith(normQ) ||
-            normName.contains(" $normQ") ||
-            normName.contains(normQ)
+        return normalize(name).contains(normQ)
     }
 
     /**
@@ -57,9 +53,17 @@ object SearchRelevance {
         query: String,
     ): List<BaseItem> {
         if (query.isBlank() || items.isEmpty()) return items
-        val titleMatches = items.filter { isTitleMatch(it.name, query) }
+        // The original title counts too, eg searching the English title of an Italian-titled item
+        val titleMatches =
+            items.filter { isTitleMatch(it.name, query) || isTitleMatch(it.data.originalTitle, query) }
         val candidates = if (titleMatches.isNotEmpty()) titleMatches else items
-        return candidates.sortedWith(compareBy<BaseItem> { score(it, query) })
+        // Score each item once rather than on every comparison
+        return candidates
+            .map { item ->
+                val originalScore = item.data.originalTitle?.let { score(it, item.type, query) } ?: Int.MAX_VALUE
+                item to minOf(score(item, query), originalScore)
+            }.sortedBy { it.second }
+            .map { it.first }
     }
 
     fun score(

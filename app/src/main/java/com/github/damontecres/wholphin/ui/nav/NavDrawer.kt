@@ -321,7 +321,8 @@ fun NavDrawer(
                 },
             y = 0,
         )
-    val offset =
+    // Kept as State and read inside offset {} (layout phase) so the animation doesn't recompose the page every frame
+    val animatedOffset =
         if (enableAnimations) {
             animateIntOffsetAsState(
                 targetValue = targetOffset,
@@ -330,9 +331,9 @@ fun NavDrawer(
                         stiffness = DrawerAnimationStiffness,
                         visibilityThreshold = IntOffset.VisibilityThreshold,
                     ),
-            ).value
+            )
         } else {
-            targetOffset
+            null
         }
 
     ModalNavigationDrawer(
@@ -574,7 +575,7 @@ fun NavDrawer(
                     Modifier
                         .fillMaxSize()
                         .offset {
-                            offset
+                            animatedOffset?.value ?: targetOffset
                         }.padding(start = closedDrawerWidth + 12.dp, end = 16.dp),
             )
             if (preferences.appPreferences.interfacePreferences.showClock) {

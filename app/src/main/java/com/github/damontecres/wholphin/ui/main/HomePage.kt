@@ -33,7 +33,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -90,6 +92,7 @@ import com.github.damontecres.wholphin.ui.components.FocusableItemRow
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.QuickDetails
+import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.rememberLogoUrl
 import com.github.damontecres.wholphin.ui.data.AddPlaylistViewModel
@@ -136,7 +139,14 @@ fun HomePage(
 
     when (val loadingStatus = loading) {
         is LoadingState.Error -> {
-            ErrorMessage(loadingStatus, modifier)
+            Column(modifier = modifier) {
+                TextButton(
+                    stringRes = R.string.retry,
+                    onClick = viewModel::retry,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp),
+                )
+                ErrorMessage(loadingStatus)
+            }
         }
 
         LoadingState.Loading,
@@ -155,7 +165,11 @@ fun HomePage(
             var position by rememberPosition()
 
             val onFocusPosition = remember { { it: RowColumn -> position = it } }
+            // Read through a lambda so that moving focus doesn't recompose the whole page
+            val positionProvider = remember { { position } }
             val currentHomePrefs by rememberUpdatedState(preferences.appPreferences.homePagePreferences)
+            val currentHomeRows by rememberUpdatedState(homeRows)
+            val currentPreferences by rememberUpdatedState(preferences)
             val openCollectionById =
                 remember {
                     { collectionId: String ->
@@ -175,7 +189,7 @@ fun HomePage(
                     { clickedPosition: RowColumn, item: BaseItem ->
                         position = clickedPosition
                         if (currentHomePrefs.clickToPlay &&
-                            homeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
+                            currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
                         ) {
                             viewModel.navigationManager.navigateTo(Destination.Playback(item))
                         } else {
@@ -188,7 +202,7 @@ fun HomePage(
                     { clickedPosition: RowColumn, item: BaseItem ->
                         position = clickedPosition
                         val row =
-                            (homeRows.getOrNull(clickedPosition.row) as? HomeRowLoadingState.Success)
+                            (currentHomeRows.getOrNull(clickedPosition.row) as? HomeRowLoadingState.Success)
                         val canRemoveContinueWatching =
                             row?.rowType is HomeRowConfig.ContinueWatching || row?.rowType is HomeRowConfig.ContinueWatchingCombined
                         val canRemoveNextUp =
@@ -203,7 +217,7 @@ fun HomePage(
                                 canDelete =
                                     viewModel.canDelete(
                                         item,
-                                        preferences.appPreferences,
+                                        currentPreferences.appPreferences,
                                     ),
                                 canRemoveContinueWatching = canRemoveContinueWatching,
                                 canRemoveNextUp = canRemoveNextUp,
@@ -261,9 +275,11 @@ fun HomePage(
                 platforms = state.platforms,
                 selectedFilter = state.selectedFilter,
                 homeRows = homeRows,
-                position = position,
+                positionProvider = positionProvider,
                 onSelectFilter = viewModel::setFilter,
                 onHeroWatchNow = { item ->
+                    // Come back to the hero instead of the last focused row
+                    position = RowColumn(-1, -1)
                     viewModel.navigationManager.navigateTo(item.destination())
                 },
                 onHeroToggleFavorite = { item, favorite ->
@@ -355,7 +371,7 @@ fun StremioHomeContent(
     platforms: List<PlatformTile>,
     selectedFilter: HomeMediaFilter,
     homeRows: List<HomeRowLoadingState>,
-    position: RowColumn,
+    positionProvider: () -> RowColumn,
     onSelectFilter: (HomeMediaFilter) -> Unit,
     onHeroWatchNow: (BaseItem) -> Unit,
     onHeroToggleFavorite: (BaseItem, Boolean) -> Unit,
@@ -370,24 +386,27 @@ fun StremioHomeContent(
     onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val focusedItem =
-        remember(homeRows, position) {
-            (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)?.items?.getOrNull(
-                position.column,
-            )
-        }
     val rowFocusRequesters = remember(homeRows.size) { List(homeRows.size) { FocusRequester() } }
     val heroFocusRequester = remember { FocusRequester() }
     val filterFocusRequester = remember { FocusRequester() }
-    var firstFocused by remember { mutableStateOf(false) }
+    // Saveable: when coming back to Home (eg from details or playback) restore focus instead of jumping to the hero
+    var firstFocused by rememberSaveable { mutableStateOf(false) }
+    var focusRestored by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
-    val currentPosition by rememberUpdatedState(position)
     val currentOnFocusPosition by rememberUpdatedState(onFocusPosition)
     val currentOnClickPlay by rememberUpdatedState(onClickPlay)
 
     LaunchedEffect(heroSlides.size, homeRows.size) {
-        if (!firstFocused && (heroSlides.isNotEmpty() || homeRows.isNotEmpty())) {
+        if (firstFocused && !focusRestored && (heroSlides.isNotEmpty() || homeRows.isNotEmpty())) {
+            focusRestored = true
+            val row = positionProvider().row
+            val restored = row >= 0 && rowFocusRequesters.getOrNull(row)?.tryRequestFocus() == true
+            if (!restored && heroSlides.isNotEmpty()) {
+                heroFocusRequester.tryRequestFocus()
+            }
+        } else if (!firstFocused && (heroSlides.isNotEmpty() || homeRows.isNotEmpty())) {
+            focusRestored = true
             if (heroSlides.isNotEmpty()) {
                 heroFocusRequester.tryRequestFocus()
                 firstFocused = true
@@ -406,8 +425,14 @@ fun StremioHomeContent(
             }
         }
     }
-    LaunchedEffect(onUpdateBackdrop, focusedItem) {
-        focusedItem?.let { onUpdateBackdrop.invoke(it) }
+    LaunchedEffect(onUpdateBackdrop, homeRows) {
+        snapshotFlow { positionProvider() }
+            .collect { position ->
+                (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)
+                    ?.items
+                    ?.getOrNull(position.column)
+                    ?.let(onUpdateBackdrop)
+            }
     }
 
     val continueRowIndex =
@@ -465,9 +490,10 @@ fun StremioHomeContent(
                         .focusRestorer()
                         .focusProperties {
                             onEnter = {
+                                val currentRow = positionProvider().row
                                 val rowFocused =
-                                    currentPosition.row >= 0 &&
-                                        rowFocusRequesters.getOrNull(currentPosition.row)?.tryRequestFocus() == true
+                                    currentRow >= 0 &&
+                                        rowFocusRequesters.getOrNull(currentRow)?.tryRequestFocus() == true
                                 if (!rowFocused) {
                                     if (heroSlides.isNotEmpty()) {
                                         heroFocusRequester.tryRequestFocus()
@@ -510,7 +536,6 @@ fun StremioHomeContent(
                                 rowFocusRequester = rowFocusRequesters[0],
                                 showViewMore = true,
                                 showEmptyRows = false,
-                                currentPosition = currentPosition,
                                 currentOnFocusPosition = currentOnFocusPosition,
                                 currentOnClickPlay = currentOnClickPlay,
                                 onClickItem = onClickItem,
@@ -551,10 +576,9 @@ fun StremioHomeContent(
 
                 itemsIndexed(
                     items = catalogRows,
-                    key = { idx, row ->
-                        val title = (row as? HomeRowLoadingState.Success)?.title?.toString() ?: "row"
-                        "catalog_${catalogStartIndex + idx}_$title"
-                    },
+                    // Independent of whether the Continue Watching row is shown, so rows keep their state & focus
+                    key = { idx, row -> "catalog_${(row as? HomeRowLoadingState.Success)?.title ?: idx}" },
+                    contentType = { _, _ -> "catalog_row" },
                 ) { catalogIdx, row ->
                     val actualRowIndex = catalogStartIndex + catalogIdx
                     CompositionLocalProvider(
@@ -566,7 +590,6 @@ fun StremioHomeContent(
                             rowFocusRequester = rowFocusRequesters[actualRowIndex],
                             showViewMore = true,
                             showEmptyRows = false,
-                            currentPosition = currentPosition,
                             currentOnFocusPosition = currentOnFocusPosition,
                             currentOnClickPlay = currentOnClickPlay,
                             onClickItem = onClickItem,
@@ -815,7 +838,6 @@ private fun HomeRowItemContent(
     rowFocusRequester: FocusRequester,
     showViewMore: Boolean,
     showEmptyRows: Boolean,
-    currentPosition: RowColumn,
     currentOnFocusPosition: (RowColumn) -> Unit,
     currentOnClickPlay: (RowColumn, BaseItem) -> Unit,
     onClickItem: (RowColumn, BaseItem) -> Unit,
@@ -883,11 +905,11 @@ private fun HomeRowItemContent(
                                 }
                             }
                         val onKey =
-                            remember(item) {
+                            remember(item, rowIndex, index) {
                                 { event: KeyEvent ->
                                     if (isPlayKeyUp(event) && item?.type?.playable == true) {
                                         Timber.v("Clicked play on ${item.id}")
-                                        currentOnClickPlay(currentPosition, item)
+                                        currentOnClickPlay(RowColumn(rowIndex, index), item)
                                         true
                                     } else {
                                         false
@@ -907,6 +929,7 @@ private fun HomeRowItemContent(
                         )
                     },
                     showViewMore = showViewMore && r.showViewMore,
+                    itemKey = { it.id.toString() },
                     viewMoreCardContent = { mod ->
                         HomePageViewMoreCard(
                             isEpisode = r.items.last()?.type == BaseItemKind.EPISODE,
@@ -1054,7 +1077,6 @@ fun HomePageContent(
                                 rowFocusRequester = rowFocusRequesters[rowIndex],
                                 showViewMore = showViewMore,
                                 showEmptyRows = showEmptyRows,
-                                currentPosition = currentPosition,
                                 currentOnFocusPosition = currentOnFocusPosition,
                                 currentOnClickPlay = currentOnClickPlay,
                                 onClickItem = onClickItem,

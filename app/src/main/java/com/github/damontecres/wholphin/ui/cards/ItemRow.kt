@@ -44,8 +44,18 @@ fun <T> ItemRow(
     horizontalPadding: Dp = 16.dp,
     showViewMore: Boolean = false,
     viewMoreCardContent: @Composable (Modifier) -> Unit = {},
+    itemKey: ((T) -> Any)? = null,
 ) {
     val state = rememberLazyListState()
+    // Stable keys keep focus & card state on the same item when the list changes (eg a refresh reorders it).
+    // Duplicates fall back to the index since keys must be unique.
+    val keys =
+        remember(items, itemKey) {
+            itemKey?.let { keyOf ->
+                val seen = HashSet<Any>()
+                items.mapIndexed { index, item -> item?.let(keyOf)?.takeIf { seen.add(it) } ?: "index_$index" }
+            }
+        }
     val firstFocus = remember { FocusRequester() }
     val focusRequester = remember { FocusRequester() }
     var position by rememberInt()
@@ -75,7 +85,7 @@ fun <T> ItemRow(
                     .focusRestorer(firstFocus)
                     .focusRequester(focusRequester),
         ) {
-            itemsIndexed(items) { index, item ->
+            itemsIndexed(items, key = keys?.let { k -> { index, _ -> k[index] } }) { index, item ->
                 val cardModifier =
                     remember(index, position) {
                         if (index == position) {

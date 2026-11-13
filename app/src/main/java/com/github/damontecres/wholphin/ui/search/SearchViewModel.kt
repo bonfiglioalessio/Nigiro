@@ -42,6 +42,7 @@ import com.github.damontecres.wholphin.util.WholphinDispatchers
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -94,6 +95,9 @@ class SearchViewModel
 
         private var currentQuery: String? = null
         private var combinedMode = true
+
+        // Searches for the current query, cancelled when a new one starts so stale results can't overwrite newer ones
+        private val searchJobs = mutableListOf<Job>()
 
         private val _programDialogState = MutableStateFlow(ProgramDialogState())
         val programDialogState: StateFlow<ProgramDialogState> = _programDialogState
@@ -189,6 +193,8 @@ class SearchViewModel
             }
             currentQuery = query
             combinedMode = combined
+            searchJobs.forEach { it.cancel() }
+            searchJobs.clear()
             if (query.isNotNullOrBlank()) {
                 _state.update {
                     it.copy(
@@ -202,13 +208,13 @@ class SearchViewModel
                     )
                 }
                 if (combined) {
-                    searchCombined(query)
+                    searchJobs.add(searchCombined(query))
                 } else {
                     state.value.includedSearchableTypes.forEach { type ->
-                        searchType(query, type)
+                        searchJobs.add(searchType(query, type))
                     }
                 }
-                searchSeerr(query)
+                searchJobs.add(searchSeerr(query))
             } else {
                 _state.update {
                     it.copy(
@@ -227,7 +233,7 @@ class SearchViewModel
         private fun searchType(
             query: String,
             type: BaseItemKind,
-        ) {
+        ): Job =
             viewModelScope.launchIO {
                 try {
                     val items: List<BaseItem> =
@@ -287,9 +293,8 @@ class SearchViewModel
                     _state.value.results[type] = SearchResult.Error(ex)
                 }
             }
-        }
 
-        private fun searchCombined(query: String) {
+        private fun searchCombined(query: String): Job =
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                 try {
                     Timber.v("Starting searchCombined")
@@ -300,6 +305,7 @@ class SearchViewModel
                             includeItemTypes = state.value.includedSearchableTypes,
                             fields = SlimItemFields,
                             limit = SEARCH_LIMIT,
+                            enableTotalRecordCount = false,
                         )
 
                     val result = api.itemsApi.getItems(request).content
@@ -310,12 +316,13 @@ class SearchViewModel
                     val sorted = SearchRelevance.filterAndSort(items, query)
                     Timber.v("searchCombined complete %s results", sorted.size)
                     _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
+                } catch (ex: CancellationException) {
+                    throw ex
                 } catch (ex: Exception) {
                     Timber.e(ex, "Exception in combined search")
                     _state.update { it.copy(combinedResults = SearchResult.Error(ex)) }
                 }
             }
-        }
 
         fun setCombinedResults(enabled: Boolean) {
             viewModelScope.launchIO {
@@ -338,19 +345,25 @@ class SearchViewModel
             }
         }
 
-        private fun searchSeerr(query: String) {
+        private fun searchSeerr(query: String): Job =
             viewModelScope.launchIO {
                 if (seerrActive.first() && state.value.discoverEnabled) {
                     _state.update { it.copy(seerrResults = SearchResult.Searching) }
-                    val results =
-                        seerrService
-                            .search(query)
-                            .map { seerrService.createDiscoverItem(it) }
-                            .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
-                    _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
+                    try {
+                        val results =
+                            seerrService
+                                .search(query)
+                                .map { seerrService.createDiscoverItem(it) }
+                                .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                        _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.e(ex, "Exception searching Seerr")
+                        _state.update { it.copy(seerrResults = SearchResult.Error(ex)) }
+                    }
                 }
             }
-        }
 
         init {
             addCloseable(voiceInputManager)

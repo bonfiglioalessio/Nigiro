@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,7 +75,8 @@ fun HomeHeroBanner(
 ) {
     if (slides.isEmpty()) return
 
-    var currentIndex by remember(slides.size) { mutableIntStateOf(0) }
+    // Saveable so the hero doesn't restart from the first slide after scrolling it out of view
+    var currentIndex by rememberSaveable(slides.size) { mutableIntStateOf(0) }
     val safeIndex = currentIndex.coerceIn(0, slides.lastIndex)
     val slide = slides[safeIndex]
 
@@ -108,15 +110,20 @@ fun HomeHeroBanner(
                 },
     ) {
         if (!slide.backdropUrl.isNullOrBlank()) {
-            AsyncImage(
-                model =
+            val context = LocalContext.current
+            // Remembered so that recompositions (eg focus entering the hero) don't restart the load & fade
+            val request =
+                remember(slide.backdropUrl, config.crossfadeMs) {
                     ImageRequest
-                        .Builder(LocalContext.current)
+                        .Builder(context)
                         .data(slide.backdropUrl)
                         .useExistingImageAsPlaceholder(true)
                         .transitionFactory(
                             CrossFadeFactory(config.crossfadeMs.coerceIn(100, 600).milliseconds),
-                        ).build(),
+                        ).build()
+                }
+            AsyncImage(
+                model = request,
                 contentDescription = slide.title,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,

@@ -346,10 +346,14 @@ fun <T : CardGridItem> CardGrid(
                     ) {
                         items(pager.size) { index ->
                             val item = pager[index]
+                            // Keyed on whether this cell is the focus target, not on the focused index itself,
+                            // otherwise every visible cell is rebuilt each time focus moves
+                            val isFocusTarget =
+                                (index == currentFocusedIndex) or (currentFocusedIndex < 0 && index == 0)
                             val details =
-                                remember(index, item, cardWidthPx, columns, currentFocusedIndex) {
+                                remember(index, item, cardWidthPx, columns, isFocusTarget) {
                                     val mod =
-                                        if ((index == currentFocusedIndex) or (currentFocusedIndex < 0 && index == 0)) {
+                                        if (isFocusTarget) {
                                             if (DEBUG) Timber.d("Adding firstFocus to focusedIndex $index")
                                             Modifier
                                                 .focusRequester(firstFocus)
