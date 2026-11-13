@@ -117,6 +117,7 @@ fun <T : CardGridItem> CardGrid(
     columns: Int = 6,
     spacing: Dp = 16.dp,
     bringIntoViewSpec: BringIntoViewSpec = LocalBringIntoViewSpec.current,
+    showPositionFooter: Boolean = true,
 ) {
     val startPosition =
         remember(initialPosition, pager.size) {
@@ -158,7 +159,7 @@ fun <T : CardGridItem> CardGrid(
     }
 
     val useBackToJump = true // uiConfig.preferences.interfacePreferences.scrollTopOnBack
-    val showFooter = true // uiConfig.preferences.interfacePreferences.showPositionFooter
+    val showFooter = showPositionFooter
     val useJumpRemoteButtons = true // uiConfig.preferences.interfacePreferences.pageWithRemoteButtons
     val jump2 =
         remember {

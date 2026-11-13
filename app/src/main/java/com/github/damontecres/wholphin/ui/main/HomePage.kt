@@ -1312,7 +1312,10 @@ fun HomePageCardContent(
     onLongClick: () -> Unit,
     viewOptions: HomeRowViewOptions,
     modifier: Modifier,
+    showFavorite: Boolean = true,
 ) {
+    // The rating is shown in the focused item header, and the hero/rows show the on-disk mark
+    val onDisk = item?.isOnDisk() == true
     when (item?.type) {
         BaseItemKind.GENRE -> {
             GenreCard(
@@ -1371,7 +1374,7 @@ fun HomePageCardContent(
                     imageContentScale = scale,
                     cornerText = item?.ui?.episodeUnplayedCornerText,
                     played = item?.data?.userData?.played ?: false,
-                    favorite = item?.favorite ?: false,
+                    favorite = showFavorite && item?.favorite == true,
                     playPercent =
                         item?.data?.userData?.playedPercentage
                             ?: 0.0,
@@ -1380,6 +1383,8 @@ fun HomePageCardContent(
                     modifier = modifier,
                     cardHeight = viewOptions.heightDp.dp,
                     useSeriesForPrimary = viewOptions.useSeries,
+                    showRating = false,
+                    onDisk = onDisk,
                 )
             } else {
                 BannerCard(
@@ -1390,7 +1395,7 @@ fun HomePageCardContent(
                     imageContentScale = scale,
                     cornerText = item?.ui?.episodeUnplayedCornerText,
                     played = item?.data?.userData?.played ?: false,
-                    favorite = item?.favorite ?: false,
+                    favorite = showFavorite && item?.favorite == true,
                     playPercent =
                         item?.data?.userData?.playedPercentage
                             ?: 0.0,
@@ -1400,6 +1405,8 @@ fun HomePageCardContent(
                     interactionSource = null,
                     cardHeight = viewOptions.heightDp.dp,
                     useSeriesForPrimary = viewOptions.useSeries,
+                    showRating = false,
+                    onDisk = onDisk,
                 )
             }
         }

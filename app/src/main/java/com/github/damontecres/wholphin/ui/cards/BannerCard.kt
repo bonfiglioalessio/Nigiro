@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,10 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +48,7 @@ import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
+import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import org.jellyfin.sdk.model.api.ImageType
 import java.util.Locale
 
@@ -70,6 +72,8 @@ fun BannerCard(
     imageType: ImageType = ImageType.PRIMARY,
     imageContentScale: ContentScale = ContentScale.FillBounds,
     useSeriesForPrimary: Boolean = true,
+    showRating: Boolean = true,
+    onDisk: Boolean = false,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -109,6 +113,8 @@ fun BannerCard(
         onClick = { currentOnClick() },
         onLongClick = { currentOnLongClick() },
         interactionSource = interactionSource,
+        // Same gentle scale-up as the rest of the UI
+        scale = CardDefaults.scale(focusedScale = 1.05f),
         colors =
             CardDefaults.colors(
 //                containerColor = Color.Transparent,
@@ -171,17 +177,27 @@ fun BannerCard(
                     }
                 }
             }
-            if (favorite) {
-                Text(
+            if (favorite || onDisk) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
-                            .padding(8.dp),
-                    color = colorResource(android.R.color.holo_red_light),
-                    text = stringResource(R.string.fa_heart),
-                    fontSize = 16.sp,
-                    fontFamily = FontAwesome,
-                )
+                            .padding(6.dp),
+                ) {
+                    if (onDisk) {
+                        OnDiskIcon()
+                    }
+                    if (favorite) {
+                        Text(
+                            color = NigiroPalette.Pink,
+                            text = stringResource(R.string.fa_heart),
+                            fontSize = 14.sp,
+                            fontFamily = FontAwesome,
+                        )
+                    }
+                }
             }
             val ratingText =
                 remember(item?.id, item?.data?.communityRating) {
@@ -191,7 +207,7 @@ fun BannerCard(
                         ?.takeIf { it > 0f }
                         ?.let { String.format(Locale.US, "★ %.1f", it) }
                 }
-            if (ratingText != null) {
+            if (showRating && ratingText != null) {
                 Box(
                     modifier =
                         Modifier
@@ -249,6 +265,8 @@ fun BannerCardWithTitle(
     imageType: ImageType = ImageType.PRIMARY,
     imageContentScale: ContentScale = ContentScale.FillBounds,
     useSeriesForPrimary: Boolean = item?.useSeriesForPrimary ?: true,
+    showRating: Boolean = true,
+    onDisk: Boolean = false,
 ) {
     val focused by interactionSource.collectIsFocusedAsState()
     val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
@@ -274,6 +292,8 @@ fun BannerCardWithTitle(
             imageType = imageType,
             imageContentScale = imageContentScale,
             useSeriesForPrimary = useSeriesForPrimary,
+            showRating = showRating,
+            onDisk = onDisk,
         )
         SlidingCardText(focused) {
             Text(
@@ -301,5 +321,26 @@ fun BannerCardWithTitle(
                         .enableMarquee(focusedAfterDelay),
             )
         }
+    }
+}
+
+/**
+ * Compact "downloaded to the server's disk" mark for posters
+ */
+@Composable
+fun OnDiskIcon(modifier: Modifier = Modifier) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            modifier
+                .size(24.dp)
+                .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+    ) {
+        Text(
+            text = stringResource(R.string.fa_hard_drive),
+            fontFamily = FontAwesome,
+            fontSize = 11.sp,
+            color = NigiroPalette.Disk,
+        )
     }
 }

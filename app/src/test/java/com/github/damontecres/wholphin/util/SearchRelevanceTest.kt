@@ -68,6 +68,27 @@ class SearchRelevanceTest {
     }
 
     @Test
+    fun filterAndSortPutsTheMostPopularFirstWithinTheSameKindOfMatch() {
+        fun rated(
+            title: String,
+            rating: Float,
+        ): BaseItem =
+            mockk(relaxed = true) {
+                every { name } returns title
+                every { type } returns BaseItemKind.MOVIE
+                every { data.communityRating } returns rating
+            }
+        val obscure = rated("Dune Drifter", 4.1f)
+        val popular = rated("Dune: Parte due", 8.2f)
+        val wordMatch = rated("Children of Dune", 9.0f)
+
+        assertEquals(
+            listOf(popular, obscure, wordMatch),
+            SearchRelevance.filterAndSort(listOf(wordMatch, obscure, popular), "dune"),
+        )
+    }
+
+    @Test
     fun defaultExcludedSearchTypesLeavesOnlyMoviesAndSeries() {
         val activeByDefault = allSearchableTypes.filterNot { it in DEFAULT_EXCLUDED_SEARCH_TYPES }
 

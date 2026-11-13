@@ -181,18 +181,6 @@ fun HomeHeroBanner(
                         bottom = NigiroDimens.HeroBottomPadding,
                     ),
         ) {
-            if (slide.badgeText.isNotBlank()) {
-                Text(
-                    text = slide.badgeText.uppercase(),
-                    style = NigiroDimens.Badge,
-                    color = NigiroPalette.PinkSoft,
-                    modifier =
-                        Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(NigiroPalette.Pink.copy(alpha = 0.18f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                )
-            }
             var logoFailed by remember(slide.logoUrl) { mutableStateOf(false) }
             if (!slide.logoUrl.isNullOrBlank() && !logoFailed) {
                 AsyncImage(

@@ -46,7 +46,8 @@ object SearchRelevance {
 
     /**
      * Prioritizes title matches and drops unrelated fuzzy noise whenever at least one item
-     * matches the query in its normalized title.
+     * matches the query in its normalized title. Within the same kind of match (exact or prefix,
+     * word or substring, fuzzy) the most popular titles come first: highest rating, then newest.
      */
     fun filterAndSort(
         items: List<BaseItem>,
@@ -62,9 +63,21 @@ object SearchRelevance {
             .map { item ->
                 val originalScore = item.data.originalTitle?.let { score(it, item.type, query) } ?: Int.MAX_VALUE
                 item to minOf(score(item, query), originalScore)
-            }.sortedBy { it.second }
-            .map { it.first }
+            }.sortedWith(
+                compareBy<Pair<BaseItem, Int>> { matchBand(it.second) }
+                    .thenByDescending { it.first.data.communityRating ?: -1f }
+                    .thenByDescending { it.first.data.productionYear ?: 0 }
+                    .thenBy { it.second },
+            ).map { it.first }
     }
+
+    // 0: exact or prefix, 1: word start, substring or regex, 2: fuzzy
+    private fun matchBand(score: Int): Int =
+        when {
+            score < 200 -> 0
+            score < 350 -> 1
+            else -> 2
+        }
 
     fun score(
         item: BaseItem,

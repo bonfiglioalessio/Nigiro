@@ -710,6 +710,8 @@ private fun <T : CardGridItem> SearchGrid(
             letterPosition = { -1 },
             // Narrower area next to the keyboard
             columns = 4,
+            // The "1 / 24" counter would cover the posters of the last visible row
+            showPositionFooter = false,
             gridFocusRequester = focusRequester,
             showJumpButtons = false,
             showLetterButtons = false,
@@ -838,38 +840,74 @@ fun SearchResultPlaceholder(
 @Composable
 private fun SearchFocusedHeader(itemProvider: () -> BaseItem?) {
     val item = itemProvider()
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(36.dp)
-                .padding(start = 0.dp, end = NigiroDimens.ContentEnd),
+                .height(SearchHeaderHeight)
+                .padding(end = NigiroDimens.ContentEnd, bottom = 10.dp),
     ) {
-        if (item == null) return@Row
-        Text(
-            text = item.name.orEmpty(),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
-        )
-        val meta =
-            remember(item) {
-                listOfNotNull(
-                    item.data.productionYear?.toString(),
-                    item.data.communityRating?.let { String.format(Locale.ITALIAN, "★ %.1f", it) },
-                ).joinToString(" · ")
+        if (item == null) return@Column
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = item.name.orEmpty(),
+                fontSize = 22.sp,
+                lineHeight = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            if (item.isOnDisk()) {
+                OnDiskBadge()
             }
-        if (meta.isNotBlank()) {
-            Text(text = meta, style = NigiroDimens.Meta, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (item.isOnDisk()) {
-            OnDiskBadge()
+        val meta = remember(item) { searchHeaderMeta(item) }
+        if (meta.isNotBlank()) {
+            Text(
+                text = meta,
+                style = NigiroDimens.Meta,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        item.data.overview?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                style = NigiroDimens.Body,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
+}
+
+private val SearchHeaderHeight = 108.dp
+
+/**
+ * Year · rating · up to three genres · runtime
+ */
+private fun searchHeaderMeta(item: BaseItem): String {
+    val data = item.data
+    val minutes = (data.runTimeTicks ?: 0L) / 600_000_000L
+    val runtime =
+        when {
+            minutes <= 0 -> null
+            minutes >= 60 -> "${minutes / 60} h ${minutes % 60} min"
+            else -> "$minutes min"
+        }
+    return listOfNotNull(
+        data.productionYear?.toString(),
+        data.communityRating?.let { String.format(Locale.ITALIAN, "★ %.1f", it) },
+        data.genres?.take(3)?.takeIf { it.isNotEmpty() }?.joinToString(", "),
+        runtime,
+    ).joinToString(" · ")
 }
 
 /**
@@ -939,23 +977,16 @@ private fun SearchIdleContent(
                 onClickItem = onClickItem,
                 onLongClickItem = onLongClickItem,
                 cardContent = { index, item, cardModifier, onClick, onLongClick ->
-                    Box {
-                        HomePageCardContent(
-                            index = index,
-                            item = item,
-                            onClick = onClick,
-                            onLongClick = onLongClick,
-                            viewOptions = posterOptions,
-                            modifier = cardModifier,
-                        )
-                        if (item?.isOnDisk() == true) {
-                            OnDiskBadge(
-                                Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(8.dp),
-                            )
-                        }
-                    }
+                    // Every favorite is marked: the heart would only repeat the row title
+                    HomePageCardContent(
+                        index = index,
+                        item = item,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                        viewOptions = posterOptions,
+                        modifier = cardModifier,
+                        showFavorite = false,
+                    )
                 },
                 horizontalPadding = NigiroDimens.CardGap,
                 itemKey = { it.id.toString() },

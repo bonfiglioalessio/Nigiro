@@ -22,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -34,7 +36,9 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
+import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import kotlinx.coroutines.delay
@@ -53,20 +57,23 @@ fun FocusedItemHeader(
     height: Dp = FocusedItemHeaderHeight,
     contentStart: Dp = NigiroDimens.ContentStart,
 ) {
-    val background = MaterialTheme.colorScheme.background
+    // Same colors as the page's background gradient at the header's height, so it has no visible edge
+    val headerTop = NigiroPalette.BackgroundTop
+    val headerBottom = HeaderBottomColor
+    val baseBackground = remember { Brush.verticalGradient(0f to headerTop, 1f to headerBottom) }
     val horizontalScrim =
-        remember(background) {
+        remember {
             Brush.horizontalGradient(
-                0f to background,
-                0.35f to background.copy(alpha = 0.85f),
-                0.75f to background.copy(alpha = 0f),
+                0f to headerBottom,
+                0.35f to headerBottom.copy(alpha = 0.85f),
+                0.75f to headerBottom.copy(alpha = 0f),
             )
         }
     val bottomScrim =
-        remember(background) {
+        remember {
             Brush.verticalGradient(
-                0.55f to background.copy(alpha = 0f),
-                1f to background,
+                0.55f to headerBottom.copy(alpha = 0f),
+                1f to headerBottom,
             )
         }
     val imageUrlService = LocalImageUrlService.current
@@ -98,7 +105,7 @@ fun FocusedItemHeader(
             modifier
                 .fillMaxWidth()
                 .height(height)
-                .background(background),
+                .background(baseBackground),
     ) {
         if (backdropRequest != null) {
             AsyncImage(
@@ -192,17 +199,32 @@ val FocusedItemHeaderHeight = 196.dp
 
 @Composable
 fun OnDiskBadge(modifier: Modifier = Modifier) {
-    Text(
-        text = "SU DISCO",
-        style = NigiroDimens.Badge,
-        color = NigiroPalette.Disk,
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .clip(RoundedCornerShape(6.dp))
-                .background(NigiroPalette.Disk.copy(alpha = 0.18f))
-                .padding(horizontal = 9.dp, vertical = 3.dp),
-    )
+                .background(Color.Black.copy(alpha = 0.45f))
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.fa_hard_drive),
+            fontFamily = FontAwesome,
+            fontSize = 11.sp,
+            color = NigiroPalette.Disk,
+        )
+        Text(
+            text = stringResource(R.string.on_disk),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
 }
+
+// Page gradient (BackgroundTop -> Background over 60% of the 540 dp screen) at the header's bottom edge
+private val HeaderBottomColor = Color(0xFF1F1D1C)
 
 private data class FocusedItemDetails(
     val title: String,

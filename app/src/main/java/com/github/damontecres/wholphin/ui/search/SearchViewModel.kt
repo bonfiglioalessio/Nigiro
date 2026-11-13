@@ -14,6 +14,7 @@ import com.github.damontecres.wholphin.preferences.updateSearchPreferences
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
 import com.github.damontecres.wholphin.services.KeyValueService
 import com.github.damontecres.wholphin.services.LiveTvService
+import com.github.damontecres.wholphin.services.LocalTwinService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavDrawerService
 import com.github.damontecres.wholphin.services.NavigationManager
@@ -84,6 +85,7 @@ class SearchViewModel
         private val liveTvService: LiveTvService,
         private val keyValueService: KeyValueService,
         private val navDrawerService: NavDrawerService,
+        private val localTwinService: LocalTwinService,
     ) : ViewModel(),
         ContextMenuProvider {
         val seerrActive =
@@ -143,13 +145,30 @@ class SearchViewModel
                             limit = 20,
                             enableTotalRecordCount = false,
                         )
-                    _favorites.value = api.itemsApi.getItems(request).toBaseItems(api, false)
+                    val favorites = api.itemsApi.getItems(request).toBaseItems(api, false)
+                    _favorites.value = favorites
+                    _favorites.value = withLocalCopies(favorites)
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not load favorites for search")
                 }
             }
+        }
+
+        /**
+         * Swaps favorited streamed movies (Gelato) for their downloaded copy, so the row shows what is on disk
+         */
+        private suspend fun withLocalCopies(items: List<BaseItem>): List<BaseItem> {
+            if (items.none { localTwinService.isStreamOnly(it.data) }) return items
+            return items
+                .map { item ->
+                    if (localTwinService.isStreamOnly(item.data)) {
+                        localTwinService.findLocalTwin(item.data)?.let { BaseItem.from(it, api, false) } ?: item
+                    } else {
+                        item
+                    }
+                }.distinctBy { it.id }
         }
 
         fun rememberSearch(query: String) {
@@ -361,7 +380,7 @@ class SearchViewModel
                             searchTerm = query,
                             recursive = true,
                             includeItemTypes = state.value.includedSearchableTypes,
-                            fields = SlimItemFields + listOf(ItemFields.PROVIDER_IDS, ItemFields.PATH),
+                            fields = SlimItemFields + listOf(ItemFields.PROVIDER_IDS, ItemFields.PATH, ItemFields.GENRES),
                             limit = SEARCH_LIMIT,
                             enableTotalRecordCount = false,
                         )

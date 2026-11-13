@@ -1018,4 +1018,5 @@
     <string name="keyboard_space">Space</string>
     <string name="keyboard_clear">Clear</string>
     <string name="home_platforms_all">All</string>
+    <string name="on_disk">On disk</string>
 </resources>
