@@ -347,7 +347,10 @@ fun NavDrawer(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(spacedBy),
-                    modifier = Modifier.fillMaxHeight(),
+                    modifier =
+                        Modifier
+                            .fillMaxHeight()
+                            .padding(vertical = 8.dp),
                 ) {
                     // Even though some must be clicked, focusing on it should clear other focused items
                     val interactionSource = remember { MutableInteractionSource() }
@@ -572,7 +575,7 @@ fun NavDrawer(
                         .fillMaxSize()
                         .offset {
                             offset
-                        }.padding(start = closedDrawerWidth + 8.dp, end = 16.dp),
+                        }.padding(start = closedDrawerWidth + 12.dp, end = 16.dp),
             )
             if (preferences.appPreferences.interfacePreferences.showClock) {
                 TimeDisplay()

@@ -26,12 +26,15 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +55,7 @@ import androidx.tv.material3.DrawerState
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.NavigationDrawerItemColors
 import androidx.tv.material3.NavigationDrawerItemDefaults
 import androidx.tv.material3.NavigationDrawerScope
@@ -115,11 +119,14 @@ private fun DrawerSheet(
         } else {
             Modifier
         }
+    val flatContainerColor = MaterialTheme.colorScheme.surface
+    val hairlineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
     val internalModifier =
         Modifier
             .focusRequester(focusRequester)
             .then(sizeModifier)
             .fillMaxHeight()
+            .background(flatContainerColor)
             // adding passed-in modifier here to ensure animateContentSize is called before other
             // size based modifiers.
             .then(modifier)
@@ -135,6 +142,14 @@ private fun DrawerSheet(
         NavigationDrawerScopeImpl(drawerState.currentValue == DrawerValue.Open).apply {
             content(drawerState.currentValue)
         }
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(1.dp)
+                    .background(hairlineColor),
+        )
     }
 }
 
@@ -142,11 +157,12 @@ internal class NavigationDrawerScopeImpl(
     override val hasFocus: Boolean,
 ) : NavigationDrawerScope
 
-internal val CollapsedDrawerItemWidth = 64.dp
-internal val ExpandedDrawerItemWidth = 224.dp
+internal val CollapsedDrawerItemWidth = 60.dp
+internal val ExpandedDrawerItemWidth = 220.dp
 internal val DrawerIconSize = 24.dp
 internal val DrawerIconPadding = (ListItemDefaults.IconSize - DrawerIconSize) / 2
 internal val DrawerAnimationStiffness = Spring.StiffnessMedium
+internal val FlatDrawerItemShape = RoundedCornerShape(10.dp)
 
 @Composable
 internal fun NavigationDrawerScope.NavigationDrawerItem(
@@ -158,7 +174,7 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
     onLongClick: (() -> Unit)? = null,
     supportingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
-    tonalElevation: Dp = NavigationDrawerItemDefaults.NavigationDrawerItemElevation,
+    tonalElevation: Dp = 0.dp,
     colors: NavigationDrawerItemColors = NavigationDrawerItemDefaults.colors(),
     interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit,
@@ -218,6 +234,7 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         enabled = enabled,
         onLongClick = onLongClick,
         tonalElevation = tonalElevation,
+        shape = ListItemDefaults.shape(shape = FlatDrawerItemShape),
         colors = colors.toToggleableListItemColors(hasFocus),
         scale = ListItemDefaults.scale(1f, 1f),
         interactionSource = interactionSource,
