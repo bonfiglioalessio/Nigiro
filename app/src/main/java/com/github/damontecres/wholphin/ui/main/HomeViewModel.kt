@@ -12,6 +12,7 @@ import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
 import com.github.damontecres.wholphin.data.model.RemoteWholphinConfig
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import com.github.damontecres.wholphin.preferences.PrefContentScale
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.DatePlayedService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
@@ -28,7 +29,6 @@ import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.AspectRatio
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.HomeItemFields
-import com.github.damontecres.wholphin.ui.PrefContentScale
 import com.github.damontecres.wholphin.ui.collectLatestIn
 import com.github.damontecres.wholphin.ui.combinePair
 import com.github.damontecres.wholphin.ui.data.RowColumn

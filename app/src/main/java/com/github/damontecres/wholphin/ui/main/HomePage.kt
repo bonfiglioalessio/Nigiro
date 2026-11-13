@@ -130,9 +130,9 @@ fun HomePage(
     val refreshing = state.refreshState
     val homeRows = state.homeRows
 
-    when (val state = loading) {
+    when (val loadingStatus = loading) {
         is LoadingState.Error -> {
-            ErrorMessage(state, modifier)
+            ErrorMessage(loadingStatus, modifier)
         }
 
         LoadingState.Loading,
@@ -240,7 +240,8 @@ fun HomePage(
             val onClickViewMore =
                 remember {
                     { _: RowColumn, row: HomeRowLoadingState.Success ->
-                        row.rowType?.let { rowConfig ->
+                        val rowConfig = row.rowType
+                        if (rowConfig != null) {
                             viewModel.navigationManager.navigateTo(
                                 Destination.MoreHomeRow(row.title, rowConfig, row.items.size),
                             )
