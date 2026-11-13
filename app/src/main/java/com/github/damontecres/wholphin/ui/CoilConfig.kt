@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui
 
+import android.app.ActivityManager
 import android.os.Process
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -78,8 +79,14 @@ fun CoilConfig(
             .Builder(ctx)
             .apply {
                 if (enableCache) {
-                    val memPercent = if (Process.is64Bit()) 0.20 else 0.14
-                    memoryCache(MemoryCache.Builder().maxSizePercent(ctx, memPercent).build())
+                    // Based on the standard heap (memoryClass), not the large heap the app requests: on a TV with
+                    // 2 GB of RAM a percentage of largeMemoryClass (512 MB) would keep ~70 MB of bitmaps around
+                    val memoryClassMb =
+                        ctx.getSystemService(ActivityManager::class.java)?.memoryClass ?: 128
+                    val memPercent = if (Process.is64Bit()) 0.20 else 0.18
+                    val maxBytes = (memoryClassMb * 1024L * 1024L * memPercent).toLong().coerceAtMost(64L * 1024 * 1024)
+                    Timber.i("Image memory cache %s MB (memoryClass=%s MB)", maxBytes / (1024 * 1024), memoryClassMb)
+                    memoryCache(MemoryCache.Builder().maxSizeBytes(maxBytes).build())
                     diskCache(
                         DiskCache
                             .Builder()

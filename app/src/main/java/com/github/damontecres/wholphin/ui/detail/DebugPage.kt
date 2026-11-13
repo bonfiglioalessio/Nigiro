@@ -122,8 +122,9 @@ class DebugViewModel
 
         init {
             viewModelScope.launchDefault {
-                val buildTime = Date(BuildConfig.BUILD_TIME)
                 val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                // BUILD_TIME is only set for debug builds, otherwise show when the APK was installed/updated
+                val buildTime = Date(BuildConfig.BUILD_TIME.takeIf { it > 0 } ?: pkgInfo.lastUpdateTime)
                 val installInfo =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         val installSource =

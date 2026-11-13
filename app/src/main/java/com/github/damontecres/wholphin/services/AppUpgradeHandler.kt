@@ -128,6 +128,13 @@ class AppUpgradeHandler
             try {
                 val fontFileName = "subfont.ttf"
                 val outputFile = File(context.filesDir, fontFileName)
+                if (context.assets.list("")?.contains(fontFileName) != true) {
+                    // Not bundled (builds without MPV): free the space used by a copy from an older version
+                    if (outputFile.exists() && outputFile.delete()) {
+                        Timber.i("Deleted unused %s", fontFileName)
+                    }
+                    return
+                }
                 if (!outputFile.exists() || overwrite) {
                     context.assets.open(fontFileName).use { input ->
                         outputFile.outputStream().use { output ->

@@ -6,7 +6,10 @@ import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.work.BackoffPolicy
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -38,6 +41,12 @@ class TvProviderSchedulerService
     ) {
         private val activity = (context as AppCompatActivity)
 
+        private val networkConstraints =
+            Constraints
+                .Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
         private val supportsTvProvider =
             // TODO <=25 has limited support
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
@@ -57,8 +66,11 @@ class TvProviderSchedulerService
                                     existingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.UPDATE,
                                     request =
                                         PeriodicWorkRequestBuilder<TvProviderWorker>(
-                                            repeatInterval = 1.hours.toJavaDuration(),
-                                        ).setBackoffCriteria(
+                                            // Also refreshed after each app session (launchOneTimeRefresh), so this only
+                                            // catches changes made elsewhere: no need to wake a low-end TV every hour
+                                            repeatInterval = 4.hours.toJavaDuration(),
+                                        ).setConstraints(networkConstraints)
+                                            .setBackoffCriteria(
                                             BackoffPolicy.LINEAR,
                                             15.minutes.toJavaDuration(),
                                         ).setInputData(
@@ -83,8 +95,12 @@ class TvProviderSchedulerService
                 activity.lifecycleScope.launchIO(ExceptionHandler()) {
                     serverRepository.current.value?.let { user ->
                         Timber.i("Scheduling on-time TvProviderWorker for ${user.user}")
-                        workManager.enqueue(
+                        // Unique: leaving the app repeatedly (eg for an external player) queues a single refresh
+                        workManager.enqueueUniqueWork(
+                            ONE_TIME_WORK_NAME,
+                            ExistingWorkPolicy.KEEP,
                             OneTimeWorkRequestBuilder<TvProviderWorker>()
+                                .setConstraints(networkConstraints)
                                 .setInputData(
                                     workDataOf(
                                         TvProviderWorker.PARAM_USER_ID to user.user.id.toString(),
@@ -95,5 +111,9 @@ class TvProviderSchedulerService
                     }
                 }
             }
+        }
+
+        companion object {
+            private const val ONE_TIME_WORK_NAME = "TvProviderWorkerOneTime"
         }
     }

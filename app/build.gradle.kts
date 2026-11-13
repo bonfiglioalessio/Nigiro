@@ -48,6 +48,13 @@ val gitTags =
         .standardOutput.asText
         .get()
 
+// Grows with every commit (CI checks out the full history), independently of upstream's tags
+val gitCommitCount =
+    providers
+        .exec { commandLine("git", "rev-list", "--count", "HEAD") }
+        .standardOutput.asText
+        .getOrElse("")
+
 val gitDescribe =
     providers
         .exec { commandLine("git", "describe", "--tags", "--long", "--match=v*") }
@@ -75,11 +82,12 @@ configure<ApplicationExtension> {
         applicationId = "com.github.bonfiglioalessio.nigiro"
         minSdk = libs.versions.minSdk.getInt()
         targetSdk = libs.versions.targetSdk.getInt()
-        versionCode = gitTags.trim().lines().size
+        versionCode = gitCommitCount.trim().toIntOrNull()?.takeIf { it > 0 } ?: gitTags.trim().lines().size
         versionName = gitDescribe.trim().removePrefix("v").ifBlank { "0.0.0" }
         testInstrumentationRunner = "com.github.damontecres.wholphin.test.WholphinTestRunner"
 
-        buildConfigField("long", "BUILD_TIME", System.currentTimeMillis().toString())
+        // Fixed value so release builds stay cacheable (it changed on every build); debug builds set the real time below
+        buildConfigField("long", "BUILD_TIME", "0L")
     }
 
     signingConfigs {
@@ -129,6 +137,7 @@ configure<ApplicationExtension> {
             isShrinkResources = false
             isDebuggable = true
             applicationIdSuffix = ".debug"
+            buildConfigField("long", "BUILD_TIME", System.currentTimeMillis().toString())
         }
     }
     flavorDimensions += "version"
@@ -223,6 +232,8 @@ configure<ApplicationExtension> {
     }
     androidResources {
         generateLocaleConfig = true
+        // Only used in Italian (English as fallback): drops the other 40 translations, including from libraries
+        localeFilters += listOf("en", "it")
     }
 }
 
@@ -336,7 +347,6 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.cachecontrol)
     implementation(libs.coil.network.okhttp)
-    implementation(libs.coil.gif)
     implementation(libs.coil.svg)
 
     implementation(libs.jellyfin.core)
@@ -346,7 +356,6 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-    implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.serialization.json)
 
@@ -356,10 +365,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.preference.ktx)
-    implementation(libs.androidx.room.testing)
     implementation(libs.androidx.palette.ktx)
     implementation(libs.androidx.media3.effect)
-    implementation(libs.androidx.runner)
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     ksp(libs.androidx.hilt.compiler)
@@ -422,6 +429,8 @@ dependencies {
     testImplementation(libs.hilt.android.testing)
     testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.room.testing)
+    androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.hilt.android.testing)
     androidTestImplementation(libs.androidx.compose.ui.test.manifest)

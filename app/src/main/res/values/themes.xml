@@ -2,5 +2,7 @@
 
     <style name="Theme.Wholphin" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:colorBackground">@android:color/background_dark</item>
+        <!-- Avoid a white flash before the first frame is drawn -->
+        <item name="android:windowBackground">@android:color/black</item>
     </style>
 </resources>
