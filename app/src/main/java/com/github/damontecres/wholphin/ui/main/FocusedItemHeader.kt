@@ -38,7 +38,6 @@ import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import kotlinx.coroutines.delay
@@ -209,16 +208,10 @@ fun OnDiskBadge(modifier: Modifier = Modifier) {
                 .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
-            text = stringResource(R.string.fa_hard_drive),
-            fontFamily = FontAwesome,
-            fontSize = 11.sp,
-            color = NigiroPalette.Disk,
-        )
-        Text(
             text = stringResource(R.string.on_disk),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = NigiroPalette.Disk,
         )
     }
 }

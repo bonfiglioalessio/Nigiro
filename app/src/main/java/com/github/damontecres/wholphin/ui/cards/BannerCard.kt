@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -177,27 +176,27 @@ fun BannerCard(
                     }
                 }
             }
-            if (favorite || onDisk) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+            if (favorite) {
+                Text(
+                    color = NigiroPalette.Pink,
+                    text = stringResource(R.string.fa_heart),
+                    fontSize = 14.sp,
+                    fontFamily = FontAwesome,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp),
-                ) {
-                    if (onDisk) {
-                        OnDiskIcon()
-                    }
-                    if (favorite) {
-                        Text(
-                            color = NigiroPalette.Pink,
-                            text = stringResource(R.string.fa_heart),
-                            fontSize = 14.sp,
-                            fontFamily = FontAwesome,
-                        )
-                    }
-                }
+                )
+            }
+            if (onDisk) {
+                OnDiskCardBadge(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(
+                            start = 6.dp,
+                            bottom = if (playPercent > 0 && playPercent < 100) 10.dp else 6.dp,
+                        ),
+                )
             }
             val ratingText =
                 remember(item?.id, item?.data?.communityRating) {
@@ -328,19 +327,16 @@ fun BannerCardWithTitle(
  * Compact "downloaded to the server's disk" mark for posters
  */
 @Composable
-fun OnDiskIcon(modifier: Modifier = Modifier) {
-    Box(
-        contentAlignment = Alignment.Center,
+fun OnDiskCardBadge(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.on_disk),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = NigiroPalette.Disk,
+        maxLines = 1,
         modifier =
             modifier
-                .size(24.dp)
-                .background(Color.Black.copy(alpha = 0.65f), CircleShape),
-    ) {
-        Text(
-            text = stringResource(R.string.fa_hard_drive),
-            fontFamily = FontAwesome,
-            fontSize = 11.sp,
-            color = NigiroPalette.Disk,
-        )
-    }
+                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(25))
+                .padding(horizontal = 5.dp, vertical = 2.dp),
+    )
 }
