@@ -61,7 +61,9 @@ class SearchRelevanceTest {
         assertEquals(listOf(exactMovie, seriesMatch), filtered)
 
         val typoItem = fakeItem("Rispostata", BaseItemKind.MOVIE)
-        val fallback = SearchRelevance.filterAndSort(listOf(unrelated, typoItem), "rispostat")
+        assertEquals(listOf(typoItem), SearchRelevance.filterAndSort(listOf(unrelated, typoItem), "rispostat"))
+
+        val fallback = SearchRelevance.filterAndSort(listOf(unrelated, typoItem), "rispotata")
         assertEquals(listOf(typoItem, unrelated), fallback)
     }
 
