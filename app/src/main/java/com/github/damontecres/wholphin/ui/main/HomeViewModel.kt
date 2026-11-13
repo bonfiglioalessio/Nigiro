@@ -168,6 +168,7 @@ class HomeViewModel
                     catalogByKey = cachedCatalogByKey,
                     config = cachedConfig,
                     filter = filter,
+                    platformKey = _state.value.platformFilter,
                 )
             val heroSlides = buildHeroSlidesFromConfig(cachedConfig, cachedCatalogByKey, filter)
             _state.update {
@@ -257,8 +258,8 @@ class HomeViewModel
                     catalogMutex.withLock {
                         // Merge, so platforms not reloaded yet keep their rows instead of disappearing
                         cachedCatalogByKey = cachedCatalogByKey + immediateCatalogs
-                        publishRowsLocked(remoteConfig)
-                        _state.update { it.copy(heroSlides = buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey)) }
+                        // Rows and hero in one update, so the first focus lands on the hero, not on a row
+                        publishRowsLocked(remoteConfig, buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey))
                     }
 
                     // Each platform row is shown as soon as it's loaded instead of waiting for the slowest
@@ -295,15 +296,41 @@ class HomeViewModel
         /**
          * Rebuilds the visible rows from the cached data. Must hold [catalogMutex].
          */
-        private fun publishRowsLocked(config: RemoteWholphinConfig) {
+        private fun publishRowsLocked(
+            config: RemoteWholphinConfig,
+            heroSlides: List<HeroSlide>? = null,
+        ) {
             val rows =
                 buildVisibleHomeRows(
                     continueRow = cachedContinueWatching,
                     catalogByKey = cachedCatalogByKey,
                     config = config,
                     filter = _state.value.selectedFilter,
+                    platformKey = _state.value.platformFilter,
                 )
-            _state.update { it.copy(loadingState = LoadingState.Success, homeRows = rows) }
+            _state.update {
+                it.copy(
+                    loadingState = LoadingState.Success,
+                    homeRows = rows,
+                    heroSlides = heroSlides ?: it.heroSlides,
+                )
+            }
+        }
+
+        /**
+         * Show only the rows of one platform (focused platform tile), or all of them with null
+         */
+        fun setPlatformFilter(platformKey: String?) {
+            if (_state.value.platformFilter == platformKey) return
+            val rows =
+                buildVisibleHomeRows(
+                    continueRow = cachedContinueWatching,
+                    catalogByKey = cachedCatalogByKey,
+                    config = cachedConfig,
+                    filter = _state.value.selectedFilter,
+                    platformKey = platformKey,
+                )
+            _state.update { it.copy(platformFilter = platformKey, homeRows = rows) }
         }
 
         private suspend fun refreshContinueWatching(
@@ -424,6 +451,7 @@ class HomeViewModel
             catalogByKey: Map<String, CachedPlatformCatalog>,
             config: RemoteWholphinConfig,
             filter: HomeMediaFilter,
+            platformKey: String? = null,
         ): List<HomeRowLoadingState> {
             val rows = mutableListOf<HomeRowLoadingState>()
             if (continueRow != null && continueRow.items.isNotEmpty()) {
@@ -440,6 +468,40 @@ class HomeViewModel
                     useSeries = false,
                 )
             val maxItems = config.home.maxItemsPerRow.coerceAtLeast(1)
+            val platform = platformKey?.let { key -> config.home.platforms.firstOrNull { it.key == key } }
+            if (platform != null) {
+                // One platform: separate Movies and Series rows
+                val catalog = catalogByKey[platform.key]
+                val movieLabel = context.getString(R.string.home_filter_movies)
+                val seriesLabel = context.getString(R.string.home_filter_series)
+                listOf(
+                    Triple(movieLabel, catalog?.movies.orEmpty(), platform.movieCollectionId),
+                    Triple(seriesLabel, catalog?.series.orEmpty(), platform.seriesCollectionId),
+                ).forEachIndexed { index, (label, items, collectionId) ->
+                    val wanted =
+                        when (filter) {
+                            HomeMediaFilter.ALL -> true
+                            HomeMediaFilter.MOVIE -> index == 0
+                            HomeMediaFilter.SERIES -> index == 1
+                        }
+                    if (wanted && items.isNotEmpty()) {
+                        val rowConfig =
+                            collectionId?.toUUIDOrNull()?.let { uuid ->
+                                HomeRowConfig.ByParent(parentId = uuid, recursive = false, viewOptions = posterOptions)
+                            }
+                        rows.add(
+                            HomeRowLoadingState.Success(
+                                title = StringStringProvider("$label · ${platform.name}"),
+                                items = items.take(maxItems),
+                                viewOptions = posterOptions,
+                                rowType = rowConfig,
+                                showViewMore = rowConfig != null && items.size >= maxItems,
+                            ),
+                        )
+                    }
+                }
+                return rows
+            }
             val specs = buildStremioHomeRowSpecs(config.home.platforms, filter)
             for (spec in specs) {
                 val items = selectPlatformRowItems(catalogByKey[spec.key], filter, maxItems)
@@ -689,6 +751,7 @@ data class HomeState(
     val heroConfig: RemoteHeroConfig,
     val platforms: List<PlatformTile>,
     val selectedFilter: HomeMediaFilter,
+    val platformFilter: String? = null,
 ) {
     companion object {
         val EMPTY =

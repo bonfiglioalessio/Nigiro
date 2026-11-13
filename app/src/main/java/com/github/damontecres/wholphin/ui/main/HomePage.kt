@@ -291,6 +291,8 @@ fun HomePage(
                 onHeroToggleFavorite = { item, favorite ->
                     viewModel.setFavorite(item.id, favorite)
                 },
+                platformFilter = state.platformFilter,
+                onFocusPlatform = viewModel::setPlatformFilter,
                 onHeroPlay = { item ->
                     // Come back to the hero instead of the last focused row
                     position = RowColumn(-1, -1)
@@ -387,6 +389,8 @@ fun StremioHomeContent(
     onHeroWatchNow: (BaseItem) -> Unit,
     onHeroToggleFavorite: (BaseItem, Boolean) -> Unit,
     onHeroPlay: (BaseItem) -> Unit,
+    platformFilter: String? = null,
+    onFocusPlatform: (String?) -> Unit = {},
     onClickPlatform: (PlatformTile) -> Unit,
     onFocusPosition: (RowColumn) -> Unit,
     onClickItem: (RowColumn, BaseItem) -> Unit,
@@ -573,20 +577,6 @@ fun StremioHomeContent(
                     }
                 }
 
-                if (platforms.isNotEmpty()) {
-                    item(key = "stremio_platforms_row", contentType = "platforms") {
-                        CompositionLocalProvider(
-                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
-                        ) {
-                            PlatformsRow(
-                                platforms = platforms,
-                                activeFilter = selectedFilter,
-                                onClickPlatform = onClickPlatform,
-                            )
-                        }
-                    }
-                }
-
                 if (continueRowIndex == 0) {
                     val continueRow = homeRows[0]
                     item(key = "stremio_continue_watching", contentType = "continue_watching") {
@@ -612,6 +602,22 @@ fun StremioHomeContent(
                                             focusedRowIndex = -1
                                         }
                                     },
+                            )
+                        }
+                    }
+                }
+
+                if (platforms.isNotEmpty()) {
+                    item(key = "stremio_platforms_row", contentType = "platforms") {
+                        CompositionLocalProvider(
+                            LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                        ) {
+                            PlatformsRow(
+                                platforms = platforms,
+                                activeFilter = selectedFilter,
+                                activePlatform = platformFilter,
+                                onClickPlatform = onClickPlatform,
+                                onFocusPlatform = onFocusPlatform,
                             )
                         }
                     }
@@ -728,9 +734,22 @@ private fun HomeMediaFilterBar(
 private fun PlatformsRow(
     platforms: List<PlatformTile>,
     activeFilter: HomeMediaFilter,
+    activePlatform: String?,
     onClickPlatform: (PlatformTile) -> Unit,
+    onFocusPlatform: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Resting on a tile filters the rows below to that platform; the short delay avoids reloading rows
+    // while moving across tiles
+    var focusedKey by remember { mutableStateOf<String?>(activePlatform) }
+    var hasFocus by remember { mutableStateOf(false) }
+    val currentOnFocusPlatform by rememberUpdatedState(onFocusPlatform)
+    LaunchedEffect(focusedKey, hasFocus) {
+        if (hasFocus) {
+            delay(250)
+            currentOnFocusPlatform(focusedKey)
+        }
+    }
     Column(
         // The row's vertical content padding (room for the focus scale) completes the title gap
         verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap),
@@ -748,13 +767,22 @@ private fun PlatformsRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .onFocusChanged { hasFocus = it.hasFocus }
                     .focusGroup(),
         ) {
+            item(key = "all_platforms") {
+                AllPlatformsTile(
+                    active = activePlatform == null,
+                    modifier = Modifier.onFocusChanged { if (it.isFocused) focusedKey = null },
+                )
+            }
             items(platforms, key = { it.key }) { tile ->
                 PlatformTileCard(
                     tile = tile,
                     activeFilter = activeFilter,
+                    active = activePlatform == tile.key,
                     onClick = { onClickPlatform(tile) },
+                    modifier = Modifier.onFocusChanged { if (it.isFocused) focusedKey = tile.key },
                 )
             }
         }
@@ -767,6 +795,7 @@ private fun PlatformTileCard(
     activeFilter: HomeMediaFilter,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    active: Boolean = false,
 ) {
     // Neutral tile in the theme's gray (the cover image, when present, carries the platform's look)
     val accent = NigiroPalette.SurfaceRaised
@@ -785,7 +814,12 @@ private fun PlatformTileCard(
         colors = CardDefaults.colors(containerColor = accent),
         border =
             CardDefaults.border(
-                border = Border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), shape = shape),
+                // Pink outline on the platform the rows below are filtered to
+                border =
+                    Border(
+                        BorderStroke(if (active) 2.dp else 1.dp, if (active) NigiroPalette.Pink else Color.White.copy(alpha = 0.10f)),
+                        shape = shape,
+                    ),
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
             ),
         scale = CardDefaults.scale(focusedScale = 1.05f),
@@ -1404,4 +1438,40 @@ private fun FocusedHeaderSlot(itemProvider: () -> BaseItem?) {
         modifier = Modifier.bleedHorizontally(NigiroDimens.HeroBleedStart, 16.dp),
         contentStart = NigiroDimens.ContentStart + NigiroDimens.HeroBleedStart,
     )
+}
+
+/**
+ * First platform tile: shows the rows of every platform again
+ */
+@Composable
+private fun AllPlatformsTile(
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    Card(
+        onClick = {},
+        shape = CardDefaults.shape(shape),
+        colors = CardDefaults.colors(containerColor = NigiroPalette.SurfaceRaised),
+        border =
+            CardDefaults.border(
+                border =
+                    Border(
+                        BorderStroke(if (active) 2.dp else 1.dp, if (active) NigiroPalette.Pink else Color.White.copy(alpha = 0.10f)),
+                        shape = shape,
+                    ),
+                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
+            ),
+        scale = CardDefaults.scale(focusedScale = 1.05f),
+        modifier = modifier.size(width = NigiroDimens.PlatformTileWidth, height = NigiroDimens.PlatformTileHeight),
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Text(
+                text = stringResource(R.string.home_platforms_all),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+        }
+    }
 }

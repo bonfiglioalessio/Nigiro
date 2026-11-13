@@ -812,4 +812,5 @@
     <string name="favorites_and_on_disk">Preferiti e su disco</string>
     <string name="keyboard_space">Spazio</string>
     <string name="keyboard_clear">Svuota</string>
+    <string name="home_platforms_all">Tutte</string>
 </resources>

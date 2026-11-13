@@ -21,8 +21,8 @@ object NigiroDimens {
     val CardGap = 14.dp
     val PosterHeight = 180.dp
     val WideCardHeight = 124.dp
-    val PlatformTileWidth = 150.dp
-    val PlatformTileHeight = 84.dp
+    val PlatformTileWidth = 120.dp
+    val PlatformTileHeight = 68.dp
     val ButtonHeight = 46.dp
 
     // Inset the hero is stretched by to reach the sidebar and the right edge of the screen
