@@ -109,6 +109,7 @@ import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.DateTime
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 import kotlin.time.Duration
@@ -155,7 +156,7 @@ fun HomePage(
             val openCollectionById =
                 remember {
                     { collectionId: String ->
-                        runCatching { UUID.fromString(collectionId) }.getOrNull()?.let { uuid ->
+                        collectionId.toUUIDOrNull()?.let { uuid ->
                             viewModel.navigationManager.navigateTo(
                                 Destination.MediaItem(
                                     itemId = uuid,

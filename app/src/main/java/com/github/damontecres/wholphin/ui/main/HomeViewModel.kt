@@ -61,6 +61,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.UserItemDataDto
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -333,9 +334,7 @@ class HomeViewModel
             val uuid =
                 collectionId
                     ?.takeIf { it.isNotBlank() }
-                    ?.let {
-                        runCatching { UUID.fromString(it) }.getOrNull()
-                    } ?: return emptyList()
+                    ?.toUUIDOrNull() ?: return emptyList()
             return try {
                 val request =
                     GetItemsRequest(
@@ -395,14 +394,12 @@ class HomeViewModel
                                 }
                         }
                     val rowConfig =
-                        targetCollectionId?.let { idStr ->
-                            runCatching { UUID.fromString(idStr) }.getOrNull()?.let { uuid ->
-                                HomeRowConfig.ByParent(
-                                    parentId = uuid,
-                                    recursive = false,
-                                    viewOptions = posterOptions,
-                                )
-                            }
+                        targetCollectionId?.toUUIDOrNull()?.let { uuid ->
+                            HomeRowConfig.ByParent(
+                                parentId = uuid,
+                                recursive = false,
+                                viewOptions = posterOptions,
+                            )
                         }
                     rows.add(
                         HomeRowLoadingState.Success(
