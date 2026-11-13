@@ -202,7 +202,7 @@ fun HomeHeroBanner(
                     alignment = Alignment.BottomStart,
                     onError = { logoFailed = true },
                     // Kept short so badge, logo, details, overview and buttons fit the hero's height
-                    modifier = Modifier.size(width = 320.dp, height = 70.dp),
+                    modifier = Modifier.size(width = 360.dp, height = 84.dp),
                 )
             } else {
                 Text(

@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 object NigiroDimens {
     val ContentStart = 36.dp
     val ContentEnd = 32.dp
-    val HeroHeight = 300.dp
+    val HeroHeight = 340.dp
     val HeroBottomPadding = 24.dp
     val SectionGap = 20.dp
     val TitleGap = 10.dp
