@@ -120,7 +120,7 @@ private fun DrawerSheet(
             Modifier
         }
     val flatContainerColor = MaterialTheme.colorScheme.surface
-    val hairlineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+    val hairlineColor = MaterialTheme.colorScheme.border.copy(alpha = 0.28f)
     val internalModifier =
         Modifier
             .focusRequester(focusRequester)
