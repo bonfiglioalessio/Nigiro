@@ -354,7 +354,7 @@ class PlaybackViewModel
                     }
                 }
             this.itemId = itemId
-            val queriedItem = preferLocalCopy(api.userLibraryApi.getItem(itemId).content)
+            val queriedItem = api.userLibraryApi.getItem(itemId).content
             val playlistItem =
                 if (queriedItem.type.playable) {
                     PlaylistItem.Media(BaseItem(queriedItem, false))
@@ -456,8 +456,18 @@ class PlaybackViewModel
          * A streamed (Gelato) movie that was also downloaded to the server plays from the local file,
          * unless the user explicitly chose one of the streamed versions
          */
+        private suspend fun preferLocalCopy(playlistItem: PlaylistItem): PlaylistItem {
+            if (playlistItem !is PlaylistItem.Media) return playlistItem
+            val dto = preferLocalCopy(playlistItem.item.data)
+            return if (dto.id != playlistItem.item.id) {
+                PlaylistItem.Media(BaseItem(dto, playlistItem.item.useSeriesForPrimary))
+            } else {
+                playlistItem
+            }
+        }
+
         private suspend fun preferLocalCopy(item: BaseItemDto): BaseItemDto {
-            if (destination !is Destination.Playback || !localTwinService.isStreamOnly(item)) return item
+            if (!localTwinService.isStreamOnly(item)) return item
             return try {
                 val chosenSourceId =
                     serverRepository.currentUser
@@ -501,10 +511,13 @@ class PlaybackViewModel
             forceTranscoding: Boolean = this.forceTranscoding,
         ): Boolean =
             withContext(WholphinDispatchers.IO) {
+                // A streamed (Gelato) movie/episode that was also downloaded plays from the local file, while the
+                // playlist stays the streamed one so next up keeps working for episodes not downloaded yet
+                val toPlay = preferLocalCopy(playlistItem)
                 val item =
-                    when (playlistItem) {
-                        is PlaylistItem.Intro -> playlistItem.item
-                        is PlaylistItem.Media -> playlistItem.item
+                    when (toPlay) {
+                        is PlaylistItem.Intro -> toPlay.item
+                        is PlaylistItem.Media -> toPlay.item
                     }
 
                 Timber.i("Playing ${item.id}")
@@ -529,7 +542,7 @@ class PlaybackViewModel
                     )
                     return@withContext false
                 }
-                this@PlaybackViewModel.currentItem = playlistItem
+                this@PlaybackViewModel.currentItem = toPlay
                 this@PlaybackViewModel.itemId = item.id
 
                 val isLiveTv = item.type == BaseItemKind.TV_CHANNEL

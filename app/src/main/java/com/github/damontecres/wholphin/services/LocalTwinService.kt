@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.services
 
 import com.github.damontecres.wholphin.data.ServerRepository
+import com.github.damontecres.wholphin.util.GetEpisodesRequestHandler
 import kotlinx.coroutines.CancellationException
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
@@ -10,6 +11,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.LocationType
 import org.jellyfin.sdk.model.api.MediaProtocol
+import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import timber.log.Timber
 import java.util.UUID
@@ -18,11 +20,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Finds the local copy of a streamed (Gelato) movie.
+ * Finds the local copy of a streamed (Gelato) movie or episode.
  *
- * A movie favorited in Gelato is requested via Seerr and downloaded by Radarr to the HDD, but Jellyfin indexes the
- * file as a separate item in another library, so the Gelato item never shows it as a version. This matches them by
- * TMDB/IMDb id, like Jellyfin does for metadata, so the local file can be played instead of a debrid stream.
+ * Something favorited in Gelato is requested via Seerr and downloaded by Radarr/Sonarr to the HDD, but Jellyfin
+ * indexes the files as separate items in other libraries, so the Gelato item never shows them as versions. This
+ * matches them by TMDB/TVDB/IMDb id (and season/episode number for episodes), so the local file can be played
+ * instead of a debrid stream.
  */
 @Singleton
 class LocalTwinService
@@ -34,31 +37,47 @@ class LocalTwinService
         private data class CacheEntry(
             val twinId: UUID?,
             val timeMs: Long,
-        )
+        ) {
+            val isFresh: Boolean get() = System.currentTimeMillis() - timeMs < CACHE_MS
+        }
 
-        private val cache = ConcurrentHashMap<UUID, CacheEntry>()
+        // Streamed item id -> local item id
+        private val itemCache = ConcurrentHashMap<UUID, CacheEntry>()
+
+        // Streamed series id -> local series id
+        private val seriesCache = ConcurrentHashMap<UUID, CacheEntry>()
 
         /**
-         * Whether the item only has streamed sources (eg a Gelato stub)
+         * Whether the item is a movie or episode with only streamed sources (eg a Gelato stub)
          */
         fun isStreamOnly(item: BaseItemDto): Boolean {
-            if (item.type != BaseItemKind.MOVIE) return false
+            if (item.type != BaseItemKind.MOVIE && item.type != BaseItemKind.EPISODE) return false
             if (item.path?.startsWith(GELATO_PREFIX) == true) return true
             val sources = item.mediaSources.orEmpty()
             return sources.isNotEmpty() && sources.all { it.isRemote || it.protocol == MediaProtocol.HTTP }
         }
 
         /**
-         * Returns the full local item for a stream-only movie, or null if there is none
+         * Returns the full local item for a stream-only movie or episode, or null if there is none
          */
         suspend fun findLocalTwin(item: BaseItemDto): BaseItemDto? {
             if (!isStreamOnly(item)) return null
-            val cached = cache[item.id]
             val twinId =
-                if (cached != null && System.currentTimeMillis() - cached.timeMs < CACHE_MS) {
-                    cached.twinId
-                } else {
-                    searchTwinId(item).also { cache[item.id] = CacheEntry(it, System.currentTimeMillis()) }
+                try {
+                    // A cached "no local copy" counts too, so it isn't searched again on every play
+                    val cached = itemCache[item.id]?.takeIf { it.isFresh }
+                    if (cached != null) {
+                        cached.twinId
+                    } else {
+                        val found = if (item.type == BaseItemKind.EPISODE) searchEpisodeTwin(item) else searchMovieTwin(item)
+                        itemCache[item.id] = CacheEntry(found, System.currentTimeMillis())
+                        found
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.w(ex, "Local copy search failed for %s", item.id)
+                    null
                 }
             return twinId?.let {
                 try {
@@ -72,53 +91,94 @@ class LocalTwinService
             }
         }
 
-        private suspend fun searchTwinId(item: BaseItemDto): UUID? {
-            val ids = item.providerIds.orEmpty().mapKeys { it.key.lowercase() }
-            val tmdb = ids["tmdb"]?.takeIf { it.isNotBlank() }
-            val imdb = ids["imdb"]?.takeIf { it.isNotBlank() }
-            if (tmdb == null && imdb == null) return null
+        private suspend fun searchMovieTwin(item: BaseItemDto): UUID? =
+            searchByIds(item, BaseItemKind.MOVIE)?.also {
+                Timber.i("Found local copy %s for streamed movie %s (%s)", it, item.id, item.name)
+            }
+
+        private suspend fun searchEpisodeTwin(episode: BaseItemDto): UUID? {
+            val seriesId = episode.seriesId ?: return null
+            val season = episode.parentIndexNumber ?: return null
+            val number = episode.indexNumber ?: return null
+            val cachedSeries = seriesCache[seriesId]?.takeIf { it.isFresh }
+            val localSeriesId =
+                if (cachedSeries != null) {
+                    cachedSeries.twinId
+                } else {
+                    val series = api.userLibraryApi.getItem(seriesId).content
+                    searchByIds(series, BaseItemKind.SERIES)
+                        .also { seriesCache[seriesId] = CacheEntry(it, System.currentTimeMillis()) }
+                } ?: return null
+            val userId = serverRepository.currentUser?.id ?: return null
+            val episodes =
+                GetEpisodesRequestHandler
+                    .execute(
+                        api,
+                        GetEpisodesRequest(
+                            seriesId = localSeriesId,
+                            userId = userId,
+                            season = season,
+                            isMissing = false,
+                            fields = listOf(ItemFields.PATH),
+                            enableImages = false,
+                            enableUserData = false,
+                        ),
+                    ).content.items
+            return episodes
+                .firstOrNull { candidate ->
+                    candidate.parentIndexNumber == season &&
+                        (
+                            candidate.indexNumber == number ||
+                                (candidate.indexNumber != null && candidate.indexNumberEnd != null &&
+                                    number in candidate.indexNumber!!..candidate.indexNumberEnd!!)
+                        ) &&
+                        candidate.isLocalFile()
+                }?.id
+                ?.also { Timber.i("Found local copy %s for streamed episode %s S%sE%s", it, episode.id, season, number) }
+        }
+
+        /**
+         * Searches by title for a local item of [type] with the same provider ids as [item]
+         */
+        private suspend fun searchByIds(
+            item: BaseItemDto,
+            type: BaseItemKind,
+        ): UUID? {
+            val ids = item.providerIds.normalized()
+            if (ids.isEmpty()) return null
             val userId = serverRepository.currentUser?.id ?: return null
             val names = listOfNotNull(item.name, item.originalTitle).filter { it.isNotBlank() }.distinct()
             for (name in names) {
                 val candidates =
-                    try {
-                        api.itemsApi
-                            .getItems(
-                                GetItemsRequest(
-                                    userId = userId,
-                                    searchTerm = name,
-                                    includeItemTypes = listOf(BaseItemKind.MOVIE),
-                                    recursive = true,
-                                    fields = listOf(ItemFields.PROVIDER_IDS, ItemFields.PATH),
-                                    enableImages = false,
-                                    enableUserData = false,
-                                    enableTotalRecordCount = false,
-                                    limit = 25,
-                                ),
-                            ).content.items
-                    } catch (ex: CancellationException) {
-                        throw ex
-                    } catch (ex: Exception) {
-                        Timber.w(ex, "Local copy search failed for %s", item.id)
-                        return null
-                    }
-                val twin =
-                    candidates.firstOrNull { candidate ->
-                        val candidateIds = candidate.providerIds.orEmpty().mapKeys { it.key.lowercase() }
+                    api.itemsApi
+                        .getItems(
+                            GetItemsRequest(
+                                userId = userId,
+                                searchTerm = name,
+                                includeItemTypes = listOf(type),
+                                recursive = true,
+                                fields = listOf(ItemFields.PROVIDER_IDS, ItemFields.PATH),
+                                enableImages = false,
+                                enableUserData = false,
+                                enableTotalRecordCount = false,
+                                limit = 25,
+                            ),
+                        ).content.items
+                candidates
+                    .firstOrNull { candidate ->
+                        val candidateIds = candidate.providerIds.normalized()
                         candidate.id != item.id &&
                             candidate.isLocalFile() &&
-                            (
-                                (tmdb != null && candidateIds["tmdb"] == tmdb) ||
-                                    (imdb != null && candidateIds["imdb"].equals(imdb, ignoreCase = true))
-                            )
-                    }
-                if (twin != null) {
-                    Timber.i("Found local copy %s for streamed item %s (%s)", twin.id, item.id, item.name)
-                    return twin.id
-                }
+                            MATCHING_PROVIDERS.any { key -> ids[key] != null && ids[key] == candidateIds[key] }
+                    }?.let { return it.id }
             }
             return null
         }
+
+        private fun Map<String, String?>?.normalized(): Map<String, String> =
+            orEmpty()
+                .mapNotNull { (key, value) -> value?.takeIf { it.isNotBlank() }?.let { key.lowercase() to it.lowercase() } }
+                .toMap()
 
         private fun BaseItemDto.isLocalFile(): Boolean {
             val path = path ?: return false
@@ -132,5 +192,6 @@ class LocalTwinService
         companion object {
             private const val GELATO_PREFIX = "gelato://"
             private const val CACHE_MS = 10 * 60 * 1000L
+            private val MATCHING_PROVIDERS = listOf("tmdb", "tvdb", "imdb")
         }
     }

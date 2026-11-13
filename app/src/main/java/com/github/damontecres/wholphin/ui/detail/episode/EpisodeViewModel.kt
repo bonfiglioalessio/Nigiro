@@ -10,6 +10,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.services.BackdropService
 import com.github.damontecres.wholphin.services.FavoriteWatchManager
+import com.github.damontecres.wholphin.services.LocalTwinService
 import com.github.damontecres.wholphin.services.MediaManagementService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.ServerReportService
@@ -38,7 +39,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.MediaStreamType
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 
@@ -58,6 +61,7 @@ class EpisodeViewModel
         private val userPreferencesService: UserPreferencesService,
         private val backdropService: BackdropService,
         private val mediaManagementService: MediaManagementService,
+        private val localTwinService: LocalTwinService,
         @Assisted val itemId: UUID,
     ) : ViewModel() {
         @AssistedFactory
@@ -115,6 +119,20 @@ class EpisodeViewModel
                         )
                     }
                     backdropService.submit(item)
+                    // A streamed (Gelato) episode downloaded via Seerr is a separate item: offer & play its local file
+                    localTwinService.findLocalTwin(item.data)?.let { BaseItem(it) }?.let { localCopy ->
+                        val explicitStream =
+                            chosenStreams?.itemPlayback?.sourceId?.let { sourceId ->
+                                item.data.mediaSources.orEmpty().any { it.id?.toUUIDOrNull() == sourceId }
+                            } == true
+                        val chosen =
+                            if (explicitStream) {
+                                chosenStreams
+                            } else {
+                                itemPlaybackRepository.getSelectedTracks(localCopy.id, localCopy, prefs)
+                            }
+                        _state.update { it.copy(localCopy = localCopy, chosenStreams = chosen) }
+                    }
                 } catch (ex: CancellationException) {
                     throw ex
                 } catch (ex: Exception) {
@@ -137,6 +155,31 @@ class EpisodeViewModel
         ) = viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
             favoriteWatchManager.setFavorite(itemId, favorite)
             fetchAndSetItem()
+        }
+
+        /**
+         * The user chose a version: either the local copy or one of the item's own (streamed) sources
+         */
+        fun chooseVersion(
+            item: BaseItem,
+            source: MediaSourceInfo,
+        ) {
+            val localCopy = state.value.localCopy
+            if (localCopy != null && localCopy.data.mediaSources.orEmpty().any { it.id == source.id }) {
+                viewModelScope.launchIO {
+                    val prefs = userPreferencesService.getCurrent()
+                    // Forget the streamed version chosen for this item, so playback uses the local file again
+                    itemPlaybackRepository
+                        .getSelectedTracks(item.id, item, prefs)
+                        ?.takeIf { it.itemPlayback?.sourceId != null }
+                        ?.let { itemPlaybackRepository.deleteChosenStreams(it) }
+                    val chosen = itemPlaybackRepository.getSelectedTracks(localCopy.id, localCopy, prefs)
+                    _state.update { it.copy(chosenStreams = chosen) }
+                }
+            } else {
+                source.id?.toUUIDOrNull()?.let { savePlayVersion(item, it) }
+                    ?: Timber.w("Cannot save version with non-UUID id %s", source.id)
+            }
         }
 
         fun savePlayVersion(
@@ -216,4 +259,8 @@ class EpisodeViewModel
 data class EpisodeState(
     val episode: DataLoadingState<BaseItem> = DataLoadingState.Pending,
     val chosenStreams: ChosenStreams? = null,
+    /**
+     * The downloaded copy of a streamed (Gelato) episode, if any
+     */
+    val localCopy: BaseItem? = null,
 )

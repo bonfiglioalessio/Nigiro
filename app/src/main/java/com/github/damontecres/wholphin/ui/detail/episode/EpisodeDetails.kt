@@ -50,7 +50,6 @@ import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.extensions.ticks
-import org.jellyfin.sdk.model.serializer.toUUID
 import java.util.UUID
 import kotlin.time.Duration
 
@@ -93,12 +92,7 @@ fun EpisodeDetails(
                 onSendMediaInfo = viewModel.serverReportService::sendMediaReportFor,
                 onDeleteItem = viewModel::deleteItem,
                 onShowOverview = { overviewDialog = ItemDetailsDialogInfo(it) },
-                onChooseVersion = { item, source ->
-                    viewModel.savePlayVersion(
-                        item,
-                        source.id!!.toUUID(),
-                    )
-                },
+                onChooseVersion = viewModel::chooseVersion,
                 onChooseTracks = { result ->
                     viewModel.saveTrackSelection(
                         result.item,
@@ -136,6 +130,7 @@ fun EpisodeDetails(
                 preferences = preferences,
                 ep = ep,
                 chosenStreams = state.chosenStreams,
+                localCopy = state.localCopy,
                 playOnClick = {
                     viewModel.navigateTo(
                         Destination.Playback(
@@ -229,6 +224,7 @@ fun EpisodeDetailsContent(
     onConfirmDelete: () -> Unit,
     onChooseVersion: (MediaSourceInfo) -> Unit,
     modifier: Modifier = Modifier,
+    localCopy: BaseItem? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -289,10 +285,15 @@ fun EpisodeDetailsContent(
                         canDelete = canDelete,
                         onConfirmDelete = onConfirmDelete,
                         chooseVersionParams =
-                            remember(chosenStreams, ep, onChooseVersion) {
+                            remember(chosenStreams, ep, localCopy, onChooseVersion) {
                                 ChooseVersionParams(
                                     chosenStreams = chosenStreams,
-                                    mediaSources = ep.data.mediaSources.orEmpty(),
+                                    // The downloaded copy (if any) first, then the streamed versions
+                                    mediaSources =
+                                        localCopy
+                                            ?.data
+                                            ?.mediaSources
+                                            .orEmpty() + ep.data.mediaSources.orEmpty(),
                                     onChooseVersion = onChooseVersion,
                                 )
                             },

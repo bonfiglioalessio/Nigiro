@@ -88,7 +88,7 @@ import com.github.damontecres.wholphin.util.DiscoverRequestType
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.serializer.toUUID
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import java.util.UUID
 import kotlin.time.Duration
 
@@ -138,10 +138,8 @@ fun SeriesDetails(
                 onSendMediaInfo = viewModel.serverReportService::sendMediaReportFor,
                 onDeleteItem = viewModel::deleteItem,
                 onChooseVersion = { item, source ->
-                    viewModel.savePlayVersion(
-                        item,
-                        source.id!!.toUUID(),
-                    )
+                    // Gelato source ids may not be UUIDs
+                    source.id?.toUUIDOrNull()?.let { viewModel.savePlayVersion(item, it) }
                 },
                 onChooseTracks = { result ->
                     viewModel.saveTrackSelection(
