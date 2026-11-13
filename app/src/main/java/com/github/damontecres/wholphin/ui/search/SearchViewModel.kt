@@ -152,7 +152,8 @@ class SearchViewModel
             }
         }
 
-        private fun rememberSearch(query: String) {
+        fun rememberSearch(query: String) {
+            if (query.isBlank()) return
             viewModelScope.launchIO {
                 val userId = serverRepository.currentUser?.id ?: return@launchIO
                 val updated =
@@ -242,6 +243,7 @@ class SearchViewModel
             query: String?,
             combined: Boolean = false,
             force: Boolean = false,
+            saveAsRecent: Boolean = true,
         ) {
             if (currentQuery == query && combinedMode == combined && !force) {
                 return
@@ -262,7 +264,7 @@ class SearchViewModel
                         combinedResults = SearchResult.Searching,
                     )
                 }
-                rememberSearch(query)
+                if (saveAsRecent) rememberSearch(query)
                 if (combined) {
                     searchJobs.add(searchCombined(query))
                 } else {

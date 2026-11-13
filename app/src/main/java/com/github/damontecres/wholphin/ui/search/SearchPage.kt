@@ -102,6 +102,7 @@ import com.github.damontecres.wholphin.ui.titleStringRes
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.util.WholphinDispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
@@ -218,6 +219,23 @@ fun SearchPage(
         viewModel.search(trimmed, combinedMode, force = force)
     }
 
+    // Search while typing, shortly after the last key; the Search key still jumps straight to the results
+    LaunchedEffect(query) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
+            if (submittedQuery != null) {
+                submittedQuery = null
+                viewModel.search(null, combinedMode, force = true)
+            }
+            return@LaunchedEffect
+        }
+        if (trimmed.length < 2 || trimmed == submittedQuery) return@LaunchedEffect
+        delay(500)
+        submittedQuery = trimmed
+        // Not saved as a recent search: it may be a partial word
+        viewModel.search(trimmed, combinedMode, force = false, saveAsRecent = false)
+    }
+
     LaunchedEffect(initialQuery) {
         if (initialQuery.isNotBlank() && submittedQuery == null) {
             triggerImmediateSearch(initialQuery, force = false)
@@ -234,6 +252,8 @@ fun SearchPage(
     }
     val onClickItem = { _: Int, item: BaseItem ->
         Timber.v("Clicked %s, type=%s", item.id, item.type)
+        // Opening a result is when a typed search becomes a recent one
+        submittedQuery?.let(viewModel::rememberSearch)
         if (item.type == BaseItemKind.TV_PROGRAM || item.type == BaseItemKind.PROGRAM || item.type == BaseItemKind.LIVE_TV_PROGRAM) {
             viewModel.fetchProgramForDialog(item.id)
             showProgramDialog = true
