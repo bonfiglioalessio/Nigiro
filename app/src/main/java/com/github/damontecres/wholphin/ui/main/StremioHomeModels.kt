@@ -31,6 +31,7 @@ data class PlatformTile(
     val movieCollectionId: String?,
     val seriesCollectionId: String?,
     val isHome: Boolean,
+    val coverUrl: String? = null,
 )
 
 data class StremioRowSpec(

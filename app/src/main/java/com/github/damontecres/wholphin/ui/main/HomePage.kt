@@ -44,6 +44,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -62,6 +63,7 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
+import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
@@ -711,6 +713,8 @@ private fun PlatformTileCard(
             HomeMediaFilter.ALL -> "${stringResource(R.string.home_filter_movies)} · ${stringResource(R.string.home_filter_series)}"
         }
     val shape = RoundedCornerShape(10.dp)
+    var imageFailed by remember(tile.coverUrl) { mutableStateOf(false) }
+    val showCoverImage = !tile.coverUrl.isNullOrBlank() && !imageFailed
     Card(
         onClick = onClick,
         shape = CardDefaults.shape(shape),
@@ -723,31 +727,41 @@ private fun PlatformTileCard(
                         shape = shape,
                     ),
             ),
-        modifier = modifier.size(width = 170.dp, height = 68.dp),
+        modifier = modifier.size(width = 160.dp, height = 90.dp),
     ) {
-        Column(
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.Start,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-        ) {
-            Text(
-                text = tile.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        if (showCoverImage) {
+            AsyncImage(
+                model = tile.coverUrl,
+                contentDescription = tile.name,
+                contentScale = ContentScale.Crop,
+                onError = { imageFailed = true },
+                modifier = Modifier.fillMaxSize(),
             )
-            Text(
-                text = subLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.8f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        } else {
+            Column(
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = tile.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

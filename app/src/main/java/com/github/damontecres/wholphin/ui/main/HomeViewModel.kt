@@ -183,12 +183,27 @@ class HomeViewModel
                             remoteConfig.home.platforms
                                 .filter { platform -> !platform.isHome }
                                 .map { platform ->
+                                    val coverUuid =
+                                        listOfNotNull(
+                                            platform.movieCollectionId,
+                                            platform.seriesCollectionId,
+                                        ).firstNotNullOfOrNull { it.toUUIDOrNull() }
+                                    val coverUrl =
+                                        coverUuid?.let { id ->
+                                            imageUrlService.getItemImageUrl(
+                                                itemId = id,
+                                                imageType = ImageType.THUMB,
+                                                fillWidth = 480,
+                                                fillHeight = 270,
+                                            )
+                                        }
                                     PlatformTile(
                                         key = platform.key,
                                         name = platform.name,
                                         movieCollectionId = platform.movieCollectionId,
                                         seriesCollectionId = platform.seriesCollectionId,
                                         isHome = platform.isHome,
+                                        coverUrl = coverUrl,
                                     )
                                 },
                     )
