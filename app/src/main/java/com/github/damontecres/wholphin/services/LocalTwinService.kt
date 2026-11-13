@@ -3,6 +3,8 @@ package com.github.damontecres.wholphin.services
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.util.GetEpisodesRequestHandler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -47,6 +49,10 @@ class LocalTwinService
         // Streamed series id -> local series id
         private val seriesCache = ConcurrentHashMap<UUID, CacheEntry>()
 
+        // Searches are rare: serializing them lets a concurrent lookup of the same item (eg a details page
+        // initializing twice) wait for the first one and use its cached result instead of searching again
+        private val searchMutex = Mutex()
+
         /**
          * Whether the item is a movie or episode with only streamed sources (eg a Gelato stub)
          */
@@ -64,14 +70,17 @@ class LocalTwinService
             if (!isStreamOnly(item)) return null
             val twinId =
                 try {
-                    // A cached "no local copy" counts too, so it isn't searched again on every play
-                    val cached = itemCache[item.id]?.takeIf { it.isFresh }
-                    if (cached != null) {
-                        cached.twinId
-                    } else {
-                        val found = if (item.type == BaseItemKind.EPISODE) searchEpisodeTwin(item) else searchMovieTwin(item)
-                        itemCache[item.id] = CacheEntry(found, System.currentTimeMillis())
-                        found
+                    searchMutex.withLock {
+                        // A cached "no local copy" counts too, so it isn't searched again on every play
+                        val cached = itemCache[item.id]?.takeIf { it.isFresh }
+                        if (cached != null) {
+                            cached.twinId
+                        } else {
+                            val found =
+                                if (item.type == BaseItemKind.EPISODE) searchEpisodeTwin(item) else searchMovieTwin(item)
+                            itemCache[item.id] = CacheEntry(found, System.currentTimeMillis())
+                            found
+                        }
                     }
                 } catch (ex: CancellationException) {
                     throw ex
