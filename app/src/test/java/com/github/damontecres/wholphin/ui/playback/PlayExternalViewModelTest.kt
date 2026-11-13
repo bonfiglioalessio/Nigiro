@@ -115,7 +115,7 @@ class PlayExternalViewModelTest {
         every { api.playStateApi } returns playStateApi
         every { serverRepository.currentUser } returns null
         coEvery { userLibraryApi.getItem(movie.id) } returns successResponse(movie)
-        coEvery { streamChoiceService.chooseSource(any(), any()) } returns mediaSource
+        coEvery { streamChoiceService.chooseSource(any<BaseItemDto>(), any()) } returns mediaSource
         coEvery { streamChoiceService.chooseSubtitleStream(any(), any(), any(), any(), any(), any()) } returns
             StreamChoiceResult(subtitle, StreamChoiceReason.Unknown)
         coEvery { streamChoiceService.getSeriesTrackChoices(any<BaseItemDto>(), SeriesTrackChoiceType.SUBTITLE) } returns emptyList()
@@ -236,7 +236,7 @@ class PlayExternalViewModelTest {
     @Test
     fun `VLC starts from beginning without subtitles or duration`() =
         runTest(testDispatcher) {
-            coEvery { streamChoiceService.chooseSource(any(), any()) } returns
+            coEvery { streamChoiceService.chooseSource(any<BaseItemDto>(), any()) } returns
                 mediaSource.copy(mediaStreams = emptyList(), runTimeTicks = null)
             coEvery { streamChoiceService.chooseSubtitleStream(any(), any(), any(), any(), any(), any()) } returns null
 

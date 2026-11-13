@@ -999,4 +999,14 @@
     <string name="home_platforms_title">Platforms</string>
     <string name="platform_choose_category_title">Open %1$s</string>
     <string name="platform_choose_category_message">Choose whether to browse Movies or TV Series.</string>
+    <string name="playback_error_generic">Playback error</string>
+    <string name="playback_error_title">Unable to play this item</string>
+    <string name="playback_error_no_media_url">Unable to get a playable URL from the server</string>
+    <string name="playback_error_change_streams">Unable to change the track, try again</string>
+    <string name="playback_no_media_sources">No media sources available, skipping…</string>
+    <string name="playback_source_unavailable_trying_next">Source unavailable, trying the next version…</string>
+    <string name="playback_try_another_version">Try another version</string>
+    <string name="go_back">Back</string>
+    <string name="version_local">Local file</string>
+    <string name="version_not_cached">Not cached</string>
 </resources>

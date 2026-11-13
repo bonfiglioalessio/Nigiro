@@ -79,7 +79,6 @@ import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.BasicDialog
-import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.overlay.DpadSeekOverlay
@@ -127,7 +126,14 @@ fun PlaybackPage(
     val state by viewModel.state.collectAsState()
     when (val st = state.loading) {
         is LoadingState.Error -> {
-            ErrorMessage(st, modifier)
+            PlaybackErrorPage(
+                error = st,
+                sources = remember(st) { viewModel.availableSources() },
+                onRetry = viewModel::retry,
+                onChooseSource = { source -> source.id?.let(viewModel::playSource) },
+                onBack = viewModel.navigationManager::goBack,
+                modifier = modifier,
+            )
         }
 
         LoadingState.Pending,
@@ -757,6 +763,8 @@ fun PlaybackPageContent(
                     // See https://github.com/damontecres/Wholphin/issues/164
                     playbackSpeedEnabled = playerBackend == PlayerBackend.MPV || state.currentPlayback?.audioDecoder != null,
                     maxBitrate = state.maxBitrate,
+                    versions = remember(state.currentPlayback?.item?.id) { viewModel.availableSources() },
+                    currentVersionId = state.currentMediaInfo.sourceId,
                 ),
             onDismissRequest = {
                 playbackDialog =
@@ -764,6 +772,7 @@ fun PlaybackPageContent(
                         // Go back to settings dialog
                         PlaybackDialogType.PLAYBACK_SPEED,
                         PlaybackDialogType.VIDEO_SCALE,
+                        PlaybackDialogType.VERSION,
                         -> PlaybackDialogType.SETTINGS
 
                         else -> null
@@ -784,6 +793,10 @@ fun PlaybackPageContent(
             },
             onPlaybackActionClick = onPlaybackActionClick,
             onChangeSubtitleDelay = { viewModel.updateSubtitleDelay(it) },
+            onChooseVersion = { source ->
+                playbackDialog = null
+                source.id?.let(viewModel::switchVersion)
+            },
             enableSubtitleDelay = player is MpvPlayer,
             enableVideoScale = player !is MpvPlayer,
         )

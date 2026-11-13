@@ -2,6 +2,7 @@
 
 package com.github.damontecres.wholphin.services
 
+import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -41,6 +42,7 @@ import com.github.damontecres.wholphin.util.DolbyVisionProfile7Conversion
 import com.github.damontecres.wholphin.util.DolbyVisionProfile7ExtractorsFactory
 import com.github.damontecres.wholphin.util.DolbyVisionProfile7Filter
 import com.github.damontecres.wholphin.util.EqualBitrateVariantTrackSelectionFactory
+import com.github.damontecres.wholphin.util.FastFailLoadErrorHandlingPolicy
 import com.github.damontecres.wholphin.util.Hdr10PlusMaskingFilter
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import com.google.common.util.concurrent.Futures
@@ -127,8 +129,8 @@ class PlayerFactory
                             DefaultHttpDataSource
                                 .Factory()
                                 .setAllowCrossProtocolRedirects(true)
-                                .setConnectTimeoutMs(15_000)
-                                .setReadTimeoutMs(25_000)
+                                .setConnectTimeoutMs(CONNECT_TIMEOUT_MS)
+                                .setReadTimeoutMs(READ_TIMEOUT_MS)
                         val dataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
                         val extractorsFactory = createExtractorsFactory()
 
@@ -169,7 +171,7 @@ class PlayerFactory
                                     dataSourceFactory,
                                     extractorsFactory.forDolbyVision(),
                                 )
-                            }
+                            }.setLoadErrorHandlingPolicy(FastFailLoadErrorHandlingPolicy())
                         val disableAudioOffload =
                             appPreferences.experimentalPreferences.get { disableAudioOffload } ?: false
                         val tunneling =
@@ -188,7 +190,11 @@ class PlayerFactory
                                     35_000,
                                     1_500,
                                     3_000,
-                                ).setPrioritizeTimeOverSizeThresholds(true)
+                                )
+                                // Cap the buffer in bytes: a high bitrate stream would otherwise buffer
+                                // 15s regardless of size (150+ MB), too much for a TV with ~200 MB free
+                                .setTargetBufferBytes(targetBufferBytes())
+                                .setPrioritizeTimeOverSizeThresholds(false)
                                 .build()
 
                         ExoPlayer
@@ -289,11 +295,32 @@ class PlayerFactory
             )
         }
 
+        private fun targetBufferBytes(): Int {
+            val activityManager = context.getSystemService(ActivityManager::class.java)
+            val memoryClassMb = activityManager?.memoryClass ?: 0
+            val bytes =
+                when {
+                    activityManager?.isLowRamDevice == true || memoryClassMb in 1..128 -> 32 * MB
+                    memoryClassMb in 1..256 -> 48 * MB
+                    else -> 96 * MB
+                }
+            Timber.d("memoryClass=%s MB, target buffer=%s MB", memoryClassMb, bytes / MB)
+            return bytes
+        }
+
         fun createMediaSession(player: Player) =
             MediaSession
                 .Builder(context, player)
                 .setCallback(TrustAllControllersCallback)
                 .build()
+
+        companion object {
+            // Short enough that a dead remote (debrid) link is detected quickly,
+            // long enough for a server transcode to produce its first segment
+            private const val CONNECT_TIMEOUT_MS = 8_000
+            private const val READ_TIMEOUT_MS = 20_000
+            private const val MB = 1024 * 1024
+        }
     }
 
 /**

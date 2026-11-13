@@ -204,7 +204,7 @@ class PlaybackViewModelTests {
         coEvery { mockServerRepository.currentUserDto } returns userDto
 
         coEvery { mockItemPlaybackDao.getItem(user, any()) } returns null
-        coEvery { mockStreamChoiceService.chooseSource(any(), any()) } returns mediaSource
+        coEvery { mockStreamChoiceService.chooseSource(any<BaseItemDto>(), any()) } returns mediaSource
         coEvery {
             mockStreamChoiceService.getSeriesTrackChoices(
                 any<BaseItemDto>(),

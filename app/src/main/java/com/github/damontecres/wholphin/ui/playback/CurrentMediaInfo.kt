@@ -4,6 +4,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaMetadata
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Chapter
+import com.github.damontecres.wholphin.services.getPreferredLanguage
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.MediaSourceInfo
@@ -33,15 +34,18 @@ data class CurrentMediaInfo(
  * Gets a sorted list of subtitle streams in a [MediaSourceInfo]
  */
 internal fun PlaybackViewModel.getSubtitleStreams(mediaSource: MediaSourceInfo): List<SimpleMediaStream> {
+    // Same preference used to pick the default track: app setting, else server profile, else remote config (eg "ita")
     val subtitleLanguagePreference =
-        serverRepository.currentUserDto
-            ?.configuration
-            ?.subtitleLanguagePreference
+        getPreferredLanguage(
+            MediaStreamType.SUBTITLE,
+            preferences,
+            serverRepository.currentUserDto?.configuration,
+        )
     return mediaSource.mediaStreams
         ?.filter { it.type == MediaStreamType.SUBTITLE }
         .let {
             if (subtitleLanguagePreference.isNotNullOrBlank()) {
-                it?.sortedByDescending { it.language != null && subtitleLanguagePreference == it.language }
+                it?.sortedByDescending { it.language.equals(subtitleLanguagePreference, ignoreCase = true) }
             } else {
                 it
             }

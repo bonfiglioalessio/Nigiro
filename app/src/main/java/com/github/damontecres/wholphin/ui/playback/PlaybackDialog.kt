@@ -28,6 +28,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -44,7 +45,9 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.TrackIndex
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.ui.AppColors
+import com.github.damontecres.wholphin.ui.components.DialogPopup
 import com.github.damontecres.wholphin.ui.components.SelectedLeadingContent
+import com.github.damontecres.wholphin.ui.components.chooseVersionParams
 import com.github.damontecres.wholphin.ui.formatMaxBitrate
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.playback.overlay.BottomDialog
@@ -52,6 +55,8 @@ import com.github.damontecres.wholphin.ui.playback.overlay.BottomDialogItem
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.model.api.MediaSourceInfo
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import kotlin.time.Duration
 
 enum class PlaybackDialogType {
@@ -63,6 +68,7 @@ enum class PlaybackDialogType {
     VIDEO_SCALE,
     SUBTITLE_DELAY,
     BITRATE,
+    VERSION,
 }
 
 data class PlaybackSettings(
@@ -77,6 +83,8 @@ data class PlaybackSettings(
     val hasSubtitleDownloadPermission: Boolean,
     val playbackSpeedEnabled: Boolean,
     val maxBitrate: Long,
+    val versions: List<MediaSourceInfo> = emptyList(),
+    val currentVersionId: String? = null,
 )
 
 /**
@@ -98,6 +106,7 @@ fun PlaybackDialog(
     onClickPlaybackDialogType: (PlaybackDialogType) -> Unit,
     onPlaybackActionClick: (PlaybackAction) -> Unit,
     onChangeSubtitleDelay: (Duration) -> Unit,
+    onChooseVersion: (MediaSourceInfo) -> Unit = {},
 ) {
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     // TODO, shouldn't this work out of the box?
@@ -163,6 +172,18 @@ fun PlaybackDialog(
                                 data = PlaybackDialogType.SUBTITLE_DELAY,
                                 headline = stringResource(R.string.subtitle_delay),
                                 supporting = settings.subtitleDelay.toString(),
+                            ),
+                        )
+                    }
+                    if (settings.versions.size > 1) {
+                        add(
+                            BottomDialogItem(
+                                data = PlaybackDialogType.VERSION,
+                                headline = stringResource(R.string.version),
+                                supporting =
+                                    settings.versions
+                                        .firstOrNull { it.id == settings.currentVersionId }
+                                        ?.name,
                             ),
                         )
                     }
@@ -281,6 +302,24 @@ fun PlaybackDialog(
                     )
                 }
             }
+        }
+
+        PlaybackDialogType.VERSION -> {
+            val context = LocalContext.current
+            val versions = settings.versions
+            DialogPopup(
+                params =
+                    chooseVersionParams(
+                        resources = context.resources,
+                        sources = versions,
+                        chosenSourceId = settings.currentVersionId?.toUUIDOrNull(),
+                        onClick = { index -> versions.getOrNull(index)?.let(onChooseVersion) },
+                    ),
+                onDismissRequest = {
+                    onControllerInteraction.invoke()
+                    onDismissRequest.invoke()
+                },
+            )
         }
 
         PlaybackDialogType.BITRATE -> {

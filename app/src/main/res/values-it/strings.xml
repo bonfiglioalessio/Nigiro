@@ -795,4 +795,14 @@
     <string name="artist_source">Origine artista</string>
     <string name="convert_dovi_profile_7">Converti Dolby Vision Profilo 7 in 8.1</string>
     <string name="convert_dovi_profile_7_summary">Riscrive il Profilo 7 dual-layer in Profilo 8.1 single-layer prima del decoder per la riproduzione diretta sui dispositivi che supportano il Profilo 8 ma non il Profilo 7</string>
+    <string name="playback_error_generic">Errore di riproduzione</string>
+    <string name="playback_error_title">Impossibile riprodurre il contenuto</string>
+    <string name="playback_error_no_media_url">Il server non ha fornito un indirizzo riproducibile</string>
+    <string name="playback_error_change_streams">Impossibile cambiare traccia, riprova</string>
+    <string name="playback_no_media_sources">Nessuna sorgente disponibile, salto…</string>
+    <string name="playback_source_unavailable_trying_next">Sorgente non disponibile, provo la versione successiva…</string>
+    <string name="playback_try_another_version">Prova un\'altra versione</string>
+    <string name="go_back">Indietro</string>
+    <string name="version_local">File locale</string>
+    <string name="version_not_cached">Non in cache</string>
 </resources>

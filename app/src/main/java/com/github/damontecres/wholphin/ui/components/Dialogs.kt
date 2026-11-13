@@ -51,6 +51,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -67,10 +68,16 @@ import com.github.damontecres.wholphin.preferences.lazyListWrapScrolling
 import com.github.damontecres.wholphin.services.StreamChoiceResult
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.formatBitrate
+import com.github.damontecres.wholphin.ui.formatBytes
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.playback.SimpleMediaStream
 import com.github.damontecres.wholphin.ui.roundMinutes
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.util.ExceptionHandler
+import com.github.damontecres.wholphin.util.SourceHdr
+import com.github.damontecres.wholphin.util.SourceQuality
+import com.github.damontecres.wholphin.util.SourceRanking
+import com.github.damontecres.wholphin.util.StreamSourceParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyfin.sdk.model.api.MediaSourceInfo
@@ -286,6 +293,14 @@ fun DialogPopupContent(
         val scope = rememberCoroutineScope()
         val listState = rememberLazyListState()
         val focusRequesters = remember { List(dialogItems.size) { FocusRequester() } }
+        LaunchedEffect(Unit) {
+            // Start on the current choice (eg the playing version or track) instead of the top of the list
+            val selectedIndex = dialogItems.indexOfFirst { it is DialogItem && it.selected }
+            if (selectedIndex > 0) {
+                listState.scrollToItem(selectedIndex)
+                focusRequesters[selectedIndex].tryRequestFocus()
+            }
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier,
@@ -597,47 +612,93 @@ fun chooseVersionParams(
     sources: List<MediaSourceInfo>,
     chosenSourceId: UUID?,
     onClick: (Int) -> Unit,
-): DialogParams =
-    DialogParams(
+): DialogParams {
+    // Shown in ranked order, but callers expect the index within the given list
+    val ranked =
+        SourceRanking
+            .rank(sources.filter { it.id.isNotNullOrBlank() }, capabilities = null)
+            .map { source -> sources.indexOfFirst { it === source } to source }
+    return DialogParams(
         fromLongClick = false,
         title = resources.getString(R.string.choose_stream, resources.getString(R.string.version)),
         items =
-            sources.filter { it.id.isNotNullOrBlank() }.mapIndexed { index, source ->
-                val uuid = source.id?.toUUIDOrNull()
-                val videoStream =
-                    source.mediaStreams?.firstOrNull { it.type == MediaStreamType.VIDEO }
-                val title = source.name ?: source.path ?: source.id ?: ""
+            ranked.map { (index, source) ->
+                val selected = chosenSourceId != null && source.id?.toUUIDOrNull() == chosenSourceId
+                val title = source.name ?: source.path?.substringAfterLast('/') ?: source.id.orEmpty()
+                val details = versionDetails(resources, source, title)
+                val runtime = source.runTimeTicks?.ticks?.roundMinutes
                 DialogItem(
                     headlineContent = {
-                        Text(text = title)
+                        Text(
+                            text = title,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     },
                     leadingContent = {
-                        SelectedLeadingContent(uuid != null && uuid == chosenSourceId)
+                        SelectedLeadingContent(selected)
                     },
-                    supportingContent = {
-                        val text =
-                            remember {
-                                buildList {
-                                    videoStream?.displayTitle?.let(::add)
-                                    source.bitrate?.let(::formatBitrate)?.let(::add)
-                                }.joinToString(", ")
+                    supportingContent =
+                        details.takeIf { it.isNotBlank() }?.let { text ->
+                            {
+                                Text(
+                                    text = text,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
-                        Text(text)
-                    },
-                    trailingContent = {
-                        val runtime =
-                            remember {
-                                source.runTimeTicks
-                                    ?.ticks
-                                    ?.roundMinutes
-                                    .toString()
-                            }
-                        Text(runtime)
-                    },
+                        },
+                    trailingContent = runtime?.let { { Text(it.toString()) } },
+                    selected = selected,
                     onClick = { onClick.invoke(index) },
                 )
             },
     )
+}
+
+/**
+ * A short summary of a media source, skipping what its name already says (eg AIOStreams names)
+ */
+private fun versionDetails(
+    resources: Resources,
+    source: MediaSourceInfo,
+    title: String,
+): String {
+    val traits = StreamSourceParser.parse(source)
+    val videoStream = source.mediaStreams?.firstOrNull { it.type == MediaStreamType.VIDEO }
+    fun String.ifNotInTitle() = takeIf { !title.contains(it, ignoreCase = true) }
+    return buildList {
+        if (!source.isRemote) add(resources.getString(R.string.version_local))
+        if (videoStream?.displayTitle != null) {
+            add(videoStream.displayTitle!!)
+        } else {
+            traits.height?.let { if (it >= 2160) "4K" else "${it}p" }?.ifNotInTitle()?.let(::add)
+            traits.videoCodec?.name?.ifNotInTitle()?.let(::add)
+            traits.hdr?.let {
+                when (it) {
+                    SourceHdr.DOLBY_VISION -> "DV"
+                    SourceHdr.HDR10_PLUS -> "HDR10+"
+                    SourceHdr.HDR10 -> "HDR"
+                    SourceHdr.HLG -> "HLG"
+                }
+            }?.ifNotInTitle()?.let(::add)
+        }
+        traits.quality?.let {
+            when (it) {
+                SourceQuality.REMUX -> "REMUX"
+                SourceQuality.BLURAY -> "BluRay"
+                SourceQuality.WEB -> "WEB"
+                SourceQuality.HDTV -> "HDTV"
+                SourceQuality.CAM -> "CAM"
+            }
+        }?.ifNotInTitle()?.let(::add)
+        if (!title.contains("GB", ignoreCase = true) && !title.contains("MB", ignoreCase = true)) {
+            traits.sizeBytes?.let { add(formatBytes(it)) }
+        }
+        traits.estimatedBitrate(source.runTimeTicks)?.let { add(formatBitrate(it.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())) }
+        if (source.isRemote && traits.uncached) add(resources.getString(R.string.version_not_cached))
+    }.joinToString(" · ")
+}
 
 @StringRes
 fun resourceFor(type: MediaStreamType): Int =

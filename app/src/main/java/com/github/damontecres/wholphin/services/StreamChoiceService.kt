@@ -23,6 +23,8 @@ import com.github.damontecres.wholphin.ui.letNotEmpty
 import com.github.damontecres.wholphin.ui.util.ResProviderStringProvider
 import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.StringProvider
+import com.github.damontecres.wholphin.util.DecodeCapabilities
+import com.github.damontecres.wholphin.util.SourceRanking
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.MediaStream
@@ -44,8 +46,13 @@ class StreamChoiceService
     constructor(
         private val serverRepository: ServerRepository,
         private val seriesTrackChoiceDao: SeriesTrackChoiceDao,
+        private val deviceProfileService: DeviceProfileService,
     ) {
         private val userConfig: UserConfiguration? get() = serverRepository.currentUserDto?.configuration
+
+        private val decodeCapabilities by lazy {
+            DecodeCapabilities.from(deviceProfileService.mediaCodecCapabilitiesTest)
+        }
 
         suspend fun saveSeriesTrackChoice(
             dto: BaseItemDto,
@@ -108,28 +115,33 @@ class StreamChoiceService
         ) = saveSeriesTrackChoice(dto, type, null, ActivationFlag.ONLY_FORCED)
 
         /**
-         * Returns the [MediaSourceInfo] that matched the [ItemPlayback] or else the one with the highest resolution
+         * Returns the [MediaSourceInfo] that matched the [ItemPlayback] or else the best ranked one
          */
         fun chooseSource(
             dto: BaseItemDto,
             itemPlayback: ItemPlayback?,
         ): MediaSourceInfo? =
             itemPlayback?.sourceId?.let { dto.mediaSources?.firstOrNull { it.id?.toUUIDOrNull() == itemPlayback.sourceId } }
-                ?: chooseSource(dto.mediaSources) // dto.mediaSources?.firstOrNull()
+                ?: chooseSource(dto.mediaSources, dto.runTimeTicks)
 
         /**
-         * Returns the [MediaSourceInfo] with the highest video resolution
+         * Returns the [MediaSourceInfo] most likely to play well on this device
+         *
+         * @see SourceRanking
          */
-        fun chooseSource(sources: List<MediaSourceInfo>?) =
-            sources?.letNotEmpty { sources ->
-                val result =
-                    sources.maxByOrNull { s ->
-                        s.mediaStreams?.firstOrNull { it.type == MediaStreamType.VIDEO }?.let { video ->
-                            (video.width ?: 0) * (video.height ?: 0)
-                        } ?: 0
-                    }
-                result
-            }
+        fun chooseSource(
+            sources: List<MediaSourceInfo>?,
+            runtimeTicks: Long? = null,
+        ): MediaSourceInfo? = sources?.letNotEmpty { rankSources(it, runtimeTicks).firstOrNull() }
+
+        /**
+         * Orders media sources from the most to the least likely to play well on this device
+         */
+        fun rankSources(
+            sources: List<MediaSourceInfo>,
+            runtimeTicks: Long? = null,
+            maxBitrate: Long? = null,
+        ): List<MediaSourceInfo> = SourceRanking.rank(sources, decodeCapabilities, runtimeTicks, maxBitrate)
 
         /**
          * Returns the audio stream that should play
@@ -396,7 +408,12 @@ class StreamChoiceService
                         SubtitlePlaybackMode.DEFAULT -> {
                             if (subtitleLanguage.isNotNullOrBlank()) {
                                 candidates.firstOrNull { it.language == subtitleLanguage && (it.isDefault || it.isForced) }
-                                    ?: candidates.firstOrNull { it.isDefault || it.isForced }
+                                    // Another language only if forced for the audio being played (eg foreign dialogue)
+                                    // or of unknown language, never eg English subtitles over Italian audio
+                                    ?: candidates.firstOrNull {
+                                        it.isForced && audioStreamLang != null && it.language.equals(audioStreamLang, true)
+                                    }
+                                    ?: candidates.firstOrNull { (it.isDefault || it.isForced) && it.language.isUnknown }
                             } else {
                                 candidates.firstOrNull { it.isDefault || it.isForced }
                             }

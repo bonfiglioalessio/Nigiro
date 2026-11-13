@@ -175,6 +175,56 @@ class TestStreamChoiceServiceDefault(
         @Parameterized.Parameters(name = "{index}: {0}")
         fun data(): Collection<TestInput> =
             listOf(
+                // Italian preference: never English default/forced subtitles over Italian audio
+                TestInput(
+                    null,
+                    SubtitlePlaybackMode.DEFAULT,
+                    userAudioLang = "ita",
+                    userSubtitleLang = "ita",
+                    streamAudioLang = "ita",
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", forced = true),
+                            subtitle(1, "eng", default = true),
+                        ),
+                ),
+                TestInput(
+                    1,
+                    SubtitlePlaybackMode.DEFAULT,
+                    userAudioLang = "ita",
+                    userSubtitleLang = "ita",
+                    streamAudioLang = "ita",
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", default = true),
+                            subtitle(1, "ita", forced = true),
+                        ),
+                ),
+                // Forced track for the language actually being heard (eg foreign dialogue in an English original)
+                TestInput(
+                    0,
+                    SubtitlePlaybackMode.DEFAULT,
+                    userAudioLang = "ita",
+                    userSubtitleLang = "ita",
+                    streamAudioLang = "eng",
+                    subtitles =
+                        listOf(
+                            subtitle(0, "eng", forced = true),
+                            subtitle(1, "spa", default = true),
+                        ),
+                ),
+                TestInput(
+                    0,
+                    SubtitlePlaybackMode.DEFAULT,
+                    userAudioLang = "ita",
+                    userSubtitleLang = "ita",
+                    streamAudioLang = "ita",
+                    subtitles =
+                        listOf(
+                            subtitle(0, null, default = true),
+                            subtitle(1, "eng", default = true),
+                        ),
+                ),
                 TestInput(
                     0,
                     SubtitlePlaybackMode.DEFAULT,
@@ -970,6 +1020,7 @@ private fun runTest(input: TestInput) {
         StreamChoiceService(
             mockServerRepo(input.userAudioLang, input.userSubtitleMode, input.userSubtitleLang),
             mockk<SeriesTrackChoiceDao>(),
+            mockk(relaxed = true),
         )
     val result =
         service.chooseSubtitleStream(
