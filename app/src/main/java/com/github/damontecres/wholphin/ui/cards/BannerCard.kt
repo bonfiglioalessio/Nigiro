@@ -281,7 +281,7 @@ fun BannerCardWithTitle(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Start,
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -293,7 +293,7 @@ fun BannerCardWithTitle(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Start,
                 modifier =
                     Modifier
                         .fillMaxWidth()

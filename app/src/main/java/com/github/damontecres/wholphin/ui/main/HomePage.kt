@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -423,10 +424,34 @@ fun StremioHomeContent(
             with(density) { 44.dp.toPx() }
         }
     val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
+    var isHeroFocused by remember { mutableStateOf(false) }
+    var isFilterFocused by remember { mutableStateOf(false) }
+    val stremioBringIntoViewSpec =
+        remember(spaceAbovePx) {
+            object : BringIntoViewSpec {
+                override fun calculateScrollDistance(
+                    offset: Float,
+                    size: Float,
+                    containerSize: Float,
+                ): Float =
+                    when {
+                        // Hero scrolls to index 0 via LaunchedEffect so bottom-aligned buttons never clip the banner top
+                        isHeroFocused -> 0f
+                        isFilterFocused && offset >= spaceAbovePx && offset + size <= containerSize - spaceAbovePx -> 0f
+                        else -> offset - spaceAbovePx
+                    }
+            }
+        }
+
+    LaunchedEffect(isHeroFocused) {
+        if (isHeroFocused) {
+            listState.scrollToItem(0)
+        }
+    }
 
     Box(modifier = modifier) {
         CompositionLocalProvider(
-            LocalBringIntoViewSpec provides ScrollToTopBringIntoViewSpec(spaceAbovePx),
+            LocalBringIntoViewSpec provides stremioBringIntoViewSpec,
         ) {
             LazyColumn(
                 state = listState,
@@ -462,7 +487,10 @@ fun StremioHomeContent(
                                 watchFocusRequester = heroFocusRequester,
                                 onWatchNow = onHeroWatchNow,
                                 onToggleFavorite = onHeroToggleFavorite,
-                                modifier = Modifier.padding(horizontal = 16.dp),
+                                modifier =
+                                    Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .onFocusChanged { isHeroFocused = it.hasFocus },
                             )
                         }
                     }
@@ -500,6 +528,7 @@ fun StremioHomeContent(
                             selectedFilter = selectedFilter,
                             onSelectFilter = onSelectFilter,
                             firstButtonFocusRequester = filterFocusRequester,
+                            modifier = Modifier.onFocusChanged { isFilterFocused = it.hasFocus },
                         )
                     }
                 }
