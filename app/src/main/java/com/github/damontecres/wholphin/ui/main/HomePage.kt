@@ -291,8 +291,8 @@ fun HomePage(
                     }
                 }
             val onHeroToggleFavorite =
-                remember {
-                    { item: BaseItem, favorite: Boolean ->
+                remember<(BaseItem, Boolean) -> Unit> {
+                    { item, favorite ->
                         viewModel.setFavorite(item.id, favorite)
                     }
                 }
@@ -305,8 +305,8 @@ fun HomePage(
                     }
                 }
             val onClickPlatform =
-                remember {
-                    { tile: PlatformTile ->
+                remember<(PlatformTile) -> Unit> {
+                    { tile ->
                         val targetId = resolvePlatformTargetCollectionId(tile, currentSelectedFilter)
                         if (targetId != null) {
                             openCollectionById(targetId)

@@ -65,6 +65,7 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.ui.ifElse
@@ -351,12 +352,13 @@ fun <T : CardGridItem> CardGrid(
                             // otherwise every visible cell is rebuilt each time focus moves
                             val isFocusTarget =
                                 (index == currentFocusedIndex) or (currentFocusedIndex < 0 && index == 0)
+                            val baseItem = item as? BaseItem
                             val details =
                                 remember(
                                     index,
-                                    item?.id,
-                                    item?.imageUrlOverride,
-                                    item?.data?.userData,
+                                    if (baseItem != null) baseItem.id else item,
+                                    baseItem?.imageUrlOverride,
+                                    baseItem?.data?.userData,
                                     cardWidthPx,
                                     columns,
                                     isFocusTarget,
