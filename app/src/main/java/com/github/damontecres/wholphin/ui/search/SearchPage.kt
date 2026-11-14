@@ -801,7 +801,7 @@ private fun SearchFocusedHeader(itemProvider: () -> BaseItem?) {
                 OnDiskBadge()
             }
         }
-        val meta = remember(item) { searchHeaderMeta(item) }
+        val meta = remember(item.id) { searchHeaderMeta(item) }
         if (meta.isNotBlank()) {
             Text(
                 text = meta,

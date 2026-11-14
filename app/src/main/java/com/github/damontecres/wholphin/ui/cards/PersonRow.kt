@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -28,6 +29,7 @@ import com.github.damontecres.wholphin.data.model.Person
 import com.github.damontecres.wholphin.ui.detail.LocalRowStyle
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.rememberInt
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 
 @Composable
 fun PersonRow(
@@ -39,6 +41,9 @@ fun PersonRow(
 ) {
     val firstFocus = remember { FocusRequester() }
     var position by rememberInt()
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
@@ -53,22 +58,35 @@ fun PersonRow(
                     .fillMaxWidth()
                     .focusRestorer(firstFocus),
         ) {
-            itemsIndexed(people) { index, person ->
+            itemsIndexed(
+                people,
+                key = { index, person -> "${person.id}_${person.type}_$index" },
+                contentType = { _, _ -> "person_card" },
+            ) { index, person ->
+                val currentPerson by rememberUpdatedState(person)
+                val itemOnClick =
+                    remember<() -> Unit>(index) {
+                        {
+                            position = index
+                            currentOnClick.invoke(currentPerson)
+                        }
+                    }
+                val itemOnLongClick =
+                    remember<() -> Unit>(index) {
+                        {
+                            position = index
+                            currentOnLongClick?.invoke(index, currentPerson)
+                        }
+                    }
+                val cardModifier =
+                    Modifier
+                        .width(personRowCardWidth)
+                        .ifElse(index == position, Modifier.focusRequester(firstFocus))
                 PersonCard(
                     person = person,
-                    onClick = {
-                        position = index
-                        onClick.invoke(person)
-                    },
-                    onLongClick = {
-                        position = index
-                        onLongClick?.invoke(index, person)
-                    },
-                    modifier =
-                        Modifier
-                            .width(personRowCardWidth)
-                            .ifElse(index == position, Modifier.focusRequester(firstFocus))
-                            .animateItem(),
+                    onClick = itemOnClick,
+                    onLongClick = itemOnLongClick,
+                    modifier = if (enableAnimations) cardModifier.animateItem() else cardModifier,
                 )
             }
         }
@@ -84,6 +102,9 @@ fun DiscoverPersonRow(
     onLongClick: ((Int, DiscoverItem) -> Unit)? = null,
 ) {
     val firstFocus = remember { FocusRequester() }
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
@@ -103,19 +124,32 @@ fun DiscoverPersonRow(
                     .fillMaxWidth()
                     .focusRestorer(firstFocus),
         ) {
-            itemsIndexed(people) { index, person ->
+            itemsIndexed(
+                people,
+                key = { index, person -> "${person.type}_${person.id}_$index" },
+                contentType = { _, _ -> "discover_person_card" },
+            ) { index, person ->
+                val currentPerson by rememberUpdatedState(person)
+                val itemOnClick =
+                    remember<() -> Unit>(index) {
+                        { currentOnClick.invoke(currentPerson) }
+                    }
+                val itemOnLongClick =
+                    remember<() -> Unit>(index) {
+                        { currentOnLongClick?.invoke(index, currentPerson) }
+                    }
+                val cardModifier =
+                    Modifier
+                        .width(personRowCardWidth)
+                        .ifElse(index == 0, Modifier.focusRequester(firstFocus))
                 PersonCard(
                     name = person.title,
                     role = person.subtitle,
                     imageUrl = person.posterUrl,
                     favorite = false,
-                    onClick = { onClick.invoke(person) },
-                    onLongClick = { onLongClick?.invoke(index, person) },
-                    modifier =
-                        Modifier
-                            .width(personRowCardWidth)
-                            .ifElse(index == 0, Modifier.focusRequester(firstFocus))
-                            .animateItem(),
+                    onClick = itemOnClick,
+                    onLongClick = itemOnLongClick,
+                    modifier = if (enableAnimations) cardModifier.animateItem() else cardModifier,
                 )
             }
         }

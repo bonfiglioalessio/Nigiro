@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.res.stringResource
@@ -23,6 +26,8 @@ fun ChapterRow(
     modifier: Modifier = Modifier,
     onLongClick: ((Chapter) -> Unit)? = null,
 ) {
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier,
@@ -43,12 +48,27 @@ fun ChapterRow(
                     .fillMaxWidth()
                     .focusRestorer(),
         ) {
-            itemsIndexed(chapters) { index, item ->
+            itemsIndexed(
+                chapters,
+                key = { index, item -> "${item.itemId}_${item.index}_$index" },
+                contentType = { _, _ -> "chapter_card" },
+            ) { index, item ->
+                val currentItem by rememberUpdatedState(item)
+                val itemOnClick = remember<() -> Unit>(index) { { currentOnClick(currentItem) } }
+                val hasLongClick = onLongClick != null
+                val itemOnLongClick =
+                    remember<(() -> Unit)?>(index, hasLongClick) {
+                        if (hasLongClick) {
+                            { currentOnLongClick?.invoke(currentItem) }
+                        } else {
+                            null
+                        }
+                    }
                 ChapterCard(
                     chapter = item,
-                    onClick = { onClick(item) },
+                    onClick = itemOnClick,
                     modifier = Modifier,
-                    onLongClick = onLongClick?.let { { it(item) } },
+                    onLongClick = itemOnLongClick,
                 )
             }
         }

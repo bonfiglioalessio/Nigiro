@@ -220,7 +220,12 @@ fun CollectionFolderListDetails(
 ) {
     val imageUrlService = LocalImageUrlService.current
     val imageUrl =
-        remember(item) {
+        remember(
+            item?.id,
+            item?.imageUrlOverride,
+            item?.useSeriesForPrimary,
+            item?.data?.imageTags?.get(ImageType.PRIMARY),
+        ) {
             item?.imageUrlOverride ?: imageUrlService.getItemImageUrl(item, ImageType.PRIMARY, useSeriesForPrimary = true)
         }
     Column(
@@ -286,26 +291,41 @@ fun CollectionFolderViewScope.CollectionFolderListContent(
     modifier: Modifier = Modifier,
 ) {
     val currentPosition by rememberUpdatedState(position)
+    val currentOnClickItem by rememberUpdatedState(onClickItem)
+    val currentOnLongClickItem by rememberUpdatedState(onLongClickItem)
+    val currentOnPositionChange by rememberUpdatedState(onPositionChange)
     LazyColumn(
         state = listState,
         verticalArrangement = Arrangement.spacedBy(viewOptions.spacing.dp),
         modifier = modifier.focusRestorer(positionFocusRequester),
     ) {
-        itemsIndexed(items) { index, item ->
+        itemsIndexed(
+            items,
+            key = { index, item -> item?.id ?: "placeholder_$index" },
+            contentType = { _, item -> if (item != null) "list_item" else "list_placeholder" },
+        ) { index, item ->
+            val currentItem by rememberUpdatedState(item)
+            val isPositionTarget = index == currentPosition
             val details =
-                remember(item, index, onClickItem, onLongClickItem, onPositionChange) {
+                remember(
+                    item?.id,
+                    item?.data?.userData?.played,
+                    item?.data?.userData?.isFavorite,
+                    index,
+                    isPositionTarget,
+                ) {
                     GridItemDetails(
                         item = item,
                         index = index,
-                        onClick = { item?.let { onClickItem.invoke(index, item) } },
-                        onLongClick = { item?.let { onLongClickItem.invoke(index, item) } },
+                        onClick = { currentItem?.let { currentOnClickItem.invoke(index, it) } },
+                        onLongClick = { currentItem?.let { currentOnLongClickItem.invoke(index, it) } },
                         widthPx = -1,
                         mod =
                             Modifier
                                 .onFocusChanged {
-                                    if (it.isFocused) onPositionChange.invoke(index)
+                                    if (it.isFocused) currentOnPositionChange.invoke(index)
                                 }.ifElse(
-                                    index == currentPosition,
+                                    isPositionTarget,
                                     Modifier.focusRequester(positionFocusRequester),
                                 ),
                     )

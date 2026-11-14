@@ -272,7 +272,13 @@ class ImageUrlService
         fun rememberImageUrl(
             item: BaseItem?,
             imageType: ImageType = ImageType.PRIMARY,
-        ) = remember(item, imageType) {
+        ) = remember(
+            item?.id,
+            item?.useSeriesForPrimary,
+            item?.data?.imageTags?.get(imageType),
+            item?.data?.backdropImageTags?.firstOrNull(),
+            imageType,
+        ) {
             if (item != null) {
                 getItemImageUrl(item, imageType)
             } else {

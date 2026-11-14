@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -318,7 +319,7 @@ fun NavDrawer(
         )
     // Kept as State and read inside offset {} (layout phase) so the animation doesn't recompose the page every frame
     val animatedOffset =
-        if (enableAnimations) {
+        if (enableAnimations && !isNigiroTheme) {
             animateIntOffsetAsState(
                 targetValue = targetOffset,
                 animationSpec =
@@ -434,17 +435,24 @@ fun NavDrawer(
                                         ),
                             )
                         }
-                        itemsIndexed(serviceState.items) { index, it ->
+                        itemsIndexed(
+                            serviceState.items,
+                            key = { _, it -> it.id },
+                            contentType = { _, _ -> "nav_item" },
+                        ) { index, it ->
                             val interactionSource = remember { MutableInteractionSource() }
+                            val currentItem by rememberUpdatedState(it)
+                            val onClick =
+                                remember(index, viewModel) {
+                                    { viewModel.onClickDrawerItem(index, currentItem) }
+                                }
                             NavItem(
                                 library = it,
                                 selected = selectedIndex == index,
                                 moreExpanded = moreExpanded,
                                 drawerOpen = isOpen,
                                 interactionSource = interactionSource,
-                                onClick = {
-                                    viewModel.onClickDrawerItem(index, it)
-                                },
+                                onClick = onClick,
                                 modifier =
                                     Modifier
                                         .ifElse(
@@ -476,21 +484,29 @@ fun NavDrawer(
                             }
                         }
                         if (moreExpanded) {
-                            itemsIndexed(serviceState.moreItems) { index, it ->
-                                val adjustedIndex =
-                                    remember(serviceState) { (index + serviceState.items.size) }
+                            itemsIndexed(
+                                serviceState.moreItems,
+                                key = { _, it -> it.id },
+                                contentType = { _, _ -> "nav_more_item" },
+                            ) { index, it ->
+                                val adjustedIndex = index + serviceState.items.size
                                 val interactionSource = remember { MutableInteractionSource() }
+                                val currentItem by rememberUpdatedState(it)
+                                val onClick =
+                                    remember(adjustedIndex, viewModel) {
+                                        {
+                                            viewModel.onClickDrawerItem(
+                                                adjustedIndex,
+                                                currentItem,
+                                            )
+                                        }
+                                    }
                                 NavItem(
                                     library = it,
                                     selected = selectedIndex == adjustedIndex,
                                     moreExpanded = moreExpanded,
                                     drawerOpen = isOpen,
-                                    onClick = {
-                                        viewModel.onClickDrawerItem(
-                                            adjustedIndex,
-                                            it,
-                                        )
-                                    },
+                                    onClick = onClick,
                                     containerColor =
                                         if (isOpen) {
                                             MaterialTheme.colorScheme.surface.copy(alpha = .5f)

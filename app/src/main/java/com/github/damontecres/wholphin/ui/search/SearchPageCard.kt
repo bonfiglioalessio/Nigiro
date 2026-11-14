@@ -62,7 +62,7 @@ fun SearchPageCard(
         BaseItemKind.PERSON -> {
             val imageUrlService = LocalImageUrlService.current
             val imageUrl =
-                remember(item) {
+                remember(item?.id, item?.data?.imageTags?.get(ImageType.PRIMARY)) {
                     imageUrlService.getItemImageUrl(
                         item,
                         ImageType.PRIMARY,
@@ -96,7 +96,7 @@ fun SearchPageCard(
         BaseItemKind.LIVE_TV_PROGRAM,
         -> {
             val subtitle =
-                remember(item) {
+                remember(item?.id, item?.data?.startDate, item?.data?.endDate) {
                     val startDate = item?.data?.startDate
                     val endDate = item?.data?.endDate
                     if (startDate != null && endDate != null) {

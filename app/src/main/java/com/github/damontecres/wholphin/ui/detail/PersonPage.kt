@@ -250,10 +250,10 @@ fun PersonPage(
         is DataLoadingState.Success<BaseItem> -> {
             val person = st.data
             var showOverviewDialog by remember { mutableStateOf(false) }
-            val name = remember(person) { person.name ?: person.id.toString() }
+            val name = remember(person.id, person.name) { person.name ?: person.id.toString() }
             val imageUrlService = LocalImageUrlService.current
             val imageUrl =
-                remember {
+                remember(person.id, person.data.imageTags?.get(ImageType.PRIMARY)) {
                     imageUrlService.getItemImageUrl(
                         itemId = person.id,
                         imageType = ImageType.PRIMARY,

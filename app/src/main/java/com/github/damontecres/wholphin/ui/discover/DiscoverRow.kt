@@ -139,10 +139,17 @@ fun DiscoverItemRow(
                     .focusRestorer(firstFocus)
                     .focusRequester(focusRequester),
         ) {
-            itemsIndexed(items) { index, item ->
+            itemsIndexed(
+                items,
+                key = { index, item ->
+                    if (item != null) "${item.type}_${item.id}_$index" else "placeholder_$index"
+                },
+                contentType = { _, item -> if (item != null) "discover_card" else "discover_placeholder" },
+            ) { index, item ->
+                val isFirstFocusTarget = index == position
                 val cardModifier =
-                    remember(index, position) {
-                        if (index == position) {
+                    remember(index, isFirstFocusTarget) {
+                        if (isFirstFocusTarget) {
                             Modifier.focusRequester(firstFocus)
                         } else {
                             Modifier
@@ -153,19 +160,20 @@ fun DiscoverItemRow(
                         }
                     }
 
+                val currentItem by rememberUpdatedState(item)
                 val onClick =
-                    remember(index, item) {
+                    remember<() -> Unit>(index) {
                         {
                             position = index
-                            if (item != null) currentOnClickItem(index, item)
+                            currentItem?.let { currentOnClickItem(index, it) }
                         }
                     }
 
                 val onLongClick =
-                    remember(index, item) {
+                    remember<() -> Unit>(index) {
                         {
                             position = index
-                            if (item != null) currentOnLongClickItem(index, item)
+                            currentItem?.let { currentOnLongClickItem(index, it) }
                         }
                     }
 
