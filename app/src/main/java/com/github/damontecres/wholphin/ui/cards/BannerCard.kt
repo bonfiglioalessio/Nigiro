@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.cards
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -26,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +41,8 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AppColors
@@ -50,6 +54,7 @@ import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import org.jellyfin.sdk.model.api.ImageType
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Displays an image as a card. If no image is available, the name will be shown instead
@@ -111,6 +116,22 @@ fun BannerCard(
             }
         }
     var imageError by remember(imageUrl) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val fillWidth = remember(fillHeight, aspectRatio) { fillHeight?.let { (it * aspectRatio).roundToInt() } }
+    val imageRequest =
+        remember(context, imageUrl, fillWidth, fillHeight) {
+            imageUrl?.let { url ->
+                ImageRequest
+                    .Builder(context)
+                    .data(url)
+                    .apply {
+                        if (fillWidth != null && fillHeight != null && fillWidth > 0 && fillHeight > 0) {
+                            size(fillWidth, fillHeight)
+                        }
+                    }.bitmapConfig(Bitmap.Config.RGB_565)
+                    .build()
+            }
+        }
 
     // Stabilize callbacks to prevent AsyncImage from recomposing
     val currentOnClick by rememberUpdatedState(onClick)
@@ -121,8 +142,10 @@ fun BannerCard(
         onClick = { currentOnClick() },
         onLongClick = { currentOnLongClick() },
         interactionSource = interactionSource,
-        // Same gentle scale-up as the rest of the UI
-        scale = CardDefaults.scale(focusedScale = 1.05f),
+        shape = CardDefaults.shape(DefaultCardShape),
+        border = cardFocusBorder(),
+        scale = cardScale(),
+        glow = noCardGlow(),
         colors =
             CardDefaults.colors(
 //                containerColor = Color.Transparent,
@@ -134,12 +157,12 @@ fun BannerCard(
                     .fillMaxSize(),
 //                    .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            if (!imageError && imageUrl != null) {
+            if (!imageError && imageRequest != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = imageRequest,
                     contentDescription = null,
                     contentScale = imageContentScale,
-                    onError = remember { { imageError = true } },
+                    onError = remember(imageUrl) { { imageError = true } },
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {

@@ -105,6 +105,8 @@ fun PersonCard(
             onLongClick = onLongClick,
             interactionSource = interactionSource,
             shape = CardDefaults.shape(CircleShape),
+            scale = cardScale(),
+            glow = noCardGlow(),
             border =
                 CardDefaults.border(
                     focusedBorder =

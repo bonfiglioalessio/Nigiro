@@ -72,6 +72,10 @@ fun StudioCard(
         onClick = onClick,
         onLongClick = onLongClick,
         interactionSource = interactionSource,
+        shape = CardDefaults.shape(DefaultCardShape),
+        border = cardFocusBorder(),
+        scale = cardScale(),
+        glow = noCardGlow(),
         colors =
             CardDefaults.colors(
                 containerColor = Color.Transparent,

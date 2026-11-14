@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.enableMarquee
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
 
@@ -136,10 +137,7 @@ fun SeasonCard(
     showImageOverlay: Boolean = false,
     aspectRatio: Float = AspectRatios.TALL,
 ) {
-    val focused by interactionSource.collectIsFocusedAsState()
-    // Do not use `by` here, this way we defer reads and recompositions to only when modifier calculates
-    val spaceBetween = rememberCardSpaceState(focused, spaceBetweenFocused, spaceBetweenUnfocused)
-
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
     val focusedAfterDelay by rememberFocusedAfterDelay(interactionSource)
     val aspectRationToUse = aspectRatio.coerceAtLeast(AspectRatios.MIN)
     val width = imageHeight * aspectRationToUse
@@ -157,6 +155,10 @@ fun SeasonCard(
             onClick = onClick,
             onLongClick = onLongClick,
             interactionSource = interactionSource,
+            shape = CardDefaults.shape(DefaultCardShape),
+            border = cardFocusBorder(),
+            scale = cardScale(),
+            glow = noCardGlow(),
             colors =
                 CardDefaults.colors(
                     containerColor = Color.Transparent,
@@ -183,9 +185,10 @@ fun SeasonCard(
                 )
             }
         }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            modifier =
+        val titleModifier =
+            if (enableAnimations) {
+                val focused by interactionSource.collectIsFocusedAsState()
+                val spaceBetween = rememberCardSpaceState(focused, spaceBetweenFocused, spaceBetweenUnfocused)
                 Modifier
                     .layout { measurable, constraints ->
                         val topPaddingPx = (spaceBetweenUnfocused - spaceBetween.value).roundToPx()
@@ -194,7 +197,13 @@ fun SeasonCard(
                         layout(placeable.width, placeable.height + bottomPaddingPx + topPaddingPx) {
                             placeable.placeRelative(0, topPaddingPx)
                         }
-                    }.fillMaxWidth(),
+                    }
+            } else {
+                Modifier.padding(bottom = spaceBetweenUnfocused)
+            }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+            modifier = titleModifier.fillMaxWidth(),
         ) {
             Text(
                 text = title ?: "",

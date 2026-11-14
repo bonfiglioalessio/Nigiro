@@ -109,9 +109,10 @@ fun <T> ItemRow(
                 key = keySelector,
                 contentType = { _, _ -> "row_card" },
             ) { index, item ->
+                val isFocusedIndex = index == position
                 val cardModifier =
-                    remember(index, position) {
-                        if (index == position) {
+                    remember(index, isFocusedIndex) {
+                        if (isFocusedIndex) {
                             Modifier.focusRequester(firstFocus)
                         } else {
                             Modifier
@@ -147,9 +148,10 @@ fun <T> ItemRow(
             }
             if (showViewMore) {
                 item {
+                    val isLastFocused = position == items.size
                     val cardModifier =
-                        remember(items.size, position) {
-                            if (position == items.size) {
+                        remember(isLastFocused) {
+                            if (isLastFocused) {
                                 Modifier.focusRequester(firstFocus)
                             } else {
                                 Modifier

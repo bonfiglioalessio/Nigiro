@@ -13,6 +13,7 @@ import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Glow
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemBorder
 import androidx.tv.material3.ListItemColors
@@ -40,7 +41,7 @@ fun HomeSettingsListItem(
     colors: ListItemColors = ListItemDefaults.colors(),
     scale: ListItemScale = ListItemDefaults.scale(),
     border: ListItemBorder = ListItemDefaults.border(),
-    glow: ListItemGlow = ListItemDefaults.glow(),
+    glow: ListItemGlow = ListItemDefaults.glow(glow = Glow.None, focusedGlow = Glow.None, pressedGlow = Glow.None),
     interactionSource: MutableInteractionSource? = null,
 ) = ListItem(
     selected = selected,

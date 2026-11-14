@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
+import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -71,10 +73,13 @@ fun FocusedItemBackdrop(
     val backdropRequest =
         remember(backdropItem?.id) {
             backdropItem?.let {
-                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 1280)?.let { url ->
+                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 960)?.let { url ->
                     ImageRequest
                         .Builder(context)
                         .data(url)
+                        // Cap decoded backdrop size and use RGB_565 (opaque surface) to halve GPU upload cost
+                        .size(960, 540)
+                        .bitmapConfig(Bitmap.Config.RGB_565)
                         // Keep showing the previous backdrop until the new one is ready: no flash
                         .useExistingImageAsPlaceholder(true)
                         .build()

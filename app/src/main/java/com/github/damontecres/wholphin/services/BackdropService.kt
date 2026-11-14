@@ -163,6 +163,8 @@ class BackdropService
                         ImageRequest
                             .Builder(context)
                             .data(imageUrl)
+                            // Palette extraction needs only a tiny thumbnail, avoiding 4MB backdrop decodes
+                            .size(128, 128)
                             .allowHardware(false)
                             .bitmapConfig(Bitmap.Config.ARGB_8888)
                             .build()

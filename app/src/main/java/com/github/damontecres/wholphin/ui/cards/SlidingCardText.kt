@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.rememberUpdatedState
@@ -41,19 +42,24 @@ fun SlidingCardText(
     spaceBetweenUnfocused: Dp = 12.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val spaceBetween = rememberCardSpaceState(focused, spaceBetweenFocused, spaceBetweenUnfocused)
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val layoutModifier =
+        if (enableAnimations) {
+            val spaceBetween = rememberCardSpaceState(focused, spaceBetweenFocused, spaceBetweenUnfocused)
+            Modifier.layout { measurable, constraints ->
+                val topPaddingPx = (spaceBetweenUnfocused - spaceBetween.value).roundToPx()
+                val bottomPaddingPx = spaceBetween.value.roundToPx()
+                val placeable = measurable.measure(constraints)
+                layout(placeable.width, placeable.height + bottomPaddingPx + topPaddingPx) {
+                    placeable.placeRelative(0, topPaddingPx)
+                }
+            }
+        } else {
+            Modifier.padding(bottom = spaceBetweenUnfocused)
+        }
     Column(
         verticalArrangement = Arrangement.spacedBy(0.dp),
-        modifier =
-            modifier
-                .layout { measurable, constraints ->
-                    val topPaddingPx = (spaceBetweenUnfocused - spaceBetween.value).roundToPx()
-                    val bottomPaddingPx = spaceBetween.value.roundToPx()
-                    val placeable = measurable.measure(constraints)
-                    layout(placeable.width, placeable.height + bottomPaddingPx + topPaddingPx) {
-                        placeable.placeRelative(0, topPaddingPx)
-                    }
-                }.fillMaxWidth(),
+        modifier = modifier.then(layoutModifier).fillMaxWidth(),
         content = content,
     )
 }

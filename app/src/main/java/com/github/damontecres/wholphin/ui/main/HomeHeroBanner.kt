@@ -2,6 +2,7 @@
 
 package com.github.damontecres.wholphin.ui.main
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -65,11 +66,14 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImage
 import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
+import coil3.request.bitmapConfig
 import coil3.request.transitionFactory
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
+import com.github.damontecres.wholphin.ui.cards.buttonScale
+import com.github.damontecres.wholphin.ui.cards.noButtonGlow
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import kotlinx.coroutines.delay
@@ -148,6 +152,9 @@ fun HomeHeroBanner(
                     ImageRequest
                         .Builder(context)
                         .data(slide.backdropUrl)
+                        // Cap hero backdrop decode size and use RGB_565 (opaque) for 50% lighter GPU uploads
+                        .size(960, 540)
+                        .bitmapConfig(Bitmap.Config.RGB_565)
                         .useExistingImageAsPlaceholder(true)
                         .apply {
                             if (enableAnimations) {
@@ -189,8 +196,17 @@ fun HomeHeroBanner(
         ) {
             var logoFailed by remember(slide.logoUrl) { mutableStateOf(false) }
             if (!slide.logoUrl.isNullOrBlank() && !logoFailed) {
+                val context = LocalContext.current
+                val logoRequest =
+                    remember(context, slide.logoUrl) {
+                        ImageRequest
+                            .Builder(context)
+                            .data(slide.logoUrl)
+                            .size(600, 136)
+                            .build()
+                    }
                 AsyncImage(
-                    model = slide.logoUrl,
+                    model = logoRequest,
                     contentDescription = slide.title,
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.BottomStart,
@@ -339,7 +355,8 @@ private fun HeroButton(
                 border = Border(BorderStroke(2.dp, Color.White.copy(alpha = 0.35f)), shape = RoundedCornerShape(8.dp)),
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = RoundedCornerShape(8.dp)),
             ),
-        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+        scale = buttonScale(),
+        glow = noButtonGlow(),
         contentPadding = PaddingValues(horizontal = 22.dp),
         modifier = modifier.height(NigiroDimens.ButtonHeight),
     ) {

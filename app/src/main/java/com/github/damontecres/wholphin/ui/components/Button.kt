@@ -30,6 +30,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ClickableSurfaceGlow
 import androidx.tv.material3.ClickableSurfaceScale
 import androidx.tv.material3.ClickableSurfaceShape
+import androidx.tv.material3.Glow
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ProvideTextStyle
 import androidx.tv.material3.Surface
@@ -47,7 +48,7 @@ fun Button(
     onLongClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     scale: ClickableSurfaceScale = ClickableSurfaceDefaults.scale(),
-    glow: ClickableSurfaceGlow = ClickableSurfaceDefaults.glow(),
+    glow: ClickableSurfaceGlow = ClickableSurfaceDefaults.glow(glow = Glow.None, focusedGlow = Glow.None, pressedGlow = Glow.None),
     shape: ClickableSurfaceShape =
         ClickableSurfaceDefaults.shape(
             shape = CircleShape,

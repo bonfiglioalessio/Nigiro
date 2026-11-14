@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.DrawerState
 import androidx.tv.material3.DrawerValue
+import androidx.tv.material3.Glow
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
 import androidx.tv.material3.MaterialTheme
@@ -257,6 +258,7 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         shape = ListItemDefaults.shape(shape = FlatDrawerItemShape),
         colors = colors.toToggleableListItemColors(hasFocus),
         scale = ListItemDefaults.scale(1f, 1f),
+        glow = ListItemDefaults.glow(glow = Glow.None, focusedGlow = Glow.None, pressedGlow = Glow.None),
         interactionSource = interactionSource,
     )
 }

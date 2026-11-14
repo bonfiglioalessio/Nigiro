@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusGroup
@@ -74,12 +75,13 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
-import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.BannerCard
@@ -89,6 +91,10 @@ import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.cards.StudioCard
 import com.github.damontecres.wholphin.ui.cards.ViewMoreCard
+import com.github.damontecres.wholphin.ui.cards.buttonScale
+import com.github.damontecres.wholphin.ui.cards.cardScale
+import com.github.damontecres.wholphin.ui.cards.noButtonGlow
+import com.github.damontecres.wholphin.ui.cards.noCardGlow
 import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.CircularProgress
 import com.github.damontecres.wholphin.ui.components.ContextMenu
@@ -117,7 +123,6 @@ import com.github.damontecres.wholphin.ui.playback.scale
 import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.tryRequestFocus
-import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
@@ -278,10 +283,7 @@ fun HomePage(
                     }
                 }
 
-            val enableBackdropUpdate =
-                preferences.appPreferences.interfacePreferences.backdropStyle != BackdropStyle.BACKDROP_NONE
             val currentSelectedFilter by rememberUpdatedState(state.selectedFilter)
-            val currentEnableBackdrop by rememberUpdatedState(enableBackdropUpdate)
             val onHeroWatchNow =
                 remember {
                     { item: BaseItem ->
@@ -315,14 +317,8 @@ fun HomePage(
                         }
                     }
                 }
-            val onUpdateBackdrop =
-                remember {
-                    { item: BaseItem ->
-                        if (currentEnableBackdrop) {
-                            viewModel.updateBackdrop(item)
-                        }
-                    }
-                }
+            // StremioHomeContent renders FocusedItemBackdrop directly; skip duplicate BackdropService Palette work
+            val onUpdateBackdrop = remember { { _: BaseItem -> } }
             StremioHomeContent(
                 heroSlides = state.heroSlides,
                 heroConfig = state.heroConfig,
@@ -474,15 +470,7 @@ fun StremioHomeContent(
             }
         }
     }
-    LaunchedEffect(onUpdateBackdrop, homeRows) {
-        snapshotFlow { positionProvider() }
-            .collect { position ->
-                (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)
-                    ?.items
-                    ?.getOrNull(position.column)
-                    ?.let(onUpdateBackdrop)
-            }
-    }
+    // FocusedBackdropSlot already handles focused item backdrops on Stremio home
 
     val continueRowIndex =
         remember(homeRows) {
@@ -793,7 +781,8 @@ private fun HomeMediaFilterBar(
                         focusedContainerColor = Color.White,
                         focusedContentColor = NigiroPalette.Background,
                     ),
-                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                scale = buttonScale(),
+                glow = noButtonGlow(),
                 contentPadding = PaddingValues(horizontal = 14.dp),
                 modifier =
                     Modifier
@@ -893,9 +882,27 @@ private fun PlatformTileCard(
             HomeMediaFilter.ALL -> "${stringResource(R.string.home_filter_movies)} · ${stringResource(R.string.home_filter_series)}"
         }
     val shape = PlatformTileShape
-    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val (tileWidthPx, tileHeightPx) =
+        remember(density) {
+            with(density) {
+                NigiroDimens.PlatformTileWidth.roundToPx() to NigiroDimens.PlatformTileHeight.roundToPx()
+            }
+        }
     var imageFailed by remember(tile.coverUrl) { mutableStateOf(false) }
-    val showCoverImage = !tile.coverUrl.isNullOrBlank() && !imageFailed
+    val coverRequest =
+        remember(context, tile.coverUrl, tileWidthPx, tileHeightPx) {
+            tile.coverUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                ImageRequest
+                    .Builder(context)
+                    .data(url)
+                    .size(tileWidthPx, tileHeightPx)
+                    .bitmapConfig(Bitmap.Config.RGB_565)
+                    .build()
+            }
+        }
+    val showCoverImage = coverRequest != null && !imageFailed
     Card(
         onClick = onClick,
         shape = CardDefaults.shape(shape),
@@ -910,15 +917,16 @@ private fun PlatformTileCard(
                     ),
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
             ),
-        scale = CardDefaults.scale(focusedScale = if (enableAnimations) 1.05f else 1.0f),
+        scale = cardScale(),
+        glow = noCardGlow(),
         modifier = modifier.size(width = NigiroDimens.PlatformTileWidth, height = NigiroDimens.PlatformTileHeight),
     ) {
         if (showCoverImage) {
             AsyncImage(
-                model = tile.coverUrl,
+                model = coverRequest,
                 contentDescription = tile.name,
                 contentScale = ContentScale.Crop,
-                onError = { imageFailed = true },
+                onError = remember(tile.coverUrl) { { imageFailed = true } },
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -1558,7 +1566,8 @@ private fun AllPlatformsTile(
                     ),
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
             ),
-        scale = CardDefaults.scale(focusedScale = 1.05f),
+        scale = cardScale(),
+        glow = noCardGlow(),
         modifier = modifier.size(width = NigiroDimens.PlatformTileWidth, height = NigiroDimens.PlatformTileHeight),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

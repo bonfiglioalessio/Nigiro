@@ -64,6 +64,10 @@ fun ChapterCard(
         onClick = onClick,
         onLongClick = onLongClick,
         interactionSource = interactionSource,
+        shape = CardDefaults.shape(DefaultCardShape),
+        border = cardFocusBorder(),
+        scale = cardScale(),
+        glow = noCardGlow(),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(

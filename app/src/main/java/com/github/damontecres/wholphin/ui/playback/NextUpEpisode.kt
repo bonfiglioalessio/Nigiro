@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -49,6 +50,10 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
+import com.github.damontecres.wholphin.ui.cards.DefaultCardShape
+import com.github.damontecres.wholphin.ui.cards.cardFocusBorder
+import com.github.damontecres.wholphin.ui.cards.cardScale
+import com.github.damontecres.wholphin.ui.cards.noCardGlow
 import com.github.damontecres.wholphin.ui.dot
 import com.github.damontecres.wholphin.ui.formatDuration
 import com.github.damontecres.wholphin.ui.formatTime
@@ -178,6 +183,10 @@ fun NextUpCard(
 ) {
     Card(
         modifier = modifier,
+        shape = CardDefaults.shape(DefaultCardShape),
+        border = cardFocusBorder(),
+        scale = cardScale(),
+        glow = noCardGlow(),
         onClick = onClick,
         interactionSource = interactionSource,
     ) {

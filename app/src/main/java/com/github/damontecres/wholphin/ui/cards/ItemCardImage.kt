@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.cards
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -33,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AppColors
@@ -100,6 +104,9 @@ fun ItemCardImage(
         modifier = modifier,
         useFallbackText = useFallbackText,
         contentScale = contentScale,
+        decodeWidth = fillWidth,
+        decodeHeight = fillHeight,
+        useRgb565 = imageType != ImageType.LOGO,
     )
 }
 
@@ -116,6 +123,9 @@ fun ItemCardImage(
     modifier: Modifier = Modifier,
     useFallbackText: Boolean = true,
     contentScale: ContentScale = ContentScale.Fit,
+    decodeWidth: Int? = null,
+    decodeHeight: Int? = null,
+    useRgb565: Boolean = false,
     fallback: @Composable BoxScope.() -> Unit = {
         ItemCardImageFallback(
             name = name,
@@ -125,19 +135,41 @@ fun ItemCardImage(
     },
 ) {
     var imageError by remember(imageUrl) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val imageRequest =
+        remember(context, imageUrl, decodeWidth, decodeHeight, useRgb565) {
+            if (imageUrl.isNotNullOrBlank()) {
+                ImageRequest
+                    .Builder(context)
+                    .data(imageUrl)
+                    .apply {
+                        if (decodeWidth.gt(0) && decodeHeight.gt(0)) {
+                            size(decodeWidth!!, decodeHeight!!)
+                        }
+                        if (useRgb565) {
+                            bitmapConfig(Bitmap.Config.RGB_565)
+                        }
+                    }.build()
+            } else {
+                null
+            }
+        }
     Box(
         modifier = modifier,
     ) {
-        if (!imageError && imageUrl.isNotNullOrBlank()) {
+        if (!imageError && imageRequest != null) {
             AsyncImage(
-                model = imageUrl,
+                model = imageRequest,
                 contentDescription = name,
                 contentScale = contentScale,
                 alignment = Alignment.Center,
-                onError = {
-                    logCoilError(imageUrl, it.result)
-                    imageError = true
-                },
+                onError =
+                    remember(imageUrl) {
+                        {
+                            logCoilError(imageUrl, it.result)
+                            imageError = true
+                        }
+                    },
                 modifier =
                     Modifier
                         .fillMaxSize()
