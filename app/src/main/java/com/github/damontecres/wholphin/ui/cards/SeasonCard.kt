@@ -80,7 +80,7 @@ fun rememberImageUrl(
 ): String? {
     val density = LocalDensity.current
     val imageUrlService = LocalImageUrlService.current
-    return remember(item, imageHeight, imageWidth, density) {
+    return remember(item?.id, item?.useSeriesForPrimary, item?.imageUrlOverride, imageHeight, imageWidth, density) {
         if (item != null) {
             val fillHeight =
                 if (imageHeight.isSpecified) {

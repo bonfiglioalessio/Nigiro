@@ -63,6 +63,7 @@ import com.github.damontecres.wholphin.ui.detail.AlphabetButtons
 import com.github.damontecres.wholphin.ui.detail.GridItemDetails
 import com.github.damontecres.wholphin.ui.enableMarquee
 import com.github.damontecres.wholphin.ui.formatDuration
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.rememberInt
@@ -235,14 +236,20 @@ fun CollectionFolderListDetails(
                 .fillMaxWidth(),
         )
 
-        AsyncImage(
-            model =
+        val context = LocalContext.current
+        val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+        val model =
+            remember(context, imageUrl, enableAnimations) {
                 ImageRequest
-                    .Builder(LocalContext.current)
+                    .Builder(context)
                     .data(imageUrl)
-                    .crossfade(300)
-                    .useExistingImageAsPlaceholder(true)
-                    .build(),
+                    .apply {
+                        if (enableAnimations) crossfade(300)
+                    }.useExistingImageAsPlaceholder(true)
+                    .build()
+            }
+        AsyncImage(
+            model = model,
             contentDescription = null,
             modifier =
                 Modifier

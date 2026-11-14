@@ -15,15 +15,14 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.MaterialTheme
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -110,8 +109,8 @@ private fun BoxScope.DetailBackdrop(
 }
 
 /**
- * A backdrop image faded to transparent on its left and bottom edges (one offscreen layer, redrawn only when the
- * image or [alpha] changes), so it blends into whatever is behind it with no visible edge
+ * A backdrop image faded to the page background along its left and bottom edges using single-pass SrcOver
+ * scrims (avoids offscreen FBO allocation and BlendMode.DstIn compositing on TV GPUs)
  */
 @Composable
 fun MaskedBackdrop(
@@ -120,6 +119,23 @@ fun MaskedBackdrop(
     alpha: () -> Float = { 1f },
     alignment: Alignment = Alignment.TopCenter,
 ) {
+    val background = MaterialTheme.colorScheme.background
+    val leftFade =
+        remember(background) {
+            Brush.horizontalGradient(
+                0f to background,
+                0.5f to background.copy(alpha = 0.2f),
+                1f to Color.Transparent,
+            )
+        }
+    val bottomFade =
+        remember(background) {
+            Brush.verticalGradient(
+                0f to Color.Transparent,
+                0.5f to background.copy(alpha = 0.15f),
+                1f to background,
+            )
+        }
     AsyncImage(
         model = model,
         contentDescription = null,
@@ -129,29 +145,14 @@ fun MaskedBackdrop(
             modifier
                 .graphicsLayer {
                     this.alpha = alpha()
-                    compositingStrategy = CompositingStrategy.Offscreen
                 }.drawWithContent {
                     drawContent()
                     drawRect(TopScrim)
-                    drawRect(HorizontalMask, blendMode = BlendMode.DstIn)
-                    drawRect(VerticalMask, blendMode = BlendMode.DstIn)
+                    drawRect(leftFade)
+                    drawRect(bottomFade)
                 },
     )
 }
-
-private val HorizontalMask =
-    Brush.horizontalGradient(
-        0f to Color.Transparent,
-        0.5f to Color.Black.copy(alpha = 0.8f),
-        1f to Color.Black,
-    )
-
-private val VerticalMask =
-    Brush.verticalGradient(
-        0f to Color.Black,
-        0.5f to Color.Black.copy(alpha = 0.85f),
-        1f to Color.Transparent,
-    )
 
 // Keeps the clock readable on bright images
 private val TopScrim =

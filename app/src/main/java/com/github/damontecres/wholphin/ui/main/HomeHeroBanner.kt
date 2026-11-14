@@ -71,6 +71,7 @@ import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -140,16 +141,21 @@ fun HomeHeroBanner(
     ) {
         if (!slide.backdropUrl.isNullOrBlank()) {
             val context = LocalContext.current
+            val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
             // Remembered so that recompositions (eg focus entering the hero) don't restart the load & fade
             val request =
-                remember(slide.backdropUrl, config.crossfadeMs) {
+                remember(context, slide.backdropUrl, config.crossfadeMs, enableAnimations) {
                     ImageRequest
                         .Builder(context)
                         .data(slide.backdropUrl)
                         .useExistingImageAsPlaceholder(true)
-                        .transitionFactory(
-                            CrossFadeFactory(config.crossfadeMs.coerceIn(100, 600).milliseconds),
-                        ).build()
+                        .apply {
+                            if (enableAnimations) {
+                                transitionFactory(
+                                    CrossFadeFactory(config.crossfadeMs.coerceIn(100, 600).milliseconds),
+                                )
+                            }
+                        }.build()
                 }
             AsyncImage(
                 model = request,

@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.ui.PreviewTvSpec
 import com.github.damontecres.wholphin.ui.components.Genre
 import com.github.damontecres.wholphin.ui.setup.rememberIdColor
 import com.github.damontecres.wholphin.ui.theme.WholphinTheme
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import java.util.UUID
 
 @Composable
@@ -81,13 +82,18 @@ fun GenreCard(
                     .clip(RoundedCornerShape(8.dp)),
         ) {
             if (imageUrl != null) {
-                AsyncImage(
-                    model =
+                val context = LocalContext.current
+                val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+                val model =
+                    remember(context, imageUrl, enableAnimations) {
                         ImageRequest
-                            .Builder(LocalContext.current)
+                            .Builder(context)
                             .data(imageUrl)
-                            .crossfade(true)
-                            .build(),
+                            .crossfade(enableAnimations)
+                            .build()
+                    }
+                AsyncImage(
+                    model = model,
                     contentScale = ContentScale.FillBounds,
                     contentDescription = null,
                     modifier =

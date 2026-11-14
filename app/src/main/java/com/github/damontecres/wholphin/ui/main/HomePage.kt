@@ -117,6 +117,7 @@ import com.github.damontecres.wholphin.ui.playback.scale
 import com.github.damontecres.wholphin.ui.rememberPosition
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
@@ -279,6 +280,49 @@ fun HomePage(
 
             val enableBackdropUpdate =
                 preferences.appPreferences.interfacePreferences.backdropStyle != BackdropStyle.BACKDROP_NONE
+            val currentSelectedFilter by rememberUpdatedState(state.selectedFilter)
+            val currentEnableBackdrop by rememberUpdatedState(enableBackdropUpdate)
+            val onHeroWatchNow =
+                remember {
+                    { item: BaseItem ->
+                        // Come back to the hero instead of the last focused row
+                        position = RowColumn(-1, -1)
+                        viewModel.navigationManager.navigateTo(item.destination())
+                    }
+                }
+            val onHeroToggleFavorite =
+                remember {
+                    { item: BaseItem, favorite: Boolean ->
+                        viewModel.setFavorite(item.id, favorite)
+                    }
+                }
+            val onHeroPlay =
+                remember {
+                    { item: BaseItem ->
+                        // Come back to the hero instead of the last focused row
+                        position = RowColumn(-1, -1)
+                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                    }
+                }
+            val onClickPlatform =
+                remember {
+                    { tile: PlatformTile ->
+                        val targetId = resolvePlatformTargetCollectionId(tile, currentSelectedFilter)
+                        if (targetId != null) {
+                            openCollectionById(targetId)
+                        } else if (needsPlatformTypeChoice(tile, currentSelectedFilter)) {
+                            platformChoice = tile
+                        }
+                    }
+                }
+            val onUpdateBackdrop =
+                remember {
+                    { item: BaseItem ->
+                        if (currentEnableBackdrop) {
+                            viewModel.updateBackdrop(item)
+                        }
+                    }
+                }
             StremioHomeContent(
                 heroSlides = state.heroSlides,
                 heroConfig = state.heroConfig,
@@ -287,39 +331,18 @@ fun HomePage(
                 homeRows = homeRows,
                 positionProvider = positionProvider,
                 onSelectFilter = viewModel::setFilter,
-                onHeroWatchNow = { item ->
-                    // Come back to the hero instead of the last focused row
-                    position = RowColumn(-1, -1)
-                    viewModel.navigationManager.navigateTo(item.destination())
-                },
-                onHeroToggleFavorite = { item, favorite ->
-                    viewModel.setFavorite(item.id, favorite)
-                },
+                onHeroWatchNow = onHeroWatchNow,
+                onHeroToggleFavorite = onHeroToggleFavorite,
                 platformFilter = state.platformFilter,
                 onFocusPlatform = viewModel::setPlatformFilter,
-                onHeroPlay = { item ->
-                    // Come back to the hero instead of the last focused row
-                    position = RowColumn(-1, -1)
-                    viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                },
-                onClickPlatform = { tile ->
-                    val targetId = resolvePlatformTargetCollectionId(tile, state.selectedFilter)
-                    if (targetId != null) {
-                        openCollectionById(targetId)
-                    } else if (needsPlatformTypeChoice(tile, state.selectedFilter)) {
-                        platformChoice = tile
-                    }
-                },
+                onHeroPlay = onHeroPlay,
+                onClickPlatform = onClickPlatform,
                 onFocusPosition = onFocusPosition,
                 onClickItem = onClickItem,
                 onLongClickItem = onLongClickItem,
                 onClickPlay = onClickPlay,
                 showClock = preferences.appPreferences.interfacePreferences.showClock,
-                onUpdateBackdrop = { item ->
-                    if (enableBackdropUpdate) {
-                        viewModel.updateBackdrop(item)
-                    }
-                },
+                onUpdateBackdrop = onUpdateBackdrop,
                 loadingState = refreshing,
                 onClickViewMore = onClickViewMore,
                 modifier = modifier,
@@ -829,24 +852,29 @@ private fun PlatformsRow(
                     .onFocusChanged { hasFocus = it.hasFocus }
                     .focusGroup(),
         ) {
-            item(key = "all_platforms") {
+            item(key = "all_platforms", contentType = "platform_all") {
                 AllPlatformsTile(
                     active = activePlatform == null,
                     modifier = Modifier.onFocusChanged { if (it.isFocused) focusedKey = null },
                 )
             }
-            items(platforms, key = { it.key }) { tile ->
+            items(platforms, key = { it.key }, contentType = { "platform_tile" }) { tile ->
+                val currentOnClickPlatform by rememberUpdatedState(onClickPlatform)
+                val currentTile by rememberUpdatedState(tile)
+                val onTileClick = remember(tile.key) { { currentOnClickPlatform(currentTile) } }
                 PlatformTileCard(
                     tile = tile,
                     activeFilter = activeFilter,
                     active = activePlatform == tile.key,
-                    onClick = { onClickPlatform(tile) },
+                    onClick = onTileClick,
                     modifier = Modifier.onFocusChanged { if (it.isFocused) focusedKey = tile.key },
                 )
             }
         }
     }
 }
+
+private val PlatformTileShape = RoundedCornerShape(10.dp)
 
 @Composable
 private fun PlatformTileCard(
@@ -864,7 +892,8 @@ private fun PlatformTileCard(
             HomeMediaFilter.SERIES -> stringResource(R.string.home_filter_series)
             HomeMediaFilter.ALL -> "${stringResource(R.string.home_filter_movies)} · ${stringResource(R.string.home_filter_series)}"
         }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = PlatformTileShape
+    val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
     var imageFailed by remember(tile.coverUrl) { mutableStateOf(false) }
     val showCoverImage = !tile.coverUrl.isNullOrBlank() && !imageFailed
     Card(
@@ -881,7 +910,7 @@ private fun PlatformTileCard(
                     ),
                 focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = shape),
             ),
-        scale = CardDefaults.scale(focusedScale = 1.05f),
+        scale = CardDefaults.scale(focusedScale = if (enableAnimations) 1.05f else 1.0f),
         modifier = modifier.size(width = NigiroDimens.PlatformTileWidth, height = NigiroDimens.PlatformTileHeight),
     ) {
         if (showCoverImage) {
@@ -1208,7 +1237,11 @@ fun HomePageContent(
                         Modifier
                             .focusRestorer(),
                 ) {
-                    itemsIndexed(homeRows) { rowIndex, row ->
+                    itemsIndexed(
+                        homeRows,
+                        key = { index, row -> (row as? HomeRowLoadingState.Success)?.title ?: index },
+                        contentType = { _, _ -> "home_row" },
+                    ) { rowIndex, row ->
                         val rowModifier =
                             Modifier
                                 .animateItem(placementSpec = null)
@@ -1385,31 +1418,13 @@ fun HomePageCardContent(
         }
 
         else -> {
-            val itemType = item?.type
+            val isEpisode = item?.type == BaseItemKind.EPISODE
             val imageType =
-                remember(itemType, viewOptions) {
-                    if (itemType == BaseItemKind.EPISODE) {
-                        viewOptions.episodeImageType.imageType
-                    } else {
-                        viewOptions.imageType.imageType
-                    }
-                }
+                if (isEpisode) viewOptions.episodeImageType.imageType else viewOptions.imageType.imageType
             val ratio =
-                remember(itemType, viewOptions) {
-                    if (itemType == BaseItemKind.EPISODE) {
-                        viewOptions.episodeAspectRatio.ratio
-                    } else {
-                        viewOptions.aspectRatio.ratio
-                    }
-                }
+                if (isEpisode) viewOptions.episodeAspectRatio.ratio else viewOptions.aspectRatio.ratio
             val scale =
-                remember(itemType, viewOptions) {
-                    if (itemType == BaseItemKind.EPISODE) {
-                        viewOptions.episodeContentScale.scale
-                    } else {
-                        viewOptions.contentScale.scale
-                    }
-                }
+                if (isEpisode) viewOptions.episodeContentScale.scale else viewOptions.contentScale.scale
             if (viewOptions.showTitles) {
                 BannerCardWithTitle(
                     title = item?.title,
