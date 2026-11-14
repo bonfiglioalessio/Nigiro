@@ -88,7 +88,7 @@ class BackdropService
                     .firstOrNull()
                     ?.interfacePreferences
                     ?.backdropStyle
-            if (backdropStyle == BackdropStyle.NONE) {
+            if (backdropStyle == BackdropStyle.BACKDROP_NONE) {
                 if (_backdropFlow.value != BackdropResult.NONE) {
                     _backdropFlow.value = BackdropResult.NONE
                 }
