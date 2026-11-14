@@ -22,6 +22,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -39,7 +41,6 @@ import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
-import com.github.damontecres.wholphin.ui.detail.MaskedBackdrop
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -47,9 +48,9 @@ import org.jellyfin.sdk.model.api.ImageType
 import java.util.Locale
 
 /**
- * Backdrop of the focused card, like the detail pages: fixed at the top right over about 60% of the screen and
- * faded into the page, with the rows scrolling over its lower part. The image only loads once focus rests on a
- * card, so fast scrolling doesn't download an image per card
+ * Backdrop of the focused card, drawn full-width across the top ~60% with lightweight SrcOver gradient scrims
+ * (avoids offscreen FBO / DstIn passes) and faded cleanly into the background. The image only loads once focus
+ * rests on a card, so fast scrolling doesn't download an image per card.
  */
 @Composable
 fun FocusedItemBackdrop(
@@ -60,8 +61,12 @@ fun FocusedItemBackdrop(
     val context = LocalContext.current
     var backdropItem by remember { mutableStateOf<BaseItem?>(null) }
     LaunchedEffect(item?.id) {
-        delay(300)
-        backdropItem = item
+        if (item == null) {
+            backdropItem = null
+        } else {
+            delay(300)
+            backdropItem = item
+        }
     }
     val backdropRequest =
         remember(backdropItem?.id) {
@@ -76,14 +81,40 @@ fun FocusedItemBackdrop(
                 }
             }
         } ?: return
+    val background = MaterialTheme.colorScheme.background
+    val horizontalScrim =
+        remember(background) {
+            Brush.horizontalGradient(
+                0f to background,
+                0.38f to background.copy(alpha = 0.85f),
+                0.75f to Color.Transparent,
+            )
+        }
+    val verticalScrim =
+        remember(background) {
+            Brush.verticalGradient(
+                0f to Color.Black.copy(alpha = 0.35f),
+                0.18f to Color.Transparent,
+                0.55f to Color.Transparent,
+                1f to background,
+            )
+        }
     Box(modifier = modifier.fillMaxSize()) {
-        MaskedBackdrop(
+        AsyncImage(
             model = backdropRequest,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.TopEnd,
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
-                    .fillMaxWidth(.78f)
-                    .fillMaxHeight(.62f),
+                    .fillMaxWidth()
+                    .fillMaxHeight(.60f)
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(horizontalScrim)
+                        drawRect(verticalScrim)
+                    },
         )
     }
 }
@@ -101,22 +132,26 @@ fun FocusedItemInfo(
 ) {
     if (item == null) return
     val imageUrlService = LocalImageUrlService.current
-    val details = remember(item) { focusedItemDetails(item) }
+    val details = remember(item.id) { focusedItemDetails(item) }
+    var debouncedLogoItem by remember { mutableStateOf<BaseItem?>(null) }
+    LaunchedEffect(item.id) {
+        debouncedLogoItem = null
+        delay(150)
+        debouncedLogoItem = item
+    }
     val logoUrl =
-        remember(item) {
-            if (item.data.imageTags?.containsKey(ImageType.LOGO) == true) {
-                imageUrlService.getItemImageUrl(item, ImageType.LOGO, fillWidth = 520, fillHeight = 140)
-            } else {
-                null
-            }
+        remember(debouncedLogoItem?.id) {
+            debouncedLogoItem
+                ?.takeIf { it.data.imageTags?.containsKey(ImageType.LOGO) == true }
+                ?.let { imageUrlService.getItemImageUrl(it, ImageType.LOGO, fillWidth = 520, fillHeight = 140) }
         }
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom),
         modifier =
             modifier
                 .fillMaxWidth()
                 .height(height)
-                .padding(start = contentStart, end = NigiroDimens.ContentEnd, bottom = 18.dp),
+                .padding(start = contentStart, end = NigiroDimens.ContentEnd, bottom = 12.dp),
     ) {
         var logoFailed by remember(logoUrl) { mutableStateOf(false) }
         if (logoUrl != null && !logoFailed) {
@@ -126,7 +161,7 @@ fun FocusedItemInfo(
                 contentScale = ContentScale.Fit,
                 alignment = Alignment.BottomStart,
                 onError = { logoFailed = true },
-                modifier = Modifier.size(width = 300.dp, height = 72.dp),
+                modifier = Modifier.size(width = 280.dp, height = 64.dp),
             )
         } else {
             Text(
@@ -171,8 +206,8 @@ fun FocusedItemInfo(
     }
 }
 
-// About half the 540 dp screen, leaving room for the focused row title and full posters below
-val FocusedItemHeaderHeight = 280.dp
+// Compact top region on 540 dp screen so focused row + next row title fit cleanly without bottom clipping
+val FocusedItemHeaderHeight = 232.dp
 
 @Composable
 fun OnDiskBadge(modifier: Modifier = Modifier) {

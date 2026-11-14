@@ -121,6 +121,7 @@ import com.github.damontecres.wholphin.ui.util.ScrollToTopBringIntoViewSpec
 import com.github.damontecres.wholphin.util.HomeRowLoadingState
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.sdk.model.DateTime
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
@@ -405,7 +406,13 @@ fun StremioHomeContent(
     onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val rowFocusRequesters = remember(homeRows.size) { List(homeRows.size) { FocusRequester() } }
+    val rowFocusRequesters = remember { mutableListOf<FocusRequester>() }
+    while (rowFocusRequesters.size < homeRows.size) {
+        rowFocusRequesters.add(FocusRequester())
+    }
+    while (rowFocusRequesters.size > homeRows.size) {
+        rowFocusRequesters.removeAt(rowFocusRequesters.lastIndex)
+    }
     val heroFocusRequester = remember { FocusRequester() }
     val filterFocusRequester = remember { FocusRequester() }
     // Saveable: when coming back to Home (eg from details or playback) restore focus instead of jumping to the hero
@@ -504,38 +511,45 @@ fun StremioHomeContent(
             }
         }
 
-    LaunchedEffect(isHeroFocused) {
-        if (isHeroFocused) {
-            listState.scrollToItem(0)
+    val currentContinueRowIndex by rememberUpdatedState(continueRowIndex)
+    val currentHasPlatforms by rememberUpdatedState(platforms.isNotEmpty())
+    val currentCatalogStartIndex by rememberUpdatedState(catalogStartIndex)
+
+    LaunchedEffect(listState) {
+        snapshotFlow { isHeroFocused }.collectLatest { focused ->
+            if (focused) {
+                listState.scrollToItem(0)
+            }
         }
     }
 
-    // Put the focused row (with its title) right below the opaque focused item header, so rows above it
+    // Put the focused row (with its title) right below the focused item header, so rows above it
     // are hidden under the header instead of showing as a cut-off strip
     val headerPx = remember(density) { with(density) { FocusedItemHeaderHeight.toPx() } }
     // A full screen of room: scrollToItem must be able to put even the last row at the top, otherwise it stops
     // short and the scrollBy(-header) below leaves that row too low (posters cut at the bottom)
     val bottomRoom = LocalConfiguration.current.screenHeightDp.dp
-    LaunchedEffect(focusedRowIndex) {
-        val row = focusedRowIndex
-        if (row < 0) return@LaunchedEffect
-        val continueItems = if (continueRowIndex == 0) 1 else 0
-        val platformItems = if (platforms.isNotEmpty()) 1 else 0
-        // Item 0 is the hero (or the filter bar without a hero)
-        val lazyIndex =
-            if (row == 0 && continueRowIndex == 0) {
-                1
-            } else {
-                1 + continueItems + platformItems + (row - catalogStartIndex)
-            }
-        listState.scrollToItem(lazyIndex)
-        listState.scrollBy(-headerPx)
+    LaunchedEffect(listState, headerPx) {
+        snapshotFlow { focusedRowIndex }.collectLatest { row ->
+            if (row < 0) return@collectLatest
+            val continueIdx = currentContinueRowIndex
+            val continueItems = if (continueIdx == 0) 1 else 0
+            val platformItems = if (currentHasPlatforms) 1 else 0
+            // Item 0 is the hero (or the filter bar without a hero)
+            val lazyIndex =
+                if (row == 0 && continueIdx == 0) {
+                    1
+                } else {
+                    1 + continueItems + platformItems + (row - currentCatalogStartIndex)
+                }
+            listState.scrollToItem(lazyIndex)
+            listState.scrollBy(-headerPx)
+        }
     }
 
     Box(modifier = modifier) {
-        if (focusedRowIndex >= 0) {
-            FocusedBackdropSlot(itemProvider = { focusedItem })
-        }
+        // Always mounted in its own restart scope so focusing between hero/platforms/rows never recomposes LazyColumn
+        FocusedBackdropSlot(itemProvider = { focusedItem })
         CompositionLocalProvider(
             LocalBringIntoViewSpec provides stremioBringIntoViewSpec,
         ) {
@@ -548,6 +562,8 @@ fun StremioHomeContent(
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        // Span full screen width so LazyColumn's vertical scroll clip never cuts the hero at the sidebar
+                        .bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd)
                         // With a card focused, rows above the focused one are hidden under the details instead
                         // of showing as a cut-off strip (read while drawing: no recomposition)
                         .drawWithContent {
@@ -592,10 +608,7 @@ fun StremioHomeContent(
                                         firstButtonFocusRequester = filterFocusRequester,
                                     )
                                 },
-                                modifier =
-                                    Modifier
-                                        .bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd)
-                                        .onFocusChanged { isHeroFocused = it.hasFocus },
+                                modifier = Modifier.onFocusChanged { isHeroFocused = it.hasFocus },
                             )
                         }
                     }
@@ -610,8 +623,11 @@ fun StremioHomeContent(
                                 firstButtonFocusRequester = filterFocusRequester,
                                 modifier =
                                     Modifier
-                                        .padding(start = NigiroDimens.ContentStart, top = 20.dp)
-                                        .onFocusChanged { isFilterFocused = it.hasFocus },
+                                        .padding(
+                                            start = NigiroDimens.HeroBleedStart + NigiroDimens.ContentStart,
+                                            top = 20.dp,
+                                            end = NigiroDimens.HeroBleedEnd,
+                                        ).onFocusChanged { isFilterFocused = it.hasFocus },
                             )
                         }
                     }
@@ -635,13 +651,15 @@ fun StremioHomeContent(
                                 onLongClickItem = onLongClickItem,
                                 onClickViewMore = onClickViewMore,
                                 modifier =
-                                    Modifier.onFocusChanged {
-                                        if (it.hasFocus) {
-                                            focusedRowIndex = 0
-                                        } else if (focusedRowIndex == 0) {
-                                            focusedRowIndex = -1
-                                        }
-                                    },
+                                    Modifier
+                                        .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd)
+                                        .onFocusChanged {
+                                            if (it.hasFocus) {
+                                                focusedRowIndex = 0
+                                            } else if (focusedRowIndex == 0) {
+                                                focusedRowIndex = -1
+                                            }
+                                        },
                             )
                         }
                     }
@@ -658,6 +676,7 @@ fun StremioHomeContent(
                                 activePlatform = platformFilter,
                                 onClickPlatform = onClickPlatform,
                                 onFocusPlatform = onFocusPlatform,
+                                modifier = Modifier.padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd),
                             )
                         }
                     }
@@ -685,21 +704,21 @@ fun StremioHomeContent(
                             onLongClickItem = onLongClickItem,
                             onClickViewMore = onClickViewMore,
                             modifier =
-                                Modifier.onFocusChanged {
-                                    if (it.hasFocus) {
-                                        focusedRowIndex = actualRowIndex
-                                    } else if (focusedRowIndex == actualRowIndex) {
-                                        focusedRowIndex = -1
-                                    }
-                                },
+                                Modifier
+                                    .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd)
+                                    .onFocusChanged {
+                                        if (it.hasFocus) {
+                                            focusedRowIndex = actualRowIndex
+                                        } else if (focusedRowIndex == actualRowIndex) {
+                                            focusedRowIndex = -1
+                                        }
+                                    },
                         )
                     }
                 }
             }
         }
-        if (focusedRowIndex >= 0) {
-            FocusedHeaderSlot(itemProvider = { focusedItem })
-        }
+        FocusedHeaderSlot(itemProvider = { focusedItem })
         when (loadingState) {
             LoadingState.Pending,
             LoadingState.Loading,
@@ -1017,12 +1036,14 @@ private fun HomeRowItemContent(
                                     }
                                 }
                             }
+                        val currentCardItem by rememberUpdatedState(item)
                         val onKey =
-                            remember(item, rowIndex, index) {
+                            remember(rowIndex, index) {
                                 { event: KeyEvent ->
-                                    if (isPlayKeyUp(event) && item?.type?.playable == true) {
-                                        Timber.v("Clicked play on ${item.id}")
-                                        currentOnClickPlay(RowColumn(rowIndex, index), item)
+                                    val focused = currentCardItem
+                                    if (isPlayKeyUp(event) && focused?.type?.playable == true) {
+                                        Timber.v("Clicked play on ${focused.id}")
+                                        currentOnClickPlay(RowColumn(rowIndex, index), focused)
                                         true
                                     } else {
                                         false
@@ -1115,7 +1136,13 @@ fun HomePageContent(
             )
         }
 
-    val rowFocusRequesters = remember(homeRows.size) { List(homeRows.size) { FocusRequester() } }
+    val rowFocusRequesters = remember { mutableListOf<FocusRequester>() }
+    while (rowFocusRequesters.size < homeRows.size) {
+        rowFocusRequesters.add(FocusRequester())
+    }
+    while (rowFocusRequesters.size > homeRows.size) {
+        rowFocusRequesters.removeAt(rowFocusRequesters.lastIndex)
+    }
     var firstFocused by remember { mutableStateOf(false) }
 
     val currentPosition by rememberUpdatedState(position)
@@ -1358,25 +1385,26 @@ fun HomePageCardContent(
         }
 
         else -> {
+            val itemType = item?.type
             val imageType =
-                remember(item, viewOptions) {
-                    if (item?.type == BaseItemKind.EPISODE) {
+                remember(itemType, viewOptions) {
+                    if (itemType == BaseItemKind.EPISODE) {
                         viewOptions.episodeImageType.imageType
                     } else {
                         viewOptions.imageType.imageType
                     }
                 }
             val ratio =
-                remember(item, viewOptions) {
-                    if (item?.type == BaseItemKind.EPISODE) {
+                remember(itemType, viewOptions) {
+                    if (itemType == BaseItemKind.EPISODE) {
                         viewOptions.episodeAspectRatio.ratio
                     } else {
                         viewOptions.aspectRatio.ratio
                     }
                 }
             val scale =
-                remember(item, viewOptions) {
-                    if (item?.type == BaseItemKind.EPISODE) {
+                remember(itemType, viewOptions) {
+                    if (itemType == BaseItemKind.EPISODE) {
                         viewOptions.episodeContentScale.scale
                     } else {
                         viewOptions.contentScale.scale
@@ -1479,15 +1507,17 @@ private fun Modifier.bleedHorizontally(
  */
 @Composable
 private fun FocusedHeaderSlot(itemProvider: () -> BaseItem?) {
-    FocusedItemInfo(item = itemProvider())
+    val item = itemProvider() ?: return
+    FocusedItemInfo(item = item)
 }
 
 @Composable
 private fun FocusedBackdropSlot(itemProvider: () -> BaseItem?) {
+    val item = itemProvider() ?: return
     // Bleeds under the sidebar and to the right edge like the hero
     FocusedItemBackdrop(
-        item = itemProvider(),
-        modifier = Modifier.bleedHorizontally(NigiroDimens.HeroBleedStart, 16.dp),
+        item = item,
+        modifier = Modifier.bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd),
     )
 }
 

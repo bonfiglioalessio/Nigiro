@@ -973,45 +973,21 @@ fun CollectionFolderViewContent(
                     actions.onClickPlayAll ?: { shuffle ->
                         itemId.toUUIDOrNull()?.let {
                             val destination =
-                                if (state.item.successValue?.type == BaseItemKind.PHOTO_ALBUM) {
-                                    Destination.Slideshow(
-                                        parentId = it,
-                                        index = 0,
-                                        filter = CollectionFolderFilter(filter = state.filter),
-                                        sortAndDirection = state.sortAndDirection,
-                                        recursive = true,
-                                        startSlideshow = true,
-                                    )
-                                } else {
-                                    Destination.PlaybackList(
-                                        itemId = it,
-                                        startIndex = 0,
-                                        shuffle = shuffle,
-                                        recursive = recursive,
-                                        sortAndDirection = state.sortAndDirection,
-                                        filter = state.filter,
-                                    )
-                                }
+                                Destination.PlaybackList(
+                                    itemId = it,
+                                    startIndex = 0,
+                                    shuffle = shuffle,
+                                    recursive = recursive,
+                                    sortAndDirection = state.sortAndDirection,
+                                    filter = state.filter,
+                                )
                             viewActions.navigateTo(destination)
                         }
                         Unit
                     },
                 onClickPlayRemoteButton =
-                    actions.onClickPlayRemoteButton ?: { index, item ->
-                        val destination =
-                            if (item.type == BaseItemKind.PHOTO_ALBUM) {
-                                Destination.Slideshow(
-                                    parentId = item.id,
-                                    index = index,
-                                    filter = CollectionFolderFilter(filter = state.filter),
-                                    sortAndDirection = state.sortAndDirection,
-                                    recursive = true,
-                                    startSlideshow = true,
-                                )
-                            } else {
-                                Destination.Playback(item)
-                            }
-                        viewActions.navigateTo(destination)
+                    actions.onClickPlayRemoteButton ?: { _, item ->
+                        viewActions.navigateTo(Destination.Playback(item))
                     },
             )
         }

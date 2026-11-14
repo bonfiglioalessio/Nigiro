@@ -14,21 +14,21 @@ import androidx.compose.ui.unit.sp
 object NigiroDimens {
     val ContentStart = 36.dp
     val ContentEnd = 32.dp
-    val HeroHeight = 340.dp
-    val HeroBottomPadding = 24.dp
-    val SectionGap = 20.dp
+    val HeroHeight = 276.dp
+    val HeroBottomPadding = 16.dp
+    val SectionGap = 16.dp
     val TitleGap = 10.dp
     val CardGap = 14.dp
     val PosterHeight = 180.dp
     val WideCardHeight = 124.dp
     val PlatformTileWidth = 120.dp
     val PlatformTileHeight = 68.dp
-    val ButtonHeight = 46.dp
+    val ButtonHeight = 44.dp
 
     // Inset the hero is stretched by to reach the sidebar and the right edge of the screen
     // Under the transparent sidebar too: 60 dp collapsed sidebar + 12 dp page padding
     val HeroBleedStart = 72.dp
-    val HeroBleedEnd = 15.dp
+    val HeroBleedEnd = 16.dp
 
     val RowTitle = TextStyle(fontSize = 19.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold)
     val Meta = TextStyle(fontSize = 15.sp, lineHeight = 20.sp)

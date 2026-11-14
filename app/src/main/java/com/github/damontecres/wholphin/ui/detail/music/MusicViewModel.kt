@@ -11,10 +11,8 @@ import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.deleteItem
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
-import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.BlockingList
-import kotlinx.coroutines.delay
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
@@ -82,18 +80,6 @@ abstract class MusicViewModel(
         item: BaseItem,
         index: Int,
     ) = addToQueue(api, musicService, item, index)
-
-    fun startInstantMix(itemId: UUID) {
-        viewModelScope.launchIO {
-            Timber.v("Starting instant mix for %s", itemId)
-            musicService.startInstantMix(itemId)
-        }
-        viewModelScope.launchDefault {
-            // TODO better way to wait for query above to start
-            delay(250)
-            navigationManager.navigateTo(Destination.NowPlaying)
-        }
-    }
 
     fun canDelete(
         item: BaseItem,

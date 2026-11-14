@@ -83,6 +83,17 @@ class BackdropService
             itemId: String,
             imageUrl: String?,
         ) = withContext(WholphinDispatchers.IO) {
+            val backdropStyle =
+                preferences.data
+                    .firstOrNull()
+                    ?.interfacePreferences
+                    ?.backdropStyle
+            if (backdropStyle == BackdropStyle.NONE) {
+                if (_backdropFlow.value != BackdropResult.NONE) {
+                    _backdropFlow.value = BackdropResult.NONE
+                }
+                return@withContext
+            }
             if (backdropFlow.firstOrNull()?.imageUrl != imageUrl || imageUrl == null) {
                 _backdropFlow.update {
                     it.copy(

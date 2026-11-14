@@ -15,12 +15,8 @@ import com.github.damontecres.wholphin.ui.components.LicenseInfo
 import com.github.damontecres.wholphin.ui.data.MovieSortOptions
 import com.github.damontecres.wholphin.ui.data.rememberSortOptions
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderGeneric
-import com.github.damontecres.wholphin.ui.detail.CollectionFolderLiveTv
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderMovie
-import com.github.damontecres.wholphin.ui.detail.CollectionFolderMusic
-import com.github.damontecres.wholphin.ui.detail.CollectionFolderPhotoAlbum
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderPlaylist
-import com.github.damontecres.wholphin.ui.detail.CollectionFolderRecordings
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderTv
 import com.github.damontecres.wholphin.ui.detail.DebugPage
 import com.github.damontecres.wholphin.ui.detail.FavoritesPage
@@ -33,10 +29,6 @@ import com.github.damontecres.wholphin.ui.detail.discover.DiscoverPersonPage
 import com.github.damontecres.wholphin.ui.detail.discover.DiscoverSeriesDetails
 import com.github.damontecres.wholphin.ui.detail.episode.EpisodeDetails
 import com.github.damontecres.wholphin.ui.detail.movie.MovieDetails
-import com.github.damontecres.wholphin.ui.detail.music.AlbumDetailsPage
-import com.github.damontecres.wholphin.ui.detail.music.ArtistDetailsPage
-import com.github.damontecres.wholphin.ui.detail.music.NowPlayingPage
-import com.github.damontecres.wholphin.ui.detail.music.SongDetailsPage
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
 import com.github.damontecres.wholphin.ui.discover.DiscoverPage
@@ -50,7 +42,6 @@ import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleStylePage
 import com.github.damontecres.wholphin.ui.preferences.user.UserProfilePreferencesPage
 import com.github.damontecres.wholphin.ui.search.SearchPage
 import com.github.damontecres.wholphin.ui.setup.InstallUpdatePage
-import com.github.damontecres.wholphin.ui.slideshow.SlideshowPage
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.CollectionType
 import timber.log.Timber
@@ -243,44 +234,6 @@ fun DestinationContent(
                     )
                 }
 
-                BaseItemKind.PHOTO_ALBUM -> {
-                    LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    CollectionFolderPhotoAlbum(
-                        preferences = preferences,
-                        itemId = destination.itemId,
-                        recursive = false,
-                        modifier = modifier,
-                    )
-                }
-
-                BaseItemKind.MUSIC_ALBUM -> {
-                    LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    AlbumDetailsPage(
-                        preferences = preferences,
-                        itemId = destination.itemId,
-                        initialSongId = destination.initialSongId,
-                        modifier = modifier,
-                    )
-                }
-
-                BaseItemKind.MUSIC_ARTIST -> {
-                    LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    ArtistDetailsPage(
-                        preferences = preferences,
-                        itemId = destination.itemId,
-                        modifier = modifier,
-                    )
-                }
-
-                BaseItemKind.AUDIO -> {
-                    LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-                    SongDetailsPage(
-                        preferences = preferences,
-                        itemId = destination.itemId,
-                        modifier = modifier,
-                    )
-                }
-
                 else -> {
                     Timber.w("Unsupported item type: ${destination.type}")
                     Text("Unsupported item type: ${destination.type}", modifier)
@@ -317,16 +270,6 @@ fun DestinationContent(
             )
         }
 
-        is Destination.Recordings -> {
-            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
-            CollectionFolderRecordings(
-                preferences,
-                destination.itemId,
-                false,
-                modifier,
-            )
-        }
-
         is Destination.ItemGrid<*> -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             ItemGrid(
@@ -336,22 +279,12 @@ fun DestinationContent(
             )
         }
 
-        is Destination.Slideshow -> {
-            SlideshowPage(
-                slideshow = destination,
-            )
-        }
-
         Destination.Favorites -> {
             LaunchedEffect(Unit) { onClearBackdrop.invoke() }
             FavoritesPage(
                 preferences = preferences,
                 modifier = modifier,
             )
-        }
-
-        Destination.NowPlaying -> {
-            NowPlayingPage(modifier)
         }
 
         Destination.UpdateApp -> {
@@ -478,33 +411,6 @@ fun CollectionFolder(
             )
         }
 
-        CollectionType.LIVETV -> {
-            CollectionFolderLiveTv(
-                preferences = preferences,
-                destination = destination,
-                modifier = modifier,
-            )
-        }
-
-        CollectionType.MUSIC -> {
-            CollectionFolderMusic(
-                preferences,
-                destination,
-                modifier,
-            )
-        }
-
-        CollectionType.HOMEVIDEOS,
-        CollectionType.PHOTOS,
-        -> {
-            CollectionFolderPhotoAlbum(
-                preferences = preferences,
-                itemId = destination.itemId,
-                recursive = recursiveOverride ?: false,
-                modifier = modifier,
-            )
-        }
-
         CollectionType.MUSICVIDEOS,
         CollectionType.BOOKS,
         -> {
@@ -518,6 +424,10 @@ fun CollectionFolder(
             )
         }
 
+        CollectionType.LIVETV,
+        CollectionType.MUSIC,
+        CollectionType.HOMEVIDEOS,
+        CollectionType.PHOTOS,
         CollectionType.FOLDERS,
         CollectionType.TRAILERS,
         CollectionType.UNKNOWN,

@@ -171,7 +171,7 @@ fun HomeHeroBanner(
         )
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom),
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -190,13 +190,13 @@ fun HomeHeroBanner(
                     alignment = Alignment.BottomStart,
                     onError = { logoFailed = true },
                     // Kept short so badge, logo, details, overview and buttons fit the hero's height
-                    modifier = Modifier.size(width = 360.dp, height = 84.dp),
+                    modifier = Modifier.size(width = 300.dp, height = 68.dp),
                 )
             } else {
                 Text(
                     text = slide.title,
-                    fontSize = 36.sp,
-                    lineHeight = 40.sp,
+                    fontSize = 30.sp,
+                    lineHeight = 34.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
@@ -227,7 +227,7 @@ fun HomeHeroBanner(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
+                        .padding(top = 4.dp),
             ) {
                 HeroButton(
                     onClick = { onPlay(slide.item) },
@@ -298,7 +298,7 @@ fun HomeHeroBanner(
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 18.dp, end = 140.dp)
+                    .padding(top = 14.dp, end = 140.dp)
                     // Readable over bright backdrops
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color.Black.copy(alpha = 0.45f))

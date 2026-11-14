@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.search
 
-import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -71,7 +70,6 @@ import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.detail.CardGridItem
 import com.github.damontecres.wholphin.ui.detail.GridItemDetails
-import com.github.damontecres.wholphin.ui.detail.livetv.ProgramDialog
 import com.github.damontecres.wholphin.ui.main.HomePageCardContent
 import com.github.damontecres.wholphin.ui.main.NigiroDimens
 import com.github.damontecres.wholphin.ui.main.OnDiskBadge
@@ -85,7 +83,6 @@ import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.jellyfin.sdk.model.api.BaseItemKind
 import timber.log.Timber
 import java.util.Locale
 
@@ -147,7 +144,6 @@ fun SearchPage(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val state by viewModel.state.collectAsState()
-    val programDialogState by viewModel.programDialogState.collectAsState()
 
     // Start with current preferences, but collect updates when view options change
     val prefs =
@@ -171,7 +167,6 @@ fun SearchPage(
     var searchClicked by rememberSaveable(query) { mutableStateOf(false) }
     var submittedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     var isSearchActive by remember { mutableStateOf(false) }
-    var showProgramDialog by remember { mutableStateOf(false) }
 
     val position by viewModel.position.collectAsState()
 
@@ -235,12 +230,7 @@ fun SearchPage(
         Timber.v("Clicked %s, type=%s", item.id, item.type)
         // Opening a result is when a typed search becomes a recent one
         submittedQuery?.let(viewModel::rememberSearch)
-        if (item.type == BaseItemKind.TV_PROGRAM || item.type == BaseItemKind.PROGRAM || item.type == BaseItemKind.LIVE_TV_PROGRAM) {
-            viewModel.fetchProgramForDialog(item.id)
-            showProgramDialog = true
-        } else {
-            viewModel.navigationManager.navigateTo(item.destination())
-        }
+        viewModel.navigationManager.navigateTo(item.destination())
     }
     val onLongClickItem = { rowIndex: Int, index: Int, item: BaseItem ->
         setPosition(RowColumn(rowIndex, index))
@@ -514,44 +504,6 @@ fun SearchPage(
             discoverEnabled = state.discoverEnabled,
             onClick = viewModel::onClickExcludeSearchableType,
             onClickDiscover = viewModel::onClickExcludeDiscover,
-        )
-    }
-
-    if (showProgramDialog) {
-        val context = LocalContext.current
-        val onDismissRequest = { showProgramDialog = false }
-        ProgramDialog(
-            state = programDialogState.loading,
-            canRecord = true,
-            onDismissRequest = onDismissRequest,
-            onWatch = {
-                onDismissRequest.invoke()
-                val channelId = it.data.channelId
-                if (channelId != null) {
-                    viewModel.navigationManager.navigateTo(
-                        Destination.Playback(
-                            itemId = channelId,
-                            positionMs = 0L,
-                        ),
-                    )
-                } else {
-                    Toast.makeText(context, "Program has no channel ID", Toast.LENGTH_LONG).show()
-                }
-            },
-            onRecord = { program, series ->
-                viewModel.record(
-                    programId = program.id,
-                    series = series,
-                )
-                onDismissRequest.invoke()
-            },
-            onCancelRecord = { program, series ->
-                viewModel.cancelRecording(
-                    series = series,
-                    timerId = if (series) program.data.seriesTimerId else program.data.timerId,
-                )
-                onDismissRequest.invoke()
-            },
         )
     }
 }

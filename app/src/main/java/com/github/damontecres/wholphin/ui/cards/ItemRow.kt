@@ -62,6 +62,10 @@ fun <T> ItemRow(
                 items.mapIndexed { index, item -> item?.let(keyOf)?.takeIf { seen.add(it) } ?: "index_$index" }
             }
         }
+    val keySelector: ((Int, T?) -> Any)? =
+        remember(keys) {
+            keys?.let { k -> { index, _ -> k[index] } }
+        }
     val firstFocus = remember { FocusRequester() }
     val focusRequester = remember { FocusRequester() }
     var position by rememberInt()
@@ -100,7 +104,11 @@ fun <T> ItemRow(
                     .focusRestorer(firstFocus)
                     .focusRequester(focusRequester),
         ) {
-            itemsIndexed(items, key = keys?.let { k -> { index, _ -> k[index] } }) { index, item ->
+            itemsIndexed(
+                items,
+                key = keySelector,
+                contentType = { _, _ -> "row_card" },
+            ) { index, item ->
                 val cardModifier =
                     remember(index, position) {
                         if (index == position) {
@@ -110,19 +118,22 @@ fun <T> ItemRow(
                         }
                     }
 
+                val currentItem by rememberUpdatedState(item)
                 val onClick =
-                    remember(index, item) {
+                    remember(index) {
                         {
                             position = index
-                            if (item != null) currentOnClickItem(index, item)
+                            currentItem?.let { currentOnClickItem(index, it) }
+                            Unit
                         }
                     }
 
                 val onLongClick =
-                    remember(index, item) {
+                    remember(index) {
                         {
                             position = index
-                            if (item != null) currentOnLongClickItem(index, item)
+                            currentItem?.let { currentOnLongClickItem(index, it) }
+                            Unit
                         }
                     }
 

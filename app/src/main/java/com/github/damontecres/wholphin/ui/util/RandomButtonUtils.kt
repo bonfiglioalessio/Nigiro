@@ -1,13 +1,10 @@
 package com.github.damontecres.wholphin.ui.util
 
 import com.github.damontecres.wholphin.data.model.BaseItem
-import com.github.damontecres.wholphin.data.model.CollectionFolderFilter
 import com.github.damontecres.wholphin.data.model.GetItemsFilter
 import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.util.BlockingList
-import org.jellyfin.sdk.model.api.BaseItemKind
-import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import kotlin.random.Random
 
@@ -27,22 +24,6 @@ suspend fun goToRandom(
 
     Timber.d("Got random item #%s: %s", randomIndex, random?.id)
     if (random != null) {
-        val destination =
-            if (random.type == BaseItemKind.PHOTO) {
-                Destination.Slideshow(
-                    parentId = parentId.toUUIDOrNull(),
-                    index = randomIndex,
-                    filter =
-                        CollectionFolderFilter(
-                            filter = filter,
-                        ),
-                    sortAndDirection = sortAndDirection,
-                    recursive = recursive,
-                    startSlideshow = false,
-                )
-            } else {
-                random.destination()
-            }
-        navigateTo(destination)
+        navigateTo(random.destination())
     }
 }

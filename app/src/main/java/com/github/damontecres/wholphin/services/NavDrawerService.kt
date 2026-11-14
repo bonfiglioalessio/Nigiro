@@ -9,7 +9,6 @@ import com.github.damontecres.wholphin.data.model.RemoteModulesConfig
 import com.github.damontecres.wholphin.data.model.ServerUserConfig
 import com.github.damontecres.wholphin.services.hilt.DefaultCoroutineScope
 import com.github.damontecres.wholphin.ui.collectLatestIn
-import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.main.settings.Library
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.nav.NavDrawerItem
@@ -20,16 +19,12 @@ import com.github.damontecres.wholphin.util.supportedCollectionTypes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import org.jellyfin.sdk.api.client.ApiClient
-import org.jellyfin.sdk.api.client.exception.InvalidStatusException
-import org.jellyfin.sdk.api.client.extensions.liveTvApi
 import org.jellyfin.sdk.api.client.extensions.userViewsApi
 import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.UserDto
@@ -37,7 +32,6 @@ import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Duration.Companion.hours
 
 /**
  * Gets the items to show in the nav drawer
@@ -52,7 +46,6 @@ class NavDrawerService
         private val serverRepository: ServerRepository,
         private val serverPreferencesDao: ServerPreferencesDao,
         private val seerrServerRepository: SeerrServerRepository,
-        private val musicService: MusicService,
         private val remoteConfigService: RemoteConfigService,
     ) {
         private val _state = MutableStateFlow(NavDrawerItemState())
@@ -87,43 +80,6 @@ class NavDrawerService
                     showToast(context, "Error fetching user's views")
                 }
             }
-
-            // Handle when music is actively playing or not
-            coroutineScope.launchDefault {
-                musicService.state.collectLatest { music ->
-                    Timber.v("MusicService updated")
-                    when (music.status) {
-                        NowPlayingStatus.PLAYING -> {
-                            val musicEnabled = remoteConfigService.config.value.ui.modules.music
-                            _state.update {
-                                it.copy(
-                                    nowPlayingEnabled = musicEnabled,
-                                    nowPlayingTitle = if (musicEnabled) music.currentItemTitle else null,
-                                )
-                            }
-                        }
-
-                        NowPlayingStatus.IDLE -> {
-                            _state.update {
-                                it.copy(
-                                    nowPlayingEnabled = false,
-                                    nowPlayingTitle = null,
-                                )
-                            }
-                        }
-
-                        NowPlayingStatus.PAUSED -> {
-                            delay(2.hours)
-                            _state.update {
-                                it.copy(
-                                    nowPlayingEnabled = false,
-                                    nowPlayingTitle = null,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         /**
@@ -138,30 +94,10 @@ class NavDrawerService
                     .getUserViews(userId = userId)
                     .content.items
             val modules = remoteConfigService.config.value.ui.modules
-            val recordingFolders =
-                if (tvAccess && modules.liveTv) {
-                    try {
-                        api.liveTvApi
-                            .getRecordingFolders(userId = userId)
-                            .content.items
-                            .map { it.id }
-                            .toSet()
-                    } catch (ex: InvalidStatusException) {
-                        if (ex.status == 401 || ex.status == 403) {
-                            Timber.w("Got HTTP %s querying for recording folders", ex.status)
-                            emptySet()
-                        } else {
-                            throw ex
-                        }
-                    }
-                } else {
-                    emptySet()
-                }
             val libraries =
                 userViews
                     .filter {
-                        isCollectionTypeAllowed(it.collectionType, modules) ||
-                            (modules.liveTv && it.id in recordingFolders)
+                        isCollectionTypeAllowed(it.collectionType, modules)
                     }
                     .map {
                         Library(
@@ -169,7 +105,7 @@ class NavDrawerService
                             name = it.name ?: "",
                             type = it.type,
                             collectionType = it.collectionType ?: CollectionType.UNKNOWN,
-                            isRecordingFolder = it.id in recordingFolders,
+                            isRecordingFolder = false,
                         )
                     }
             return libraries
@@ -211,15 +147,11 @@ class NavDrawerService
                 allLibraries
                     .map {
                         val destination =
-                            if (it.isRecordingFolder) {
-                                Destination.Recordings(it.itemId)
-                            } else {
-                                Destination.MediaItem(
-                                    it.itemId,
-                                    it.type,
-                                    it.collectionType,
-                                )
-                            }
+                            Destination.MediaItem(
+                                it.itemId,
+                                it.type,
+                                it.collectionType,
+                            )
                         ServerNavDrawerItem(
                             itemId = it.itemId,
                             name = it.name,

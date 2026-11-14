@@ -87,7 +87,16 @@ fun BannerCard(
             }
         }
     val imageUrl =
-        remember(item, fillHeight, imageType, useSeriesForPrimary) {
+        remember(
+            item?.id,
+            item?.imageUrlOverride,
+            item?.data?.imageTags,
+            item?.data?.backdropImageTags,
+            item?.data?.seriesId,
+            fillHeight,
+            imageType,
+            useSeriesForPrimary,
+        ) {
             if (item != null) {
                 item.imageUrlOverride
                     ?: imageUrlService.getItemImageUrl(
@@ -199,12 +208,16 @@ fun BannerCard(
                 )
             }
             val ratingText =
-                remember(item?.id, item?.data?.communityRating) {
-                    item
-                        ?.data
-                        ?.communityRating
-                        ?.takeIf { it > 0f }
-                        ?.let { String.format(Locale.US, "★ %.1f", it) }
+                if (showRating) {
+                    remember(item?.id, item?.data?.communityRating) {
+                        item
+                            ?.data
+                            ?.communityRating
+                            ?.takeIf { it > 0f }
+                            ?.let { String.format(Locale.US, "★ %.1f", it) }
+                    }
+                } else {
+                    null
                 }
             if (showRating && ratingText != null) {
                 Box(

@@ -2,12 +2,9 @@ package com.github.damontecres.wholphin.ui.nav
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -27,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -183,8 +179,6 @@ class NavDrawerViewModel
                             HOME_INDEX
                         } else if (key is Destination.Search) {
                             SEARCH_INDEX
-                        } else if (key is Destination.NowPlaying) {
-                            NOW_PLAYING_INDEX
                         } else {
                             val idx = asDestinations.indexOf(key)
                             if (idx >= 0) {
@@ -267,7 +261,6 @@ data class ServerNavDrawerItem(
 
 private const val HOME_INDEX = -1
 private const val SEARCH_INDEX = -2
-private const val NOW_PLAYING_INDEX = -3
 
 /**
  * Display the left side navigation drawer with [DestinationContent] on the right
@@ -311,13 +304,15 @@ fun NavDrawer(
     }
 
     val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+    val isNigiroTheme = LocalTheme.current == AppThemeColors.NIGIRO
     val closedDrawerWidth = CollapsedDrawerItemWidth
     val openDrawerWidth = ExpandedDrawerItemWidth
     val targetOffset =
         IntOffset(
             x =
                 with(density) {
-                    if (drawerState.isOpen) (openDrawerWidth - closedDrawerWidth).roundToPx() else 0
+                    // Nigiro uses an opaque dark overlay drawer, so keep page content fixed (avoids full re-layout and clock collisions)
+                    if (drawerState.isOpen && !isNigiroTheme) (openDrawerWidth - closedDrawerWidth).roundToPx() else 0
                 },
             y = 0,
         )
@@ -369,38 +364,6 @@ fun NavDrawer(
                         },
                         modifier = Modifier,
                     )
-                    val nowPlayingContent: @Composable () -> Unit = {
-                        val interactionSource = remember { MutableInteractionSource() }
-                        IconNavItem(
-                            text = stringResource(R.string.now_playing),
-                            subtext = serviceState.nowPlayingTitle,
-                            icon = Icons.Default.PlayArrow,
-                            selected = selectedIndex == NOW_PLAYING_INDEX,
-                            drawerOpen = isOpen,
-                            interactionSource = interactionSource,
-                            onClick = {
-                                viewModel.setIndex(NOW_PLAYING_INDEX)
-                                viewModel.navigationManager.navigateTo(Destination.NowPlaying)
-                            },
-                            modifier =
-                                Modifier
-                                    .ifElse(
-                                        selectedIndex == NOW_PLAYING_INDEX,
-                                        Modifier.focusRequester(focusRequester),
-                                    ),
-                        )
-                    }
-                    if (enableAnimations) {
-                        AnimatedVisibility(
-                            visible = serviceState.nowPlayingEnabled,
-                            enter = expandVertically(expandFrom = Alignment.Top),
-                            exit = shrinkVertically(shrinkTowards = Alignment.Top),
-                        ) {
-                            nowPlayingContent()
-                        }
-                    } else if (serviceState.nowPlayingEnabled) {
-                        nowPlayingContent()
-                    }
                     LazyColumn(
                         state = navDrawerListState,
                         contentPadding = PaddingValues(0.dp),

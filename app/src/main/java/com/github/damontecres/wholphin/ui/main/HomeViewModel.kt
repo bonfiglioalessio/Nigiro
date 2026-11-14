@@ -262,21 +262,25 @@ class HomeViewModel
                         publishRowsLocked(remoteConfig, buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey))
                     }
 
-                    // Each platform row is shown as soon as it's loaded instead of waiting for the slowest
-                    val semaphore = Semaphore(2)
-                    deferredPlatforms
-                        .map { platform ->
-                            async {
-                                semaphore.withPermit {
-                                    val catalog =
-                                        fetchPlatformCatalog(userDto.id, platform, maxItems, cachedCatalogByKey[platform.key])
-                                    catalogMutex.withLock {
-                                        cachedCatalogByKey = cachedCatalogByKey + (platform.key to catalog)
-                                        publishRowsLocked(remoteConfig)
+                    // Batch deferred platforms into a single state update to avoid 6 sequential UI recompositions on startup
+                    val semaphore = Semaphore(3)
+                    val deferredCatalogs =
+                        deferredPlatforms
+                            .map { platform ->
+                                async {
+                                    semaphore.withPermit {
+                                        platform.key to
+                                            fetchPlatformCatalog(userDto.id, platform, maxItems, cachedCatalogByKey[platform.key])
                                     }
                                 }
-                            }
-                        }.awaitAll()
+                            }.awaitAll()
+                            .toMap()
+                    if (deferredCatalogs.isNotEmpty()) {
+                        catalogMutex.withLock {
+                            cachedCatalogByKey = cachedCatalogByKey + deferredCatalogs
+                            publishRowsLocked(remoteConfig)
+                        }
+                    }
                 }
                 catalogsLoadedAtMs = System.currentTimeMillis()
                 _state.update { it.copy(refreshState = LoadingState.Success) }

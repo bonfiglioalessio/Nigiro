@@ -80,11 +80,6 @@ sealed class Destination(
     }
 
     @Serializable
-    data class Recordings(
-        val itemId: UUID,
-    ) : Destination()
-
-    @Serializable
     data class Playback(
         val itemId: UUID,
         val positionMs: Long,
@@ -133,16 +128,6 @@ sealed class Destination(
     ) : Destination(false)
 
     @Serializable
-    data class Slideshow(
-        val parentId: UUID?,
-        val index: Int,
-        val filter: CollectionFolderFilter,
-        val sortAndDirection: SortAndDirection,
-        val recursive: Boolean,
-        val startSlideshow: Boolean,
-    ) : Destination(true)
-
-    @Serializable
     data object Favorites : Destination(false)
 
     @Serializable
@@ -162,9 +147,6 @@ sealed class Destination(
         val initialFilter: DiscoverFilter = DiscoverFilter(),
         val titleOverride: StringProvider? = null,
     ) : Destination(false)
-
-    @Serializable
-    data object NowPlaying : Destination(true)
 
     @Serializable
     data object UpdateApp : Destination(true)
