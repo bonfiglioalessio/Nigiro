@@ -96,6 +96,8 @@ data class ContextMenuActions(
     val onClickRemoveFromNextUp: (BaseItem) -> Unit = {},
     val onClickAddToQueue: (BaseItem) -> Unit = {},
     val onRemoveFromPlaylist: (Int, UUID) -> Unit = { _, _ -> },
+    /** Resume, Restart and Play: through the version picker where the page has one, else straight to playback */
+    val onPlay: ((BaseItem, Duration) -> Unit)? = null,
 )
 
 data class PersonContextActions(
@@ -351,6 +353,10 @@ private fun buildContextMenuItems(
         fun section() {
             if (isNotEmpty() && last() !is DialogItemDivider) add(DialogItemDivider)
         }
+        fun play(position: Duration) {
+            actions.onPlay?.invoke(item, position)
+                ?: actions.navigateTo(Destination.Playback(item.id, position.inWholeMilliseconds))
+        }
         if (item.type in supportedPlayableTypes) {
             if (item.playbackPosition > Duration.ZERO) {
                 add(
@@ -359,12 +365,7 @@ private fun buildContextMenuItems(
                         Icons.Default.PlayArrow,
                         dismissOnClick = true,
                     ) {
-                        actions.navigateTo(
-                            Destination.Playback(
-                                item.id,
-                                item.playbackPosition.inWholeMilliseconds,
-                            ),
-                        )
+                        play(item.playbackPosition)
                     },
                 )
                 add(
@@ -373,12 +374,7 @@ private fun buildContextMenuItems(
                         Icons.Default.Refresh,
                         dismissOnClick = true,
                     ) {
-                        actions.navigateTo(
-                            Destination.Playback(
-                                item.id,
-                                0L,
-                            ),
-                        )
+                        play(Duration.ZERO)
                     },
                 )
             } else {
@@ -388,12 +384,7 @@ private fun buildContextMenuItems(
                         Icons.Default.PlayArrow,
                         dismissOnClick = true,
                     ) {
-                        actions.navigateTo(
-                            Destination.Playback(
-                                item.id,
-                                0L,
-                            ),
-                        )
+                        play(Duration.ZERO)
                     },
                 )
             }

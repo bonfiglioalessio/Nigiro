@@ -1032,4 +1032,7 @@
     <string name="last_choice">Last choice</string>
     <string name="hero_more_info">More info</string>
     <string name="all_episodes">All episodes</string>
+    <string name="resume_from">Resume from %1$s</string>
+    <string name="from_start">From the start</string>
+    <string name="close">Close</string>
 </resources>

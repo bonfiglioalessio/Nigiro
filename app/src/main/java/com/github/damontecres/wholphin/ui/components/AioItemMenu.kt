@@ -118,8 +118,10 @@ fun AioItemMenu(
                     .onPreviewKeyEvent { event ->
                         val native = event.nativeKeyEvent
                         if (held && native.keyCode in SELECT_KEYS) {
-                            if (native.action == KeyEvent.ACTION_UP) held = false
-                            true
+                            // A fresh press means the hold already ended before the menu could see it go
+                            val freshPress = native.action == KeyEvent.ACTION_DOWN && native.repeatCount == 0
+                            if (freshPress || native.action == KeyEvent.ACTION_UP) held = false
+                            !freshPress
                         } else {
                             false
                         }

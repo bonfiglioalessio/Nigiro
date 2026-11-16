@@ -355,8 +355,11 @@ class MovieViewModel
                 }
         }
 
-        fun pickVersion(option: VersionOption) {
-            val position = (state.value.picker as? PickerState.Options)?.position ?: Duration.ZERO
+        /** A row of the picker: [position] is where the Resume/From the start toggle says to begin */
+        fun pickVersion(
+            option: VersionOption,
+            position: Duration,
+        ) {
             _state.update { it.copy(picker = null) }
             playJob =
                 viewModelScope.launchIO {

@@ -1,5 +1,8 @@
 package com.github.damontecres.wholphin.ui.main
 
+import com.github.damontecres.wholphin.data.ItemPlaybackRepository
+import com.github.damontecres.wholphin.services.LocalTwinService
+import com.github.damontecres.wholphin.ui.detail.movie.PlayVersionPicker
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -87,9 +90,23 @@ class HomeViewModel
         private val userPreferencesService: UserPreferencesService,
         private val mediaManagementService: MediaManagementService,
         private val latestNextUpService: LatestNextUpService,
+        private val itemPlaybackRepository: ItemPlaybackRepository,
+        private val localTwinService: LocalTwinService,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
+
+        /** Play for a continue watching item: straight away with one version, the version picker with several */
+        val versionPicker =
+            PlayVersionPicker(
+                scope = viewModelScope,
+                context = context,
+                api = api,
+                itemPlaybackRepository = itemPlaybackRepository,
+                userPreferencesService = userPreferencesService,
+                localTwinService = localTwinService,
+                navigate = navigationManager::navigateTo,
+            )
 
         private var dataLoadingJob: Job? = null
         private var cachedContinueWatching: HomeRowLoadingState.Success? = null

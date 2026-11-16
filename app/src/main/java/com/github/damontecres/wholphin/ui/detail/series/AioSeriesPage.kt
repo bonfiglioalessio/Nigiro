@@ -96,7 +96,7 @@ fun AioSeriesDetailsContent(
     overviewOnClick: () -> Unit,
     onSelectSeason: (BaseItem) -> Unit,
     onLongClickSeason: (Int, BaseItem) -> Unit,
-    onAllEpisodes: (BaseItem) -> Unit,
+    onAllEpisodes: ((BaseItem) -> Unit)? = null,
     onPlayEpisode: (BaseItem) -> Unit,
     onLongClickEpisode: (Int, BaseItem) -> Unit,
     onClickPerson: (Person) -> Unit,

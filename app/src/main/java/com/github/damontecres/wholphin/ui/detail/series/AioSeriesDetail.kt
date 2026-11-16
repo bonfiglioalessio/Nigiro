@@ -1,5 +1,8 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -407,7 +410,8 @@ fun AioEpisodesSection(
     contentStart: androidx.compose.ui.unit.Dp,
     onSelectSeason: (BaseItem) -> Unit,
     onLongClickSeason: (Int, BaseItem) -> Unit,
-    onAllEpisodes: (BaseItem) -> Unit,
+    /** A page with every episode of the season; null shows no link, the season's episodes being listed here */
+    onAllEpisodes: ((BaseItem) -> Unit)? = null,
     onPlayEpisode: (BaseItem) -> Unit,
     onLongClickEpisode: (Int, BaseItem) -> Unit,
     modifier: Modifier = Modifier,
@@ -418,17 +422,22 @@ fun AioEpisodesSection(
             stringResource(R.string.episodes),
             Modifier.padding(start = contentStart),
         )
+        // Coming down from the buttons lands on the season shown, not on whichever poster is under them
+        val selectedSeasonFocus = remember { FocusRequester() }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(px(16)),
             contentPadding = PaddingValues(start = contentStart, end = px(32)),
+            modifier = Modifier.focusRestorer(selectedSeasonFocus),
         ) {
             itemsIndexed(seasons, key = { i, s -> s?.id ?: i }) { index, season ->
                 if (season != null) {
+                    val selected = season.id == selectedSeasonId
                     AioSeasonPoster(
                         season = season,
-                        selected = season.id == selectedSeasonId,
+                        selected = selected,
                         onClick = { onSelectSeason(season) },
                         onLongClick = { onLongClickSeason(index, season) },
+                        modifier = if (selected) Modifier.focusRequester(selectedSeasonFocus) else Modifier,
                     )
                 }
             }
@@ -449,7 +458,9 @@ fun AioEpisodesSection(
                     color = AioTokens.Muted,
                     modifier = Modifier.weight(1f),
                 )
-                AioSmallPill(stringResource(R.string.all_episodes), onClick = { onAllEpisodes(selectedSeason) })
+                onAllEpisodes?.let { allEpisodes ->
+                    AioSmallPill(stringResource(R.string.all_episodes), onClick = { allEpisodes(selectedSeason) })
+                }
             }
         }
         if (episodes != null) {

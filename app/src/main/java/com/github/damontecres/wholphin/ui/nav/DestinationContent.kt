@@ -30,7 +30,6 @@ import com.github.damontecres.wholphin.ui.detail.discover.DiscoverSeriesDetails
 import com.github.damontecres.wholphin.ui.detail.episode.EpisodeDetails
 import com.github.damontecres.wholphin.ui.detail.movie.MovieDetails
 import com.github.damontecres.wholphin.ui.detail.series.SeriesDetails
-import com.github.damontecres.wholphin.ui.detail.series.SeriesOverview
 import com.github.damontecres.wholphin.ui.discover.DiscoverPage
 import com.github.damontecres.wholphin.ui.discover.DiscoverRequestGrid
 import com.github.damontecres.wholphin.ui.main.HomePage
@@ -126,10 +125,12 @@ fun DestinationContent(
         }
 
         is Destination.SeriesOverview -> {
-            SeriesOverview(
+            // Episodes and seasons open the AIOStreams series page on their season: it already lists the
+            // episodes, so the old page with the season tabs is no longer shown
+            SeriesDetails(
                 preferences = preferences,
-                destination = destination,
-                initialSeasonEpisode = destination.seasonEpisode,
+                destination = Destination.MediaItem(destination.itemId, BaseItemKind.SERIES),
+                initialSeason = destination.seasonEpisode,
                 modifier = modifier,
             )
         }

@@ -250,7 +250,7 @@ fun MovieDetails(
     state.picker?.let { picker ->
         state.movie?.let { movie ->
             VersionPickerDialog(
-                movie = movie,
+                item = movie,
                 picker = picker,
                 onPick = viewModel::pickVersion,
                 onDismissRequest = viewModel::dismissPicker,

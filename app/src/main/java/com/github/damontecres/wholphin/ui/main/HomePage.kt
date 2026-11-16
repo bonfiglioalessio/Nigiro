@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.main
 
+import com.github.damontecres.wholphin.ui.detail.movie.VersionPickerDialog
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -209,7 +210,7 @@ fun HomePage(
                         if (currentHomePrefs.clickToPlay &&
                             currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
                         ) {
-                            viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                            viewModel.versionPicker.play(item, item.playbackPosition)
                         } else {
                             viewModel.navigationManager.navigateTo(item.destination())
                         }
@@ -263,6 +264,7 @@ fun HomePage(
                                         },
                                         onClearChosenStreams = {},
                                         onClickRemoveFromNextUp = viewModel::removeFromNextUp,
+                                        onPlay = viewModel.versionPicker::play,
                                     ),
                             )
                     }
@@ -270,7 +272,7 @@ fun HomePage(
             val onClickPlay =
                 remember {
                     { _: RowColumn, item: BaseItem ->
-                        viewModel.navigationManager.navigateTo(Destination.Playback(item))
+                        viewModel.versionPicker.play(item, item.playbackPosition)
                     }
                 }
             val onClickViewMore =
@@ -361,6 +363,16 @@ fun HomePage(
                     info = info,
                     showFilePath = false,
                     onDismissRequest = { overviewDialog = null },
+                )
+            }
+            val pickRequest by viewModel.versionPicker.request.collectAsState()
+            pickRequest?.let { request ->
+                VersionPickerDialog(
+                    item = request.item,
+                    picker = request.picker,
+                    onPick = viewModel.versionPicker::pick,
+                    onDismissRequest = viewModel.versionPicker::dismiss,
+                    onDetails = { viewModel.navigationManager.navigateTo(request.item.destination()) },
                 )
             }
             showContextMenu?.let { contextMenu ->

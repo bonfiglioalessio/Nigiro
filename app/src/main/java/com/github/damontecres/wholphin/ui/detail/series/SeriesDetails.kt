@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
+import com.github.damontecres.wholphin.ui.detail.movie.VersionPickerDialog
 import android.content.res.Resources
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -100,10 +101,12 @@ fun SeriesDetails(
     preferences: UserPreferences,
     destination: Destination.MediaItem,
     modifier: Modifier = Modifier,
+    /** The season to show the episodes of, when an episode or season was opened; else the next up's */
+    initialSeason: SeasonEpisodeIds? = null,
     viewModel: SeriesViewModel =
         hiltViewModel<SeriesViewModel, SeriesViewModel.Factory>(
             creationCallback = {
-                it.create(destination.itemId, null, SeriesPageType.DETAILS)
+                it.create(destination.itemId, initialSeason, SeriesPageType.DETAILS)
             },
         ),
     playlistViewModel: AddPlaylistViewModel = hiltViewModel(),
@@ -154,6 +157,7 @@ fun SeriesDetails(
                 },
                 onShowOverview = { overviewDialog = ItemDetailsDialogInfo(it) },
                 onClearChosenStreams = {},
+                onPlay = viewModel.versionPicker::play,
             )
         }
 
@@ -206,7 +210,7 @@ fun SeriesDetails(
                 onPlay = { fromStart ->
                     val next = state.nextUp
                     if (next != null) {
-                        viewModel.navigateTo(Destination.Playback(next.id, if (fromStart) 0L else next.resumeMs))
+                        viewModel.versionPicker.play(next, if (fromStart) Duration.ZERO else next.playbackPosition)
                     } else {
                         viewModel.playNextUp()
                     }
@@ -239,8 +243,7 @@ fun SeriesDetails(
                 overviewOnClick = { overviewDialog = ItemDetailsDialogInfo(series) },
                 onSelectSeason = { season -> viewModel.loadEpisodes(season.id, season.data.indexNumber) },
                 onLongClickSeason = { _, season -> similarMenu(season) },
-                onAllEpisodes = { season -> viewModel.navigateTo(season.destination()) },
-                onPlayEpisode = { episode -> viewModel.navigateTo(Destination.Playback(episode)) },
+                onPlayEpisode = { episode -> viewModel.versionPicker.play(episode, episode.playbackPosition) },
                 onLongClickEpisode = { _, episode -> similarMenu(episode) },
                 onClickPerson = {
                     viewModel.navigateTo(Destination.MediaItem(it.id, BaseItemKind.PERSON))
@@ -264,6 +267,15 @@ fun SeriesDetails(
                 )
             }
         }
+    }
+    val pickRequest by viewModel.versionPicker.request.collectAsState()
+    pickRequest?.let { request ->
+        VersionPickerDialog(
+            item = request.item,
+            picker = request.picker,
+            onPick = viewModel.versionPicker::pick,
+            onDismissRequest = viewModel.versionPicker::dismiss,
+        )
     }
     showContextMenu?.let { contextMenu ->
         ContextMenuDialog(

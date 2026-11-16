@@ -827,4 +827,7 @@
     <string name="last_choice">Ultima scelta</string>
     <string name="hero_more_info">Altre info</string>
     <string name="all_episodes">Tutti gli episodi</string>
+    <string name="resume_from">Riprendi da %1$s</string>
+    <string name="from_start">Dall\'inizio</string>
+    <string name="close">Chiudi</string>
 </resources>

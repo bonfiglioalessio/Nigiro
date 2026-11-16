@@ -62,18 +62,32 @@ import com.github.damontecres.wholphin.ui.components.versionDetails
 import com.github.damontecres.wholphin.ui.theme.AioTokens
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.ImageType
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.github.damontecres.wholphin.ui.main.episodeSubtitle
+import org.jellyfin.sdk.model.api.BaseItemKind
+import java.util.Locale
+import kotlin.time.Duration
 
 /**
- * The version picker shown when play is pressed and the movie has more than one version. Same look as the
- * AIOStreams app's (packages/web/src/components/version-picker.tsx): a dimmed backdrop banner with title and
- * count, then one bordered row per version with a round play icon and the version's name.
+ * The version picker shown when play is pressed and the item has more than one version. Same look as the
+ * AIOStreams app's (packages/web/src/components/version-picker.tsx in a Modal): the title and subtitle over a
+ * dimmed backdrop banner with a close button, the count with a Details pill, the Resume/From the start toggle
+ * when there is a position to resume, then one bordered row per version.
+ *
+ * @param onDetails opens the item's page, null where the picker is already shown over it
  */
 @Composable
 fun VersionPickerDialog(
-    movie: BaseItem,
+    item: BaseItem,
     picker: PickerState,
-    onPick: (VersionOption) -> Unit,
+    onPick: (VersionOption, Duration) -> Unit,
     onDismissRequest: () -> Unit,
+    onDetails: (() -> Unit)? = null,
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -82,6 +96,9 @@ fun VersionPickerDialog(
         // Modal overlay: bg-black/80
         (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(AioTokens.OverlayAlpha)
         val maxHeight = LocalConfiguration.current.screenHeightDp.dp * .85f
+        // The toggle starts on Resume; a version switched to carries on from the choice
+        var fromStart by remember(item.id) { mutableStateOf(false) }
+        val position = if (fromStart) Duration.ZERO else picker.position
         Column(
             modifier =
                 Modifier
@@ -91,7 +108,29 @@ fun VersionPickerDialog(
                     .background(AioTokens.Paper)
                     .border(px(1), AioTokens.BorderFaint, RoundedCornerShape(AioTokens.Radius2xl)),
         ) {
-            PickerHeader(movie, (picker as? PickerState.Options)?.options?.size)
+            PickerHeader(
+                item = item,
+                count = (picker as? PickerState.Options)?.options?.size,
+                resumeAt = picker.position,
+                fromStart = fromStart,
+                onFromStart = { fromStart = it },
+                onDetails =
+                    onDetails?.let { details ->
+                        {
+                            onDismissRequest()
+                            details()
+                        }
+                    },
+                onClose = onDismissRequest,
+            )
+            // versions-list: border-t border-white/5
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(px(1))
+                        .background(AioTokens.BorderFaint),
+            )
             when (picker) {
                 is PickerState.Loading -> {
                     Text(
@@ -103,21 +142,55 @@ fun VersionPickerDialog(
                 }
 
                 is PickerState.Options -> {
-                    VersionList(picker, onPick)
+                    VersionList(picker) { onPick(it, position) }
                 }
             }
         }
     }
 }
 
+/** "40:28", or "1:02:03" past the hour, as AIOStreams' clock() */
+internal fun clock(position: Duration): String {
+    val total = position.inWholeSeconds
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) {
+        String.format(Locale.ROOT, "%d:%02d:%02d", h, m, s)
+    } else {
+        String.format(Locale.ROOT, "%d:%02d", m, s)
+    }
+}
+
+/** The Modal's title: the show for an episode, the movie's own otherwise */
+private fun pickerTitle(item: BaseItem): String =
+    if (item.type == BaseItemKind.EPISODE) {
+        item.data.seriesName ?: item.name.orEmpty()
+    } else {
+        item.title ?: item.name.orEmpty()
+    }
+
+/** The Modal's description: "S02E01 · Name" for an episode, the year otherwise */
+private fun pickerSubtitle(item: BaseItem): String? =
+    if (item.type == BaseItemKind.EPISODE) {
+        episodeSubtitle(item.data.parentIndexNumber, item.data.indexNumber, item.name)
+    } else {
+        item.data.productionYear?.toString()
+    }
+
 @Composable
 private fun PickerHeader(
-    movie: BaseItem,
+    item: BaseItem,
     count: Int?,
+    resumeAt: Duration,
+    fromStart: Boolean,
+    onFromStart: (Boolean) -> Unit,
+    onDetails: (() -> Unit)?,
+    onClose: () -> Unit,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val backdrop =
-        remember(movie.id) { imageUrlService.getItemImageUrl(movie, ImageType.BACKDROP, fillWidth = 680) }
+        remember(item.id) { imageUrlService.getItemImageUrl(item, ImageType.BACKDROP, fillWidth = 680) }
     val fade =
         remember {
             Brush.verticalGradient(
@@ -126,12 +199,8 @@ private fun PickerHeader(
                 1f to AioTokens.Paper,
             )
         }
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(px(104)),
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // versions-banner: the art at opacity-25 under a fade into the paper, behind the whole header
         if (backdrop != null) {
             AsyncImage(
                 model = backdrop,
@@ -139,43 +208,212 @@ private fun PickerHeader(
                 contentScale = ContentScale.Crop,
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .alpha(AioTokens.BannerArtAlpha),
             )
             Box(
                 modifier =
                     Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(fade),
             )
         }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(px(2)),
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Modal header: px-5 pb-3 pr-14 pt-5, title text-xl font-semibold, description text-sm muted
+            Column(
+                verticalArrangement = Arrangement.spacedBy(px(6)),
+                modifier = Modifier.padding(start = px(20), end = px(56), top = px(20), bottom = px(12)),
+            ) {
+                Text(
+                    text = pickerTitle(item),
+                    fontSize = pxSp(20),
+                    lineHeight = pxSp(26),
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                pickerSubtitle(item)?.let {
+                    Text(text = it, fontSize = pxSp(14), color = AioTokens.Muted, maxLines = 1)
+                }
+            }
+            // versions-header: space-y-3 px-5 pb-3
+            Column(
+                verticalArrangement = Arrangement.spacedBy(px(12)),
+                modifier = Modifier.padding(start = px(20), end = px(20), bottom = px(12)),
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(px(8)),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = px(32)),
+                ) {
+                    Text(
+                        text = count?.let { stringResource(R.string.versions_count_label, it) }.orEmpty(),
+                        fontSize = pxSp(14),
+                        color = AioTokens.Muted,
+                        modifier = Modifier.weight(1f),
+                    )
+                    onDetails?.let { details ->
+                        HeaderPill(
+                            text = stringResource(R.string.details_title),
+                            icon = Icons.Outlined.Info,
+                            onClick = details,
+                        )
+                    }
+                }
+                if (resumeAt > Duration.ZERO) {
+                    ResumeToggle(resumeAt = resumeAt, fromStart = fromStart, onFromStart = onFromStart)
+                }
+            }
+        }
+        // Modal close: absolute right-4 top-4
+        CloseButton(
+            onClick = onClose,
             modifier =
                 Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(horizontal = px(20), vertical = px(12)),
+                    .align(Alignment.TopEnd)
+                    .padding(top = px(16), end = px(16)),
+        )
+    }
+}
+
+/** Button size sm, intent gray-subtle, rounded-full: h-8 px-3 text-sm on white/10 */
+@Composable
+private fun HeaderPill(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(50)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.White.copy(alpha = .1f),
+                focusedContainerColor = Color.White.copy(alpha = .2f),
+                pressedContainerColor = Color.White.copy(alpha = .2f),
+                contentColor = Gray100,
+                focusedContentColor = Color.White,
+                pressedContentColor = Color.White,
+            ),
+        border = focusRing(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(px(8)),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(px(32)).padding(horizontal = px(12)),
         ) {
-            // text-lg font-semibold, then text-sm muted
-            Text(
-                text = movie.title ?: movie.name.orEmpty(),
-                fontSize = pxSp(18),
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val sub =
-                listOfNotNull(
-                    movie.data.productionYear?.toString(),
-                    count?.let { stringResource(R.string.versions_count_label, it) },
-                ).joinToString(" · ")
-            if (sub.isNotEmpty()) {
-                Text(text = sub, fontSize = pxSp(14), color = AioTokens.Muted)
-            }
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(px(16)))
+            Text(text = text, fontSize = pxSp(14), fontWeight = FontWeight.Medium)
         }
     }
 }
+
+/** versions-start: grid-cols-2 gap-1 rounded-full bg-black/40 p-1, the chosen half white */
+@Composable
+private fun ResumeToggle(
+    resumeAt: Duration,
+    fromStart: Boolean,
+    onFromStart: (Boolean) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(px(4)),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .background(Color.Black.copy(alpha = .4f))
+                .padding(px(4)),
+    ) {
+        ToggleHalf(
+            text = stringResource(R.string.resume_from, clock(resumeAt)),
+            chosen = !fromStart,
+            onClick = { onFromStart(false) },
+            modifier = Modifier.weight(1f),
+        )
+        ToggleHalf(
+            text = stringResource(R.string.from_start),
+            chosen = fromStart,
+            onClick = { onFromStart(true) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** Button size sm rounded-full: intent white when chosen, gray-basic otherwise */
+@Composable
+private fun ToggleHalf(
+    text: String,
+    chosen: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(50)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (chosen) Color.White else Color.Transparent,
+                focusedContainerColor = if (chosen) Color.White else Color.White.copy(alpha = .1f),
+                pressedContainerColor = if (chosen) Gray200 else Color.White.copy(alpha = .2f),
+                contentColor = if (chosen) Color.Black else Gray200,
+                focusedContentColor = if (chosen) Color.Black else Color.White,
+                pressedContentColor = if (chosen) Color.Black else Color.White,
+            ),
+        border = focusRing(shape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier,
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth().height(px(32))) {
+            Text(text = text, fontSize = pxSp(14), fontWeight = FontWeight.Medium, maxLines = 1)
+        }
+    }
+}
+
+/** The Modal's CloseButton: a round gray-basic icon button with an ✕ */
+@Composable
+private fun CloseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.White.copy(alpha = .1f),
+                pressedContainerColor = Color.White.copy(alpha = .2f),
+                contentColor = Gray200,
+                focusedContentColor = Color.White,
+                pressedContentColor = Color.White,
+            ),
+        border = focusRing(CircleShape),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier,
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(px(32))) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(R.string.close),
+                modifier = Modifier.size(px(18)),
+            )
+        }
+    }
+}
+
+/** The app's one focus mark: a 2px ring in --ring */
+@Composable
+private fun focusRing(shape: Shape) =
+    ClickableSurfaceDefaults.border(
+        focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = shape),
+    )
+
+private val Gray100 = Color(0xFFE6E6E6)
+private val Gray200 = Color(0xFFDADADA)
 
 @Composable
 private fun VersionList(
@@ -188,10 +426,10 @@ private fun VersionList(
         }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(picker) { focusRequester.tryRequestFocus() }
-    // space-y-2 px-5 pb-3
+    // space-y-2 px-5 pb-5 pt-3
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(px(8)),
-        contentPadding = PaddingValues(start = px(20), end = px(20), bottom = px(12), top = px(4)),
+        contentPadding = PaddingValues(start = px(20), end = px(20), bottom = px(20), top = px(12)),
     ) {
         itemsIndexed(picker.options, key = { _, option -> option.source.id.orEmpty() }) { index, option ->
             VersionRow(

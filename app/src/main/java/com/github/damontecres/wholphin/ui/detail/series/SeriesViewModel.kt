@@ -82,6 +82,7 @@ import org.jellyfin.sdk.model.api.request.GetEpisodesRequest
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
 import timber.log.Timber
+import com.github.damontecres.wholphin.ui.detail.movie.PlayVersionPicker
 import java.util.UUID
 
 @HiltViewModel(assistedFactory = SeriesViewModel.Factory::class)
@@ -122,6 +123,18 @@ class SeriesViewModel
         val state: StateFlow<SeriesState> = _state
 
         val position = MutableStateFlow(SeriesOverviewPosition(0, 0))
+
+        /** Play for an episode: straight away with one version, the AIOStreams version picker with several */
+        val versionPicker =
+            PlayVersionPicker(
+                scope = viewModelScope,
+                context = context,
+                api = api,
+                itemPlaybackRepository = itemPlaybackRepository,
+                userPreferencesService = userPreferencesService,
+                localTwinService = localTwinService,
+                navigate = ::navigateTo,
+            )
 
         init {
             // Streamed (Gelato) episodes that also have a downloaded copy get the disk icon: one lookup per season
@@ -264,7 +277,8 @@ class SeriesViewModel
                         _state.update { it.copy(nextUp = next) }
                         val seasonList = seasons.filterNotNull()
                         val opening =
-                            seasonList.firstOrNull { it.id == next?.data?.seasonId }
+                            seasonList.firstOrNull { it.id == seasonEpisodeIds?.seasonId }
+                                ?: seasonList.firstOrNull { it.id == next?.data?.seasonId }
                                 ?: seasonList.firstOrNull { it.data.userData?.played != true }
                                 ?: seasonList.firstOrNull()
                         opening?.let { loadEpisodes(it.id, it.data.indexNumber) }
