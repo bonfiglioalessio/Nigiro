@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
 import androidx.compose.foundation.focusGroup
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
@@ -152,7 +153,7 @@ fun ExpandableDiscoverButtons(
             item("cancel") {
                 ExpandablePlayButton(
                     title = R.string.cancel,
-                    icon = Icons.Default.Delete,
+                    icon = AioIcons.Trash,
                     onClick = {
                         firstFocus.tryRequestFocus()
                         cancelOnClick.invoke()
@@ -182,7 +183,7 @@ fun ExpandableDiscoverButtons(
 //            ExpandablePlayButton(
 //                R.string.more,
 //                Duration.ZERO,
-//                Icons.Default.MoreVert,
+//                AioIcons.MoreVertical,
 //                { moreOnClick.invoke() },
 //                Modifier
 //                    .onFocusChanged(buttonOnFocusChanged),

@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.animation.core.animateDpAsState
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -102,7 +103,7 @@ fun ViewMoreCard(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = AioIcons.ArrowRight,
                     tint = MaterialTheme.colorScheme.onSurface,
                     contentDescription = "View more",
                     modifier = Modifier.fillMaxSize(.66f),

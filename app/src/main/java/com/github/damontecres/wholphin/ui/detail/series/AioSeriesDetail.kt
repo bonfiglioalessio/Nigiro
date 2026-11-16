@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
 import androidx.compose.ui.focus.FocusRequester
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import android.graphics.Bitmap
@@ -129,7 +130,7 @@ fun AioNextAiring(episode: BaseItem) {
         horizontalArrangement = Arrangement.spacedBy(px(8)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.DateRange, contentDescription = null, tint = AioTokens.Muted, modifier = Modifier.size(px(18)))
+        Icon(AioIcons.Calendar, contentDescription = null, tint = AioTokens.Muted, modifier = Modifier.size(px(18)))
         Text(text = code, fontSize = pxSp(14), fontWeight = FontWeight.SemiBold, color = Color.White)
         Text(text = "esce ${airsIn(date.toLocalDate())}", fontSize = pxSp(14), color = AioTokens.Foreground)
         Text(text = ItalianDay.format(date), fontSize = pxSp(14), color = AioTokens.Muted)
@@ -197,7 +198,7 @@ fun AioSeasonPoster(
                                 .clip(CircleShape)
                                 .background(AioTokens.Brand),
                     ) {
-                        Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(px(14)))
+                        Icon(AioIcons.Check, null, tint = Color.White, modifier = Modifier.size(px(14)))
                     }
                 }
             }
@@ -307,7 +308,7 @@ fun AioEpisodeCard(
                                 .fillMaxSize()
                                 .background(Color.Black.copy(alpha = .3f)),
                     ) {
-                        Icon(Icons.Default.PlayArrow, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(px(48)))
+                        Icon(AioIcons.Play, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(px(48)))
                     }
                 }
                 if (played && (percent <= 0 || percent >= 100)) {
@@ -321,7 +322,7 @@ fun AioEpisodeCard(
                                 .clip(CircleShape)
                                 .background(AioTokens.Brand),
                     ) {
-                        Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(px(18)))
+                        Icon(AioIcons.Check, null, tint = Color.White, modifier = Modifier.size(px(18)))
                     }
                 }
                 if (percent > 0 && percent < 100) {
@@ -359,7 +360,7 @@ fun AioEpisodeCard(
                 val parts = meta.split("★ ")
                 Text(text = parts[0], fontSize = pxSp(14), color = AioTokens.Muted, maxLines = 1)
                 if (parts.size > 1) {
-                    Icon(Icons.Filled.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(14)))
+                    Icon(AioIcons.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(14)))
                     Spacer(Modifier.width(px(4)))
                     Text(text = parts[1], fontSize = pxSp(14), color = AioTokens.Muted, maxLines = 1)
                 }

@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -292,7 +293,7 @@ private fun AioSeriesMeta(series: BaseItem) {
 
                 's' -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(16)))
+                        Icon(AioIcons.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(16)))
                         Spacer(Modifier.width(px(4)))
                         Text(text = value, fontSize = pxSp(14), color = AioTokens.Foreground)
                     }
@@ -329,13 +330,13 @@ private fun AioSeriesActions(
         stringResource(if (resuming) R.string.resume else R.string.play) + (code?.let { " $it" } ?: "")
     Row(horizontalArrangement = Arrangement.spacedBy(px(8)), verticalAlignment = Alignment.CenterVertically) {
         AioPillButton(white = true, onClick = { onPlay(false) }, modifier = focusMod.focusRequester(playFocusRequester)) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(px(20)))
+            Icon(AioIcons.Play, contentDescription = null, modifier = Modifier.size(px(20)))
             Spacer(Modifier.width(px(8)))
             Text(text = label, fontSize = pxSp(14), fontWeight = FontWeight.Medium)
         }
         if (resuming) {
             AioIconButton(
-                icon = Icons.Default.Refresh,
+                icon = AioIcons.Refresh,
                 contentDescription = stringResource(R.string.restart),
                 onClick = { onPlay(true) },
                 modifier = focusMod,
@@ -356,21 +357,21 @@ private fun AioSeriesActions(
             }
         }
         AioIconButton(
-            icon = Icons.Default.Check,
+            icon = AioIcons.Check,
             contentDescription = stringResource(if (watched) R.string.mark_unwatched else R.string.mark_watched),
             onClick = onWatched,
             activeTint = if (watched) Color(0xFFC7C2FF) else null,
             modifier = focusMod,
         )
         AioIconButton(
-            icon = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (favorite) AioIcons.HeartFilled else AioIcons.Heart,
             contentDescription = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
             onClick = onFavorite,
             activeTint = if (favorite) Color(0xFFFCA5A5) else null,
             modifier = focusMod,
         )
         AioIconButton(
-            icon = Icons.Default.MoreVert,
+            icon = AioIcons.MoreVertical,
             contentDescription = stringResource(R.string.more),
             onClick = onMore,
             modifier = focusMod,

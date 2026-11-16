@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import android.graphics.Bitmap
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -324,7 +325,7 @@ fun ItemCardImageOverlay(
 fun FavoriteIndicator(
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 20.sp,
-) = Text(
+) = FaGlyph(
     color = colorResource(android.R.color.holo_red_light),
     text = stringResource(R.string.fa_heart),
     fontSize = fontSize,

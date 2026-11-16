@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.annotation.StringRes
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -181,7 +182,7 @@ fun PinArrowRow(modifier: Modifier = Modifier) {
         val arrows =
             listOf(R.string.fa_arrow_left_long, R.string.fa_arrow_up_long, R.string.fa_arrow_right_long, R.string.fa_arrow_down_long)
         arrows.forEach {
-            Text(
+            FaGlyph(
                 text = stringResource(it),
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.headlineSmall,

@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
 import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.AioIcons
 import com.github.damontecres.wholphin.ui.theme.pxSp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -256,7 +257,7 @@ private fun PickerHeader(
                     onDetails?.let { details ->
                         HeaderPill(
                             text = stringResource(R.string.details_title),
-                            icon = Icons.Outlined.Info,
+                            icon = AioIcons.Info,
                             onClick = details,
                         )
                     }
@@ -397,7 +398,7 @@ private fun CloseButton(
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(px(32))) {
             Icon(
-                imageVector = Icons.Default.Close,
+                imageVector = AioIcons.Close,
                 contentDescription = stringResource(R.string.close),
                 modifier = Modifier.size(px(18)),
             )
@@ -504,7 +505,7 @@ private fun VersionRow(
                         .background(if (focused) Color.White else Color.White.copy(alpha = .1f)),
             ) {
                 Icon(
-                    imageVector = Icons.Default.PlayArrow,
+                    imageVector = AioIcons.Play,
                     contentDescription = null,
                     tint = if (focused) Color.Black else Color.White,
                     modifier = Modifier.size(px(22)),

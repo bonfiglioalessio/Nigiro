@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.music
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -154,7 +155,7 @@ fun SongListItem(
                 modifier = Modifier.size(32.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
+                    imageVector = AioIcons.MoreVertical,
                     contentDescription = stringResource(R.string.more),
                 )
             }
@@ -175,7 +176,7 @@ fun MusicQueueMarker(
 ) {
     if (isPlaying) {
         Icon(
-            imageVector = Icons.Default.PlayArrow,
+            imageVector = AioIcons.Play,
             contentDescription = null,
             modifier = modifier,
         )

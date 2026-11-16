@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.BorderStroke
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -137,7 +139,7 @@ fun UserList(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
+                    FaGlyph(
                         text = stringResource(R.string.fa_arrow_left_arrow_right),
                         fontFamily = FontAwesome,
                         modifier = Modifier.padding(end = 8.dp),
@@ -168,7 +170,7 @@ fun UserList(
                         add(
                             DialogItem(
                                 stringResource(R.string.delete),
-                                Icons.Default.Delete,
+                                AioIcons.Trash,
                                 Color.Red.copy(alpha = .8f),
                             ) {
                                 onRemoveUser.invoke(user.user)
@@ -406,7 +408,7 @@ private fun AddUserCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = AioIcons.Plus,
                     contentDescription = stringResource(R.string.add_user),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(cardSize * 0.4f), // Size of the + icon

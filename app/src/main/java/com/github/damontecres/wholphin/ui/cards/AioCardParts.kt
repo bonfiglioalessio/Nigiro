@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import com.github.damontecres.wholphin.ui.theme.pxSp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -52,7 +54,7 @@ internal fun aioCardBorder(shape: Shape) =
 @Composable
 internal fun BoxScope.AioWatchedMark() {
     CardMark(Alignment.TopEnd) {
-        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(px(16)))
+        Icon(AioIcons.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(px(16)))
     }
 }
 
@@ -60,7 +62,7 @@ internal fun BoxScope.AioWatchedMark() {
 @Composable
 internal fun BoxScope.AioFavoriteMark() {
     CardMark(Alignment.TopStart) {
-        Text(text = stringResource(R.string.fa_heart), fontFamily = FontAwesome, fontSize = pxSp(11), color = FavoriteRed)
+        FaGlyph(text = stringResource(R.string.fa_heart), fontFamily = FontAwesome, fontSize = pxSp(11), color = FavoriteRed)
     }
 }
 

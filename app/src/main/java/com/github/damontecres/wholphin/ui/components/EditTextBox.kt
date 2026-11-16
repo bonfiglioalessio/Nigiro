@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -195,7 +196,7 @@ fun SearchEditTextBox(
         },
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = AioIcons.Search,
                 contentDescription = stringResource(R.string.search),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -359,7 +360,7 @@ fun SearchEditTextBox(
             ),
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search,
+                imageVector = AioIcons.Search,
                 contentDescription = stringResource(R.string.search),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
@@ -396,7 +397,7 @@ private fun EditTextBoxPreview() {
                 state = rememberTextFieldState("search"),
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = AioIcons.Search,
                         contentDescription = stringResource(R.string.search),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )

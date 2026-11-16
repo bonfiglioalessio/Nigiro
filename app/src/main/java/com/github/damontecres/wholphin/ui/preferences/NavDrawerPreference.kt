@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.preferences
 
 import android.content.Context
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -268,7 +269,7 @@ fun MoveButton(
     enabled = enabled,
     modifier = Modifier.size(32.dp),
 ) {
-    Text(
+    FaGlyph(
         text = stringResource(icon),
         fontSize = 16.sp,
         fontFamily = FontAwesome,

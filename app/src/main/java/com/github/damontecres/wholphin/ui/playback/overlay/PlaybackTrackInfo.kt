@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.playback.overlay
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -203,7 +204,7 @@ fun TrackSupportRow(
             ) {
                 if (track.selected) {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        imageVector = AioIcons.Check,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(12.dp),

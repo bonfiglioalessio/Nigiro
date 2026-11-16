@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail
 
 import android.content.Context
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -673,7 +674,7 @@ fun CollectionFolderViewScope.PlaylistItem(
                     enabled = moveUpAllowed,
                     contentHeight = contentHeight,
                 ) {
-                    Text(
+                    FaGlyph(
                         text = stringResource(R.string.fa_caret_up),
                         fontFamily = FontAwesome,
                     )
@@ -683,7 +684,7 @@ fun CollectionFolderViewScope.PlaylistItem(
                     enabled = moveDownAllowed,
                     contentHeight = contentHeight,
                 ) {
-                    Text(
+                    FaGlyph(
                         text = stringResource(R.string.fa_caret_down),
                         fontFamily = FontAwesome,
                     )
@@ -694,7 +695,7 @@ fun CollectionFolderViewScope.PlaylistItem(
                 enabled = true,
                 contentHeight = contentHeight,
             ) {
-                Text(
+                FaGlyph(
                     text = stringResource(R.string.fa_ellipsis_vertical),
                     fontFamily = FontAwesome,
                 )

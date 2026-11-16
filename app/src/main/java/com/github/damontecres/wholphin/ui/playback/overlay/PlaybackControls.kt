@@ -3,6 +3,7 @@
 package com.github.damontecres.wholphin.ui.playback.overlay
 
 import android.view.Gravity
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.annotation.DrawableRes
 import androidx.annotation.OptIn
 import androidx.annotation.StringRes
@@ -532,7 +533,7 @@ fun PlaybackFaButton(
                 .size(36.dp, 36.dp)
                 .onFocusChanged { onControllerInteraction.invoke() },
     ) {
-        Text(
+        FaGlyph(
             text = stringResource(iconRes),
             fontSize = 18.sp,
             fontFamily = FontAwesome,

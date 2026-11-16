@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.components
 
 import android.content.Context
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -520,7 +522,7 @@ private fun ExploreSortButton(
                 color = LocalContentColor.current.copy(alpha = 0.6f),
             )
             Text(text = stringResource(selected.label), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(AioIcons.ChevronDown, contentDescription = null, modifier = Modifier.size(20.dp))
         }
     }
     if (showMenu) {
@@ -532,7 +534,7 @@ private fun ExploreSortButton(
                     headlineContent = { Text(stringResource(option.label)) },
                     trailingContent =
                         if (option == selected) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            { Icon(AioIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         } else {
                             null
                         },
@@ -592,7 +594,7 @@ internal fun HeaderIconButton(
         modifier = Modifier.size(HeaderControlHeight).semantics { this.contentDescription = contentDescription },
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(text = glyph, fontFamily = FontAwesome, fontSize = 15.sp, lineHeight = 15.sp)
+            FaGlyph(text = glyph, fontFamily = FontAwesome, fontSize = 15.sp, lineHeight = 15.sp)
         }
     }
 }

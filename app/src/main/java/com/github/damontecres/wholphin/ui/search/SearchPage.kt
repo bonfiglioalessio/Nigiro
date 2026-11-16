@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.search
 
 import androidx.annotation.StringRes
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -107,7 +108,7 @@ internal fun SearchSubmitButton(
         modifier = modifier,
     ) {
         Icon(
-            imageVector = Icons.Default.Search,
+            imageVector = AioIcons.Search,
             contentDescription = null,
         )
         Spacer(modifier = Modifier.width(6.dp))

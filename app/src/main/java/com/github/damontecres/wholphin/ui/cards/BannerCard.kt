@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import android.graphics.Bitmap
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -209,7 +210,7 @@ fun BannerCard(
                 }
             }
             if (favorite) {
-                Text(
+                FaGlyph(
                     color = NigiroPalette.Pink,
                     text = stringResource(R.string.fa_heart),
                     fontSize = 14.sp,
@@ -373,7 +374,7 @@ fun OnDiskCardBadge(modifier: Modifier = Modifier) {
                 .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(6.dp))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(
+        FaGlyph(
             text = stringResource(R.string.fa_hard_drive),
             fontFamily = FontAwesome,
             fontSize = 9.sp,

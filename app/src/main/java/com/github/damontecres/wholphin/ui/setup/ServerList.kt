@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import androidx.compose.foundation.BorderStroke
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -176,7 +177,7 @@ fun ServerIconCard(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Warning,
+                                imageVector = AioIcons.Error,
                                 contentDescription = (connectionStatus as? ServerConnectionStatus.Error)?.message,
                                 tint =
                                     if (serverVersionSupported == ServerVersionSupported.NOT_SUPPORTED_IN_FUTURE) {
@@ -292,7 +293,7 @@ fun AddServerCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = AioIcons.Plus,
                     contentDescription = stringResource(R.string.add_server),
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(cardSize * 0.4f), // Size of the + icon

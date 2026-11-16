@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
 import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
@@ -313,7 +315,7 @@ fun AioMetaRow(movie: BaseItem) {
         score?.let {
             Separator()
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(16)))
+                Icon(AioIcons.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(16)))
                 Spacer(Modifier.width(px(4)))
                 MetaText(it)
             }
@@ -508,7 +510,7 @@ fun AioIconButton(
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             if (glyph != null) {
-                Text(text = glyph, fontFamily = FontAwesome, fontSize = pxSp(18), lineHeight = pxSp(18))
+                FaGlyph(text = glyph, fontFamily = FontAwesome, fontSize = pxSp(18), lineHeight = pxSp(18))
             } else if (icon != null) {
                 Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(px(22)))
             }
@@ -544,7 +546,7 @@ fun AioActions(
             onClick = { onPlay(resumePosition) },
             modifier = focusMod.focusRequester(playFocusRequester),
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(px(20)))
+            Icon(AioIcons.Play, contentDescription = null, modifier = Modifier.size(px(20)))
             Spacer(Modifier.width(px(8)))
             Text(
                 text = stringResource(if (resuming) R.string.resume else R.string.play),
@@ -554,7 +556,7 @@ fun AioActions(
         }
         if (resuming) {
             AioIconButton(
-                icon = Icons.Default.Refresh,
+                icon = AioIcons.Refresh,
                 contentDescription = stringResource(R.string.restart),
                 onClick = { onPlay(Duration.ZERO) },
                 modifier = focusMod,
@@ -563,13 +565,13 @@ fun AioActions(
         if (hasTrailer) {
             AioPillButton(white = false, onClick = onTrailer, modifier = focusMod) {
                 // BiMoviePlay: the FontAwesome film glyph bundled with the app
-                Text(text = stringResource(R.string.fa_film), fontFamily = FontAwesome, fontSize = pxSp(15))
+                FaGlyph(text = stringResource(R.string.fa_film), fontFamily = FontAwesome, fontSize = pxSp(15))
                 Spacer(Modifier.width(px(8)))
                 Text(text = "Trailer", fontSize = pxSp(14), fontWeight = FontWeight.Medium)
             }
         }
         AioIconButton(
-            icon = Icons.Default.Check,
+            icon = AioIcons.Check,
             contentDescription = stringResource(if (watched) R.string.mark_unwatched else R.string.mark_watched),
             onClick = onWatched,
             // primary-subtle when watched
@@ -577,7 +579,7 @@ fun AioActions(
             modifier = focusMod,
         )
         AioIconButton(
-            icon = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            icon = if (favorite) AioIcons.HeartFilled else AioIcons.Heart,
             contentDescription = stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
             onClick = onFavorite,
             // alert-subtle when a favourite
@@ -585,7 +587,7 @@ fun AioActions(
             modifier = focusMod,
         )
         AioIconButton(
-            icon = Icons.Default.MoreVert,
+            icon = AioIcons.MoreVertical,
             contentDescription = stringResource(R.string.more),
             onClick = onMore,
             modifier = focusMod,

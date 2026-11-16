@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
@@ -114,7 +116,7 @@ fun FilterByButton(
                 TvDropdownMenuItem(
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Delete,
+                            imageVector = AioIcons.Trash,
                             contentDescription = null,
                             tint = Color.Red.copy(alpha = .8f),
                         )
@@ -145,7 +147,7 @@ fun FilterByButton(
                         leadingIcon = {
                             if (currentValue != null) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    imageVector = AioIcons.Check,
                                     contentDescription = "Filter active",
                                 )
                             }
@@ -187,7 +189,7 @@ fun FilterByButton(
                         elevation = 5.dp,
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = AioIcons.Trash,
                                 contentDescription = null,
                                 tint = Color.Red.copy(alpha = .8f),
                             )
@@ -271,7 +273,7 @@ fun FilterByButton(
                             leadingIcon = {
                                 if (isSelected) {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
+                                        imageVector = AioIcons.Check,
                                         contentDescription = "Filter active",
                                     )
                                 }
@@ -412,7 +414,7 @@ fun ExpandableFilterButton(
                     .fillMaxHeight()
                     .widthIn(min = if (filterCount > 0 || isFocused) (MinButtonSize - 12.dp) else MinButtonSize),
         ) {
-            Text(
+            FaGlyph(
                 text = stringResource(R.string.fa_filter),
                 style = MaterialTheme.typography.titleSmall,
                 color = iconColor,
@@ -478,7 +480,7 @@ fun DiscoverFilterByButton(
                 TvDropdownMenuItem(
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Delete,
+                            imageVector = AioIcons.Trash,
                             contentDescription = null,
                             tint = Color.Red.copy(alpha = .8f),
                         )
@@ -509,7 +511,7 @@ fun DiscoverFilterByButton(
                         leadingIcon = {
                             if (currentValue != null) {
                                 Icon(
-                                    imageVector = Icons.Default.Check,
+                                    imageVector = AioIcons.Check,
                                     contentDescription = "Filter active",
                                 )
                             }
@@ -551,7 +553,7 @@ fun DiscoverFilterByButton(
                         elevation = 5.dp,
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = AioIcons.Trash,
                                 contentDescription = null,
                                 tint = Color.Red.copy(alpha = .8f),
                             )
@@ -625,7 +627,7 @@ fun DiscoverFilterByButton(
                             leadingIcon = {
                                 if (isSelected) {
                                     Icon(
-                                        imageVector = Icons.Default.Check,
+                                        imageVector = AioIcons.Check,
                                         contentDescription = "Filter active",
                                     )
                                 }

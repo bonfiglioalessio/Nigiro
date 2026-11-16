@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail
 
 import android.view.KeyEvent
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -524,7 +525,7 @@ fun JumpButton(
             jumpClick.invoke(jumpAmount)
         },
     ) {
-        Text(text = stringResource(stringRes), fontFamily = FontAwesome)
+        FaGlyph(text = stringResource(stringRes), fontFamily = FontAwesome)
     }
 }
 

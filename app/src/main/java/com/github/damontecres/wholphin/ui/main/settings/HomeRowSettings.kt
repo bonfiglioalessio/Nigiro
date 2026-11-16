@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.main.settings
 
 import android.view.Gravity
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -230,7 +231,7 @@ fun ByParentSortDialogContent(
                 selected = sort == current.sort,
                 onClick = { onClick.invoke(sort) },
                 leadingContent = {
-                    Text(
+                    FaGlyph(
                         fontFamily = FontAwesome,
                         text =
                             if (sort == current.sort) {

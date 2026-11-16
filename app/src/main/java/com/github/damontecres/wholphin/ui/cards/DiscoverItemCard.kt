@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.animation.core.animateDpAsState
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -226,7 +227,7 @@ fun PendingIndicator(modifier: Modifier = Modifier) {
                     shape = CircleShape,
                 ).size(16.dp),
     ) {
-        Text(
+        FaGlyph(
             text = stringResource(R.string.fa_bell),
             fontFamily = FontAwesome,
             fontSize = 10.sp,
@@ -251,7 +252,7 @@ fun AvailableIndicator(modifier: Modifier = Modifier) {
                     shape = CircleShape,
                 ).size(16.dp),
     ) {
-        Text(
+        FaGlyph(
             text = stringResource(R.string.fa_check),
             fontFamily = FontAwesome,
             fontSize = 10.sp,
@@ -304,7 +305,7 @@ fun BlocklistedIndicator(modifier: Modifier = Modifier) {
                     shape = CircleShape,
                 ).size(16.dp),
     ) {
-        Text(
+        FaGlyph(
             text = stringResource(R.string.fa_xmark),
             fontFamily = FontAwesome,
             fontSize = 10.sp,

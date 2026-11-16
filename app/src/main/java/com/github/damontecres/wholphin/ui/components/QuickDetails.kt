@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.foundation.layout.Row
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.icons.Icons
@@ -94,7 +95,7 @@ fun rememberQuickDetailsContentMap(textStyle: TextStyle = MaterialTheme.typograp
                     ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Star,
+                        imageVector = AioIcons.Star,
                         tint = FilledStarColor,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),

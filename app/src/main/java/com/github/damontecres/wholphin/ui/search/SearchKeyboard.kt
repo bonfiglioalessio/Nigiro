@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.search
 
 import androidx.compose.foundation.border
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +78,7 @@ fun SearchQueryDisplay(
                     .border(1.dp, Color.White.copy(alpha = 0.25f), FieldShape)
                     .padding(horizontal = 14.dp),
         ) {
-            Text(
+            FaGlyph(
                 text = stringResource(R.string.fa_magnifying_glass),
                 fontFamily = FontAwesome,
                 fontSize = 15.sp,
@@ -124,7 +125,7 @@ fun VoiceFieldButton(onClick: () -> Unit) {
         modifier = Modifier.size(FieldHeight).semantics { contentDescription = label },
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(FieldHeight)) {
-            Text(text = stringResource(R.string.fa_microphone), fontFamily = FontAwesome, fontSize = 18.sp)
+            FaGlyph(text = stringResource(R.string.fa_microphone), fontFamily = FontAwesome, fontSize = 18.sp)
         }
     }
 }

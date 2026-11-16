@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.foundation.layout.Box
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -62,12 +63,12 @@ fun SortByButton(
                         leadingIcon = {
                             if (sortOption == currentSort) {
                                 if (currentDirection == SortOrder.ASCENDING) {
-                                    Text(
+                                    FaGlyph(
                                         text = stringResource(R.string.fa_caret_up),
                                         fontFamily = FontAwesome,
                                     )
                                 } else {
-                                    Text(
+                                    FaGlyph(
                                         text = stringResource(R.string.fa_caret_down),
                                         fontFamily = FontAwesome,
                                     )
@@ -153,12 +154,12 @@ fun DiscoverSortByButton(
                         leadingIcon = {
                             if (sortOption == currentSort) {
                                 if (currentDirection == SortOrder.ASCENDING) {
-                                    Text(
+                                    FaGlyph(
                                         text = stringResource(R.string.fa_caret_up),
                                         fontFamily = FontAwesome,
                                     )
                                 } else {
-                                    Text(
+                                    FaGlyph(
                                         text = stringResource(R.string.fa_caret_down),
                                         fontFamily = FontAwesome,
                                     )

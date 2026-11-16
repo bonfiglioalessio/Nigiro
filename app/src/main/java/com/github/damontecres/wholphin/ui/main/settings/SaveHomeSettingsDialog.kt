@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.main.settings
 
 import androidx.compose.material.icons.Icons
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -39,7 +40,7 @@ fun SaveHomeSettingsDialog(
                         ),
                         DialogItem(
                             text = "Discard",
-                            icon = Icons.Default.Delete,
+                            icon = AioIcons.Trash,
                             iconColor = Color.Red,
                             onClick = onDiscard,
                         ),

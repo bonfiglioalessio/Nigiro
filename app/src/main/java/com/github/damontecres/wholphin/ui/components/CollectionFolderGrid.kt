@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -380,7 +381,7 @@ fun CollectionFolderHeader(
                         ExpandablePlayButton(
                             title = R.string.play,
                             resume = Duration.ZERO,
-                            icon = Icons.Default.PlayArrow,
+                            icon = AioIcons.Play,
                             onClick = { onClickPlayAll.invoke(false) },
                             enabled = listIsNotEmpty,
                         )

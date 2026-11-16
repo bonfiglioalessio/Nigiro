@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.AioIcons
 import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -141,7 +142,7 @@ fun ContinueWatchingCard(
                 // wide-card-play: bg-black/30 with a play icon while focused
                 AioFocusShade(visible = focused, alpha = .3f) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = AioIcons.Play,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = .9f),
                         modifier = Modifier.size(px(48)),

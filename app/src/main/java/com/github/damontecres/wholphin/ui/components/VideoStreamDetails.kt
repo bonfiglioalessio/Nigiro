@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.annotation.StringRes
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -193,7 +194,7 @@ fun StreamLabel(
             ),
         ) {
             if (icon != null) {
-                Text(
+                FaGlyph(
                     text = stringResource(icon),
                     fontFamily = FontAwesome,
                     modifier = Modifier,

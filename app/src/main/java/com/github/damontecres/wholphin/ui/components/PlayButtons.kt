@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.annotation.StringRes
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -118,7 +120,7 @@ fun ExpandablePlayButtons(
             ExpandablePlayButton(
                 title = if (resumePosition > Duration.ZERO) R.string.resume else R.string.play,
                 resume = resumePosition,
-                icon = Icons.Default.PlayArrow,
+                icon = AioIcons.Play,
                 onClick = playOnClick,
                 modifier =
                     Modifier
@@ -131,7 +133,7 @@ fun ExpandablePlayButtons(
                 ExpandablePlayButton(
                     title = R.string.restart,
                     resume = Duration.ZERO,
-                    icon = Icons.Default.Refresh,
+                    icon = AioIcons.Refresh,
                     onClick = playOnClick,
                     modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
                     mirrorIcon = true,
@@ -210,7 +212,7 @@ fun ExpandablePlayButtons(
             ExpandablePlayButton(
                 title = R.string.more,
                 resume = Duration.ZERO,
-                icon = Icons.Default.MoreVert,
+                icon = AioIcons.MoreVertical,
                 onClick = { moreOnClick.invoke() },
                 modifier = Modifier.onFocusChanged(buttonOnFocusChanged),
             )
@@ -363,7 +365,7 @@ fun FavoriteButton(
     ) {
         Box(modifier = Modifier.size(32.dp)) {
             Icon(
-                imageVector = if (favorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                imageVector = if (favorite) AioIcons.HeartFilled else AioIcons.Heart,
                 contentDescription = null,
                 tint = if (favorite) NigiroPalette.Pink else LocalContentColor.current,
                 modifier = Modifier.size(20.dp).align(Alignment.Center),
@@ -407,7 +409,7 @@ fun ExpandableFaButton(
                 Modifier
                     .size(32.dp),
         ) {
-            Text(
+            FaGlyph(
                 text = stringResource(iconStringRes),
                 style = MaterialTheme.typography.titleSmall,
                 color = iconColor,
@@ -492,7 +494,7 @@ fun DeleteButton(
         resume = Duration.ZERO,
         icon = {
             Icon(
-                imageVector = Icons.Default.Delete,
+                imageVector = AioIcons.Trash,
                 contentDescription = null,
                 tint = if (iconTint.isSpecified) iconTint else LocalContentColor.current,
                 modifier =
@@ -553,7 +555,7 @@ private fun ViewOptionsPreview() {
             ExpandablePlayButton(
                 title = R.string.play,
                 resume = Duration.ZERO,
-                icon = Icons.Default.PlayArrow,
+                icon = AioIcons.Play,
                 onClick = {},
                 interactionSource = source,
             )

@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.playback
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -216,7 +217,7 @@ fun NextUpCard(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = AioIcons.Play,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier =

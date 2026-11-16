@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import android.content.res.Resources
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
@@ -364,7 +365,7 @@ private fun buildContextMenuItems(
                 add(
                     DialogItem(
                         resources.getString(R.string.resume),
-                        Icons.Default.PlayArrow,
+                        AioIcons.Play,
                         dismissOnClick = true,
                     ) {
                         play(item.playbackPosition)
@@ -373,7 +374,7 @@ private fun buildContextMenuItems(
                 add(
                     DialogItem(
                         resources.getString(R.string.restart),
-                        Icons.Default.Refresh,
+                        AioIcons.Refresh,
                         dismissOnClick = true,
                     ) {
                         play(Duration.ZERO)
@@ -383,7 +384,7 @@ private fun buildContextMenuItems(
                 add(
                     DialogItem(
                         resources.getString(R.string.play),
-                        Icons.Default.PlayArrow,
+                        AioIcons.Play,
                         dismissOnClick = true,
                     ) {
                         play(Duration.ZERO)
@@ -476,7 +477,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.play_with),
-                    Icons.Default.PlayArrow,
+                    AioIcons.Play,
                     dismissOnClick = false,
                     onClick = onClickPlayWith,
                 ),
@@ -486,7 +487,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.add_to_queue),
-                    Icons.Default.Add,
+                    AioIcons.Plus,
                     dismissOnClick = true,
                 ) {
                     actions.onClickAddToQueue(item)
@@ -518,7 +519,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to),
-                    Icons.Default.ArrowForward,
+                    AioIcons.ArrowRight,
                     dismissOnClick = true,
                 ) {
                     actions.onClickGoTo(item)
@@ -529,7 +530,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to_series),
-                    Icons.AutoMirrored.Filled.ArrowForward,
+                    AioIcons.ArrowRight,
                     dismissOnClick = true,
                 ) {
                     actions.navigateTo(
@@ -623,7 +624,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.media_information),
-                    Icons.Default.Info,
+                    AioIcons.Info,
                     dismissOnClick = true,
                 ) {
                     onShowOverview.invoke()
@@ -634,7 +635,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.clear_track_choices),
-                    Icons.Default.Delete,
+                    AioIcons.Trash,
                     dismissOnClick = true,
                 ) {
                     onClearChosenStreams()
@@ -656,7 +657,7 @@ private fun buildContextMenuItems(
             add(
                 DialogItem(
                     resources.getString(R.string.delete),
-                    Icons.Default.Delete,
+                    AioIcons.Trash,
                     iconColor = Color.Red.copy(alpha = .8f),
                     dismissOnClick = false,
                 ) {
@@ -709,7 +710,7 @@ fun ContextMenu(
             add(
                 DialogItem(
                     stringResource(R.string.go_to),
-                    Icons.Default.ArrowForward,
+                    AioIcons.ArrowRight,
                 ) {
                     actions.navigateTo(Destination.MediaItem(itemId, BaseItemKind.PERSON, null))
                 },
@@ -783,7 +784,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to),
-                    Icons.Default.ArrowForward,
+                    AioIcons.ArrowRight,
                     dismissOnClick = true,
                 ) {
                     actions.navigateTo(item.destination())
@@ -793,7 +794,7 @@ fun buildContextForMusic(
         add(
             DialogItem(
                 resources.getString(R.string.play),
-                Icons.Default.PlayArrow,
+                AioIcons.Play,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlay(index, item)
@@ -802,7 +803,7 @@ fun buildContextForMusic(
         add(
             DialogItem(
                 resources.getString(R.string.play_next),
-                Icons.Default.PlayArrow,
+                AioIcons.Play,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlayNext(index, item)
@@ -812,7 +813,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.remove_from_queue),
-                    Icons.Default.Delete,
+                    AioIcons.Trash,
                     dismissOnClick = true,
                 ) {
                     actions.onClickRemoveFromQueue(index, item)
@@ -822,7 +823,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.add_to_queue),
-                    Icons.Default.Add,
+                    AioIcons.Plus,
                     dismissOnClick = true,
                 ) {
                     actions.onClickAddToQueue(item)
@@ -853,7 +854,7 @@ fun buildContextForMusic(
             add(
                 DialogItem(
                     resources.getString(R.string.delete),
-                    Icons.Default.Delete,
+                    AioIcons.Trash,
                     iconColor = Color.Red.copy(alpha = .8f),
                     dismissOnClick = false,
                 ) {
@@ -935,7 +936,7 @@ fun buildContextForMusicQueue(
         add(
             DialogItem(
                 resources.getString(R.string.play),
-                Icons.Default.PlayArrow,
+                AioIcons.Play,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlay(index, item)
@@ -944,7 +945,7 @@ fun buildContextForMusicQueue(
         add(
             DialogItem(
                 resources.getString(R.string.play_next),
-                Icons.Default.PlayArrow,
+                AioIcons.Play,
                 dismissOnClick = true,
             ) {
                 actions.onClickPlayNext(index, item)
@@ -953,7 +954,7 @@ fun buildContextForMusicQueue(
         add(
             DialogItem(
                 resources.getString(R.string.remove_from_queue),
-                Icons.Default.Delete,
+                AioIcons.Trash,
                 dismissOnClick = true,
             ) {
                 actions.onClickRemoveFromQueue(index, item)
@@ -963,7 +964,7 @@ fun buildContextForMusicQueue(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to_album),
-                    Icons.Default.ArrowForward,
+                    AioIcons.ArrowRight,
                     dismissOnClick = true,
                 ) {
                     actions.onClickGoToAlbum.invoke(item.albumId)
@@ -974,7 +975,7 @@ fun buildContextForMusicQueue(
             add(
                 DialogItem(
                     resources.getString(R.string.go_to_artist),
-                    Icons.Default.ArrowForward,
+                    AioIcons.ArrowRight,
                     dismissOnClick = true,
                 ) {
                     actions.onClickGoToArtist.invoke(item.artistId)

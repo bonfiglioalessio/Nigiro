@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
 import com.github.damontecres.wholphin.ui.detail.movie.VersionPickerDialog
+import com.github.damontecres.wholphin.ui.AioIcons
 import android.content.res.Resources
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -401,7 +402,7 @@ fun SeriesDetailsContent(
                         ExpandablePlayButton(
                             title = R.string.play,
                             resume = Duration.ZERO,
-                            icon = Icons.Default.PlayArrow,
+                            icon = AioIcons.Play,
                             onClick = {
                                 position = HEADER_ROW
                                 playOnClick.invoke(false)
@@ -729,7 +730,7 @@ fun buildDialogForSeason(
     val items =
         buildList {
             add(
-                DialogItem(resources.getString(R.string.go_to), Icons.Default.PlayArrow) {
+                DialogItem(resources.getString(R.string.go_to), AioIcons.Play) {
                     onClickItem.invoke(s)
                 },
             )
@@ -749,7 +750,7 @@ fun buildDialogForSeason(
             add(
                 DialogItem(
                     resources.getString(R.string.play),
-                    Icons.Default.PlayArrow,
+                    AioIcons.Play,
                 ) {
                     onClickPlay.invoke(false)
                 },
@@ -766,7 +767,7 @@ fun buildDialogForSeason(
                 add(
                     DialogItem(
                         resources.getString(R.string.delete),
-                        Icons.Default.Delete,
+                        AioIcons.Trash,
                         iconColor = Color.Red.copy(alpha = .8f),
                     ) {
                         onClickDelete.invoke(s)

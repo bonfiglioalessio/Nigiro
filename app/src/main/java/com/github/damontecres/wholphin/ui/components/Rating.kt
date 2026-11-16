@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -107,7 +108,7 @@ fun SimpleStarRating(
             )
             val height = with(LocalDensity.current) { LocalTextStyle.current.fontSize.toDp() }
             Icon(
-                imageVector = Icons.Filled.Star,
+                imageVector = AioIcons.Star,
                 tint = starColor,
                 contentDescription = null,
                 modifier = Modifier.height(height),
@@ -216,7 +217,7 @@ fun StarRating(
             for (i in 1..5) {
                 item {
                     val isRated = (if (enabled) tempRating else rating100) >= (i * 20)
-                    val icon = Icons.Filled.Star
+                    val icon = AioIcons.Star
                     var focused by remember { mutableStateOf(false) }
 
                     val focusedColor =

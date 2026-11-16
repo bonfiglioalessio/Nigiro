@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,7 +26,7 @@ fun WatchedIcon(
     padding: Dp = 2.dp,
 ) {
     Icon(
-        imageVector = Icons.Default.Check,
+        imageVector = AioIcons.Check,
         contentDescription = null,
         tint = WatchedIconColor(),
         modifier =

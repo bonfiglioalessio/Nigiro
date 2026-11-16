@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.main.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -249,7 +250,7 @@ fun RemovedListItem(
             enabled = removedEnabled,
         ) {
             Icon(
-                imageVector = Icons.Default.Delete,
+                imageVector = AioIcons.Trash,
                 contentDescription = "delete",
                 modifier = Modifier,
             )

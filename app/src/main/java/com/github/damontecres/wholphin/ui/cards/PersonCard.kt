@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
 import androidx.compose.foundation.BorderStroke
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -143,7 +144,7 @@ fun PersonCard(
                                 .fillMaxSize()
                                 .align(Alignment.Center),
                     ) {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_user),
                             fontFamily = FontAwesome,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

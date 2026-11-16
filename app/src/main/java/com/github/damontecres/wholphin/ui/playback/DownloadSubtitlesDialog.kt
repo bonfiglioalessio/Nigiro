@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.playback
 
 import androidx.compose.foundation.layout.Arrangement
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
@@ -202,7 +203,7 @@ fun SubtitleInfo(
                         text = rating.toString(),
                     )
                     Icon(
-                        imageVector = Icons.Default.Star,
+                        imageVector = AioIcons.Star,
                         tint = AppColors.GoldenYellow,
                         contentDescription = null,
                     )

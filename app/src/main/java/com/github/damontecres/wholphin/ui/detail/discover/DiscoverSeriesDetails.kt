@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.discover
 
 import android.content.res.Resources
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -500,7 +501,7 @@ fun buildDialogForSeason(
     val items =
         buildList {
             add(
-                DialogItem(resources.getString(R.string.go_to), Icons.Default.PlayArrow) {
+                DialogItem(resources.getString(R.string.go_to), AioIcons.Play) {
                     onClickItem.invoke(s)
                 },
             )
@@ -520,7 +521,7 @@ fun buildDialogForSeason(
             add(
                 DialogItem(
                     resources.getString(R.string.play),
-                    Icons.Default.PlayArrow,
+                    AioIcons.Play,
                 ) {
                     onClickPlay.invoke(false)
                 },

@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.setup
 
 import android.Manifest
+import com.github.damontecres.wholphin.ui.AioIcons
 import android.content.res.Resources
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -255,7 +256,7 @@ private fun SwitchServerContentInternal(
                         },
                         DialogItem(
                             stringResource(R.string.delete),
-                            Icons.Default.Delete,
+                            AioIcons.Trash,
                             Color.Red.copy(alpha = .8f),
                         ) {
                             viewModel.removeServer(server)

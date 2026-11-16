@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.components
 
 import android.Manifest
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
@@ -179,7 +180,7 @@ fun VoiceSearchButton(
             contentAlignment = Alignment.Center,
         ) {
             val voiceSearchDesc = stringResource(R.string.voice_search)
-            Text(
+            FaGlyph(
                 text = stringResource(R.string.fa_microphone),
                 fontFamily = FontAwesome,
                 fontSize = BUTTON_ICON_FONT_SIZE,
@@ -352,7 +353,7 @@ private fun VoiceSearchOverlay(
                         contentAlignment = Alignment.Center,
                     ) {
                         val voiceSearchDesc = stringResource(R.string.voice_search)
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_microphone),
                             fontFamily = FontAwesome,
                             fontSize = MIC_ICON_FONT_SIZE,

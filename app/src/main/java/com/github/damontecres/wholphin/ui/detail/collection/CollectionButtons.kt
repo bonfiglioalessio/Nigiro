@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.collection
 
 import androidx.compose.foundation.focusGroup
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -65,7 +66,7 @@ fun CollectionButtons(
                 ExpandablePlayButton(
                     title = R.string.play,
                     resume = Duration.ZERO,
-                    icon = Icons.Default.PlayArrow,
+                    icon = AioIcons.Play,
                     onClick = { onClickPlayAll.invoke(false) },
                     modifier = Modifier.focusRequester(firstFocus),
                 )
@@ -112,7 +113,7 @@ fun CollectionButtons(
                 ExpandablePlayButton(
                     title = R.string.more,
                     resume = Duration.ZERO,
-                    icon = Icons.Default.MoreVert,
+                    icon = AioIcons.MoreVertical,
                     onClick = { moreOnClick.invoke() },
                     modifier = Modifier,
                 )

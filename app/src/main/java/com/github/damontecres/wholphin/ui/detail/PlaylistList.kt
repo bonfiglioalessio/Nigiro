@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail
 
 import android.view.Gravity
+import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -129,7 +130,7 @@ fun PlaylistList(
                     },
                     leadingContent = {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            imageVector = AioIcons.Plus,
                             contentDescription = "Add",
                         )
                     },

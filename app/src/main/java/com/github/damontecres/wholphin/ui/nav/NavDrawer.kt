@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
 import androidx.compose.foundation.background
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 
 import com.github.damontecres.wholphin.ui.theme.px
 import android.content.Context
@@ -423,7 +425,7 @@ fun NavDrawer(
                             val interactionSource = remember { MutableInteractionSource() }
                             IconNavItem(
                                 text = stringResource(R.string.search),
-                                icon = Icons.Default.Search,
+                                icon = AioIcons.Search,
                                 selected = selectedIndex == SEARCH_INDEX,
                                 drawerOpen = isOpen,
                                 interactionSource = interactionSource,
@@ -444,7 +446,7 @@ fun NavDrawer(
                             val interactionSource = remember { MutableInteractionSource() }
                             IconNavItem(
                                 text = stringResource(R.string.home),
-                                icon = Icons.Default.Home,
+                                icon = AioIcons.Home,
                                 selected = selectedIndex == HOME_INDEX,
                                 drawerOpen = isOpen,
                                 interactionSource = interactionSource,
@@ -558,7 +560,7 @@ fun NavDrawer(
                                 val interactionSource = remember { MutableInteractionSource() }
                                 IconNavItem(
                                     text = stringResource(R.string.settings),
-                                    icon = Icons.Default.Settings,
+                                    icon = AioIcons.Cog,
                                     selected = false,
                                     drawerOpen = isOpen,
                                     interactionSource = interactionSource,
@@ -700,36 +702,25 @@ fun NavigationDrawerScope.NavItem(
     containerColor: Color = Color.Unspecified,
 ) {
     val context = LocalContext.current
-    val useFont = library !is ServerNavDrawerItem || library.type != CollectionType.LIVETV
+    // BoxIcons like the AIOStreams sidebar (BiHeart, BiCompass…); live TV keeps its own drawable
+    val useFont = false
     val icon =
         remember(library) {
             when (library) {
-                NavDrawerItem.Favorites -> {
-                    R.string.fa_heart
-                }
-
-                NavDrawerItem.More -> {
-                    R.string.fa_ellipsis
-                }
-
-                NavDrawerItem.Discover -> {
-                    R.string.fa_magnifying_glass_plus
-                }
-
-                NavDrawerItem.Explore -> {
-                    R.string.fa_compass
-                }
-
+                NavDrawerItem.Favorites -> R.drawable.bx_heart
+                NavDrawerItem.More -> R.drawable.bx_dots_horizontal_rounded
+                NavDrawerItem.Discover -> R.drawable.bx_search_alt
+                NavDrawerItem.Explore -> R.drawable.bx_compass
                 is ServerNavDrawerItem -> {
                     when (library.type) {
-                        CollectionType.MOVIES -> R.string.fa_film
-                        CollectionType.TVSHOWS -> R.string.fa_tv
-                        CollectionType.HOMEVIDEOS -> R.string.fa_video
+                        CollectionType.MOVIES -> R.drawable.bx_movie
+                        CollectionType.TVSHOWS -> R.drawable.bx_tv
+                        CollectionType.HOMEVIDEOS -> R.drawable.bx_video
                         CollectionType.LIVETV -> R.drawable.gf_dvr
-                        CollectionType.MUSIC -> R.string.fa_music
-                        CollectionType.BOXSETS -> R.string.fa_open_folder
-                        CollectionType.PLAYLISTS -> R.string.fa_list_ul
-                        else -> R.string.fa_film
+                        CollectionType.MUSIC -> R.drawable.bx_music
+                        CollectionType.BOXSETS -> R.drawable.bx_folder_open
+                        CollectionType.PLAYLISTS -> R.drawable.bx_list_ul
+                        else -> R.drawable.bx_movie
                     }
                 }
             }
@@ -744,7 +735,7 @@ fun NavigationDrawerScope.NavItem(
             val color = navItemColor(selected, focused, drawerOpen)
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (useFont) {
-                    Text(
+                    FaGlyph(
                         text = stringResource(icon),
                         textAlign = TextAlign.Center,
                         fontSize = 15.sp,
@@ -767,7 +758,7 @@ fun NavigationDrawerScope.NavItem(
             if (library is NavDrawerItem.More) {
                 {
                     Icon(
-                        imageVector = if (moreExpanded) Icons.Default.ArrowDropDown else Icons.Default.KeyboardArrowLeft,
+                        imageVector = if (moreExpanded) AioIcons.ChevronDown else AioIcons.ChevronLeft,
                         contentDescription = null,
                     )
                 }

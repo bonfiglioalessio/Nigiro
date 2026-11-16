@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.ui.main.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,7 +54,7 @@ fun HomeSettingsSourcePage(
                     selected = false,
                     headlineText = stringResource(R.string.load_from_server),
                     leadingContent = {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_cloud_arrow_down),
                             fontFamily = FontAwesome,
                         )
@@ -68,7 +69,7 @@ fun HomeSettingsSourcePage(
                         selected = false,
                         headlineText = stringResource(R.string.load_from_server_plugin),
                         leadingContent = {
-                            Text(
+                            FaGlyph(
                                 text = stringResource(R.string.fa_download),
                                 fontFamily = FontAwesome,
                             )
@@ -83,7 +84,7 @@ fun HomeSettingsSourcePage(
                     selected = false,
                     headlineText = stringResource(R.string.load_from_web_client),
                     leadingContent = {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_download),
                             fontFamily = FontAwesome,
                         )
@@ -97,7 +98,7 @@ fun HomeSettingsSourcePage(
                     selected = false,
                     headlineText = stringResource(R.string.reset),
                     leadingContent = {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_arrows_rotate),
                             fontFamily = FontAwesome,
                         )

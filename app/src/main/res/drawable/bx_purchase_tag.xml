@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BoxIcons 2.1.4 (MIT), as used by AIOStreams through react-icons -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="nonZero" android:pathData="M13.707 3.293A.996.996 0 0 0 13 3H4a1 1 0 0 0-1 1v9c0 .266.105.52.293.707l8 8a.997.997 0 0 0 1.414 0l9-9a.999.999 0 0 0 0-1.414l-8-8zM12 19.586l-7-7V5h7.586l7 7L12 19.586z" />
+    <path android:fillColor="#FFFFFFFF" android:fillType="nonZero" android:pathData="M6.9910000000000005,8.495a1.505,1.505 0 1,0 3.01,0a1.505,1.505 0 1,0 -3.01,0z" />
+</vector>

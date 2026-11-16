@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.main.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -94,7 +96,7 @@ fun HomeSettingsRowList(
                     headlineText = stringResource(R.string.add_row),
                     leadingContent = {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            imageVector = AioIcons.Plus,
                             contentDescription = null,
                         )
                     },
@@ -110,7 +112,7 @@ fun HomeSettingsRowList(
                     selected = false,
                     headlineText = "Source",
                     leadingContent = {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_download),
                             fontFamily = FontAwesome,
                         )
@@ -131,7 +133,7 @@ fun HomeSettingsRowList(
                     headlineText = stringResource(R.string.settings),
                     leadingContent = {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = AioIcons.Cog,
                             contentDescription = null,
                         )
                     },
@@ -152,7 +154,7 @@ fun HomeSettingsRowList(
                         )
                     },
                     leadingContent = {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_sliders),
                             fontFamily = FontAwesome,
                         )
@@ -245,7 +247,7 @@ fun HomeRowConfigContent(
                     onClick = { onClickMove.invoke(MoveDirection.UP) },
                     enabled = moveUpAllowed,
                 ) {
-                    Text(
+                    FaGlyph(
                         text = stringResource(R.string.fa_caret_up),
                         fontFamily = FontAwesome,
                     )
@@ -254,7 +256,7 @@ fun HomeRowConfigContent(
                     onClick = { onClickMove.invoke(MoveDirection.DOWN) },
                     enabled = moveDownAllowed,
                 ) {
-                    Text(
+                    FaGlyph(
                         text = stringResource(R.string.fa_caret_down),
                         fontFamily = FontAwesome,
                     )
@@ -264,7 +266,7 @@ fun HomeRowConfigContent(
                     enabled = deleteAllowed,
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = AioIcons.Trash,
                         contentDescription = "delete",
                         modifier = Modifier,
                     )

@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.components
 
 import android.content.res.Resources
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import android.view.KeyEvent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -128,7 +130,7 @@ data class DialogItem(
             )
         },
         leadingContent = {
-            Text(
+            FaGlyph(
                 text = stringResource(id = iconStringRes),
                 fontFamily = FontAwesome,
                 color = iconColor,
@@ -151,7 +153,7 @@ data class DialogItem(
             )
         },
         leadingContent = {
-            Text(
+            FaGlyph(
                 text = stringResource(id = iconStringRes),
 //                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 fontFamily = FontAwesome,
@@ -592,7 +594,7 @@ fun ConfirmDeleteDialog(
                             modifier = Modifier.padding(horizontal = 4.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = AioIcons.Trash,
                                 contentDescription = null,
                                 tint = Color.Red.copy(alpha = .8f),
                                 modifier = Modifier,

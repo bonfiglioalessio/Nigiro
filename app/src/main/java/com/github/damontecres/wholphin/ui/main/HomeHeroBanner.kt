@@ -3,6 +3,7 @@
 package com.github.damontecres.wholphin.ui.main
 
 import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.AioIcons
 import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
@@ -251,7 +252,7 @@ fun HomeHeroBanner(
                     modifier = Modifier.focusRequester(watchFocusRequester),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = AioIcons.Play,
                         contentDescription = null,
                         modifier = Modifier.size(px(20)),
                     )
@@ -276,7 +277,7 @@ fun HomeHeroBanner(
                         },
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Info,
+                        imageVector = AioIcons.Info,
                         contentDescription = null,
                         modifier = Modifier.size(px(20)),
                     )
@@ -351,7 +352,7 @@ private fun HeroMeta(slide: HeroSlide) {
             if (part.startsWith("★ ")) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Filled.Star,
+                        imageVector = AioIcons.Star,
                         contentDescription = null,
                         tint = Color(0xFFFACC15),
                         modifier = Modifier.size(px(16)),

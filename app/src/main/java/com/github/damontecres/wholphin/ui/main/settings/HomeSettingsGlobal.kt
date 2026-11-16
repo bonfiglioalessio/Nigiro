@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.ui.main.settings
 
 import androidx.compose.foundation.layout.Column
+import com.github.damontecres.wholphin.ui.AioIcons
+import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -105,7 +107,7 @@ fun HomeSettingsGlobal(
                     headlineText = stringResource(R.string.increase_all_cards_size),
                     leadingContent = {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowUp,
+                            imageVector = AioIcons.ChevronUp,
                             contentDescription = null,
                         )
                     },
@@ -119,7 +121,7 @@ fun HomeSettingsGlobal(
                     headlineText = stringResource(R.string.decrease_all_cards_size),
                     leadingContent = {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
+                            imageVector = AioIcons.ChevronDown,
                             contentDescription = null,
                         )
                     },
@@ -133,7 +135,7 @@ fun HomeSettingsGlobal(
                     selected = false,
                     headlineText = stringResource(R.string.view_removed_next_up),
                     leadingContent = {
-                        Text(
+                        FaGlyph(
                             text = stringResource(R.string.fa_eye),
                             fontFamily = FontAwesome,
                         )
