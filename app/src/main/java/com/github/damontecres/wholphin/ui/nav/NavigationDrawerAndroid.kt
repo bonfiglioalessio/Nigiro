@@ -59,6 +59,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import com.github.damontecres.wholphin.ui.tryRequestFocus
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
@@ -92,9 +99,19 @@ fun ModalNavigationDrawer(
     drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed),
     content: @Composable () -> Unit,
 ) {
+    // The page, as a group that remembers its last focused element: Right or Back in the open drawer return there
+    val contentFocus = remember { FocusRequester() }
     Box(modifier = modifier) {
         // Content first: with the Nigiro theme the sidebar is transparent and drawn over the hero and backdrops
-        content()
+        Box(
+            modifier =
+                Modifier
+                    .focusRequester(contentFocus)
+                    .focusRestorer()
+                    .focusGroup(),
+        ) {
+            content()
+        }
 
         // AIOStreams tv-rail: no panel behind the open sidebar, the page darkens from the left edge instead
         // (w-[36rem] bg-gradient-to-r from-black via-black/85 to-transparent, faded in over 200 ms)
@@ -128,7 +145,19 @@ fun ModalNavigationDrawer(
         DrawerSheet(
             modifier =
                 Modifier
-                    .align(Alignment.CenterStart),
+                    .align(Alignment.CenterStart)
+                    // Like the AIOStreams tv-rail: Right or Back leave the open drawer for the page (focus search
+                    // alone misses it, the page's first buttons sit partly under the drawer; Back would exit the app)
+                    .onPreviewKeyEvent { event ->
+                        if (drawerState.currentValue == DrawerValue.Open &&
+                            event.type == KeyEventType.KeyDown &&
+                            (event.key == Key.DirectionRight || event.key == Key.Back)
+                        ) {
+                            contentFocus.tryRequestFocus()
+                        } else {
+                            false
+                        }
+                    },
             drawerState = drawerState,
             content = drawerContent,
         )
