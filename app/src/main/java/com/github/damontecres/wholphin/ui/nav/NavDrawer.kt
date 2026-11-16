@@ -361,16 +361,16 @@ fun NavDrawer(
             val searchFocusRequester = remember { FocusRequester() }
 
             ProvideTextStyle(MaterialTheme.typography.labelMedium) {
+                // Start-aligned with the same inset open or closed: icons, avatar and divider stay put and only
+                // the labels appear (centring moved everything by a few dp when the drawer opened)
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(spacedBy),
                     modifier =
                         Modifier
                             .fillMaxHeight()
-                            // Centred in the rail like the AIOStreams sidebar, whatever the collapsed pill width
                             .widthIn(min = CollapsedDrawerItemWidth)
-                            // Open: the pills start 12 px from the edge like the AIOStreams tv-rail
-                            .padding(start = if (isOpen) px(12) else 0.dp)
+                            .padding(start = DrawerRailInset)
                             .padding(vertical = 8.dp),
                 ) {
                     // Even though some must be clicked, focusing on it should clear other focused items
@@ -390,17 +390,18 @@ fun NavDrawer(
                         modifier = Modifier,
                     )
                     // AIOStreams: a short divider under the account (h-px w-8 bg-white/10)
+                    // Centred under the collapsed pills
                     Box(
                         modifier =
                             Modifier
-                                .padding(vertical = px(8))
+                                .padding(start = (CollapsedDrawerPillWidth - px(32)) / 2, top = px(8), bottom = px(8))
                                 .size(width = px(32), height = 1.dp)
                                 .background(Color.White.copy(alpha = .1f)),
                     )
                     LazyColumn(
                         state = navDrawerListState,
                         contentPadding = PaddingValues(0.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        horizontalAlignment = Alignment.Start,
                         // The footer pins Settings to the bottom; without it, it would pin the last library instead
                         verticalArrangement =
                             if (preferences.appPreferences.interfacePreferences.showTvSettings) {

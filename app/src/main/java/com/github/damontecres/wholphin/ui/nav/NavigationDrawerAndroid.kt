@@ -255,6 +255,9 @@ internal val DrawerIconSize = px(24)
 internal val DrawerIconPadding = 0.dp
 // 64 px: the list item's own paddings leave the icon its full size (at 56 px it gets squeezed)
 internal val CollapsedDrawerPillWidth = px(64)
+
+// The collapsed pills centred in the rail, kept as the inset when the drawer opens
+internal val DrawerRailInset = (CollapsedDrawerItemWidth - CollapsedDrawerPillWidth) / 2
 internal val DrawerItemHeight = px(48)
 internal val DrawerAnimationStiffness = Spring.StiffnessMedium
 internal val FlatDrawerItemShape = RoundedCornerShape(50)
@@ -341,8 +344,11 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    // px-3.5 when open (icon lines up with the collapsed one), centred in the collapsed pill
-                    .padding(horizontal = if (hasFocus) px(14) else (CollapsedDrawerPillWidth - DrawerIconSize) / 2),
+                    // The icon keeps the start inset of the collapsed pill, so it doesn't move when the drawer opens
+                    .padding(
+                        start = (CollapsedDrawerPillWidth - DrawerIconSize) / 2,
+                        end = if (hasFocus) px(14) else (CollapsedDrawerPillWidth - DrawerIconSize) / 2,
+                    ),
         ) {
             Box(Modifier.requiredSize(DrawerIconSize), contentAlignment = Alignment.Center) { leadingContent() }
             if (hasFocus) {
