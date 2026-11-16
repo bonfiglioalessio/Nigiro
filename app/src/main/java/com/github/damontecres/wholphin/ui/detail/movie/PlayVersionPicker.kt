@@ -6,6 +6,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.ItemPlaybackRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.services.LocalTwinService
+import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.launchIO
@@ -36,8 +37,9 @@ data class PickRequest(
 )
 
 /**
- * Play for an item whose versions are not loaded yet, such as an episode from a list: the movie page's
- * [MovieViewModel.requestPlay] for any page. One version plays straight away, several open the picker.
+ * Play and "Choose a version" for an item whose versions are not loaded yet, such as an episode from a list.
+ * Play starts right away (the player takes the version chosen before, else the one last played, else the best
+ * Italian one); choosing loads the versions and opens the picker, or plays straight away if there is one.
  */
 class PlayVersionPicker(
     private val scope: CoroutineScope,
@@ -46,6 +48,7 @@ class PlayVersionPicker(
     private val itemPlaybackRepository: ItemPlaybackRepository,
     private val userPreferencesService: UserPreferencesService,
     private val localTwinService: LocalTwinService,
+    private val streamChoiceService: StreamChoiceService,
     private val navigate: (Destination) -> Unit,
 ) {
     private val _request = MutableStateFlow<PickRequest?>(null)
@@ -53,6 +56,14 @@ class PlayVersionPicker(
     private var job: Job? = null
 
     fun play(
+        item: BaseItem,
+        position: Duration,
+    ) {
+        dismiss()
+        navigate(Destination.Playback(item.id, position.inWholeMilliseconds))
+    }
+
+    fun choose(
         item: BaseItem,
         position: Duration,
     ) {
@@ -83,12 +94,12 @@ class PlayVersionPicker(
 
                     is PlayDecision.Pick -> {
                         val prefs = userPreferencesService.getCurrent()
-                        // Only a version picked before is marked, not the default playback would take
+                        // The version picked before, else the one last played: never just the default
                         val chosenSource =
-                            itemPlaybackRepository
-                                .getSelectedTracks(full.id, full, prefs)
-                                ?.itemPlayback
-                                ?.sourceId
+                            streamChoiceService.lastSourceId(
+                                full.id,
+                                itemPlaybackRepository.getSelectedTracks(full.id, full, prefs)?.itemPlayback,
+                            )
                         val chosenId =
                             chosenSource?.let { id ->
                                 decision.options.firstOrNull { it.source.id?.toUUIDOrNull() == id }?.source?.id

@@ -1018,6 +1018,7 @@ fun mockServerRepo(
 private fun runTest(input: TestInput) {
     val service =
         StreamChoiceService(
+            mockk(relaxed = true),
             mockServerRepo(input.userAudioLang, input.userSubtitleMode, input.userSubtitleLang),
             mockk<SeriesTrackChoiceDao>(),
             mockk(relaxed = true),

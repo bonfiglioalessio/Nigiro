@@ -265,6 +265,7 @@ fun HomePage(
                                         onClearChosenStreams = {},
                                         onClickRemoveFromNextUp = viewModel::removeFromNextUp,
                                         onPlay = viewModel.versionPicker::play,
+                                        onChooseVersionPicker = viewModel.versionPicker::choose,
                                     ),
                             )
                     }

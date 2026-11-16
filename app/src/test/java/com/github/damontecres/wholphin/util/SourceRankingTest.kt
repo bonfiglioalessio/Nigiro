@@ -219,4 +219,102 @@ class SourceRankingTest {
             SourceRanking.rank(sources, DecodeCapabilities(), runtimeTicks, maxBitrate = 10_000_000).first().id,
         )
     }
+
+    // Play's own choice (SourceRanking.best): 2 hours at the 15 Mbps Wi-Fi budget is about 12.5 GB
+
+    @Test
+    fun bestTakesItalian4kWhenItFitsTheWifi() {
+        val hd = source("hd", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
+        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p (HEVC)", size = 10 * gb)
+        assertEquals("uhd", SourceRanking.best(listOf(hd, uhd), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestFallsBackTo1080pWhen4kIsTooHeavy() {
+        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p WEB-DL (HEVC)", size = 20 * gb)
+        val hd = source("hd", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
+        assertEquals("hd", SourceRanking.best(listOf(uhd, hd), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestPrefersItalianOverAHigherResolution() {
+        val english = source("en", "⚡ RD · 🇬🇧 ORIG · 2160p (HEVC)", size = 8 * gb)
+        val italian = source("it", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
+        assertEquals("it", SourceRanking.best(listOf(english, italian), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestTakesTheFileOnTheServerFirst() {
+        val stream = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p (HEVC)", size = 8 * gb)
+        val local = source("local", "Film", isRemote = false, size = 4 * gb)
+        assertEquals("local", SourceRanking.best(listOf(stream, local), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestSkipsUncachedStreams() {
+        val uncached = source("uhd", "⏳ RD · 🇮🇹 ITA · 2160p (HEVC)", size = 8 * gb)
+        val cached = source("hd", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
+        assertEquals("hd", SourceRanking.best(listOf(uncached, cached), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestTakesTheLightestItalianWhenNothingFits() {
+        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p (HEVC)", size = 40 * gb)
+        val hd = source("hd", "⚡ RD · 🇮🇹 ITA · 1080p Remux", size = 20 * gb)
+        assertEquals("hd", SourceRanking.best(listOf(uhd, hd), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestPutsCachedFirstWithinAResolution() {
+        val plain = source("plain", "RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
+        val cached = source("cached", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 3 * gb)
+        assertEquals("cached", SourceRanking.best(listOf(plain, cached), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestOfNothingIsNull() {
+        assertNull(SourceRanking.best(emptyList(), null, runtimeTicks))
+    }
+
+    /** A Gelato source as the server reports it: a "local file" at /stub, probed figures that mean nothing */
+    private fun gelato(
+        id: String,
+        name: String,
+        height: Int? = null,
+        codec: String? = null,
+        bitrate: Int? = null,
+    ) = source(id, name, isRemote = false)
+        .copy(
+            path = "/stub",
+            bitrate = bitrate,
+            mediaStreams = height?.let { listOf(stream(0, MediaStreamType.VIDEO, codec = codec, height = it)) },
+        )
+
+    @Test
+    fun gelatoStubsAreStreamsNotFilesOnTheServer() {
+        assertTrue(gelato("a", "⚡ RD · 🇮🇹 ITA · 1080p").isStreamed())
+        assertFalse(source("b", "Film", isRemote = false).isStreamed())
+    }
+
+    // The Christmas Switch (1h43): AIOStreams' order, the server's probe gave the WEB stream 2 b/s and the AVC one 31 kb/s
+    private val christmasRuntime = 61_800_000_000L
+    private val christmas =
+        listOf(
+            gelato("hevc", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC) · 1.48 GB\n🗣️ Italian", height = 960, codec = "hevc", bitrate = 1_909_376),
+            gelato("web", "🌐 WEB · 🇮🇹 ITA\n🗣️ Italian", height = 720, codec = "h264", bitrate = 2),
+            gelato("orig1080", "⚡ RD · 🇬🇧 ORIG · 1080p · 2.47 GB\n🗣️ Latino, Dual Audio"),
+            gelato("orig2160", "⚡ RD · 🇬🇧 ORIG · 2160p WEB-DL (HEVC) · 14.98 GB\n🗣️ Swedish, English"),
+            gelato("avc", "⚡ RD · 🇮🇹 ITA · 1080p WEB-DL (AVC) · 2.82 GB\n🗣️ Italian, Swedish", height = 1080, codec = "h264", bitrate = 31_664),
+        )
+
+    @Test
+    fun bestOfGelatoStreamsIsTheItalian1080p() {
+        assertEquals("hevc", SourceRanking.best(christmas, null, christmasRuntime)?.id)
+    }
+
+    @Test
+    fun bestAfterAFailureKeepsTheResolutionOverAnUnsizedStream() {
+        val remaining = christmas.filter { it.id != "hevc" }
+        assertEquals("avc", SourceRanking.best(remaining, null, christmasRuntime)?.id)
+    }
 }

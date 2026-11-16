@@ -133,6 +133,7 @@ class SeriesViewModel
                 itemPlaybackRepository = itemPlaybackRepository,
                 userPreferencesService = userPreferencesService,
                 localTwinService = localTwinService,
+                streamChoiceService = streamChoiceService,
                 navigate = ::navigateTo,
             )
 

@@ -1,6 +1,8 @@
 package com.github.damontecres.wholphin.services
 
+import android.content.Context
 import com.github.damontecres.wholphin.R
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.github.damontecres.wholphin.data.SeriesTrackChoiceDao
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.ActivationFlag
@@ -44,10 +46,35 @@ import javax.inject.Singleton
 class StreamChoiceService
     @Inject
     constructor(
+        @param:ApplicationContext private val context: Context,
         private val serverRepository: ServerRepository,
         private val seriesTrackChoiceDao: SeriesTrackChoiceDao,
         private val deviceProfileService: DeviceProfileService,
     ) {
+        /**
+         * The source each item last started with when none was chosen, so resuming takes the same one. Kept
+         * apart from the chosen versions ([ItemPlayback]): a choice made by Play itself must not stop a copy
+         * downloaded later from playing instead (see PlaybackViewModel.preferLocalCopy).
+         */
+        private val playedSources by lazy { context.getSharedPreferences(PLAYED_SOURCES, Context.MODE_PRIVATE) }
+
+        fun rememberPlayedSource(
+            itemId: UUID,
+            sourceId: String?,
+        ) {
+            val id = sourceId?.toUUIDOrNull() ?: return
+            playedSources.edit().putString(itemId.toString(), id.toString()).apply()
+        }
+
+        /** The source [itemId] last started with, if Play chose it */
+        fun playedSource(itemId: UUID): UUID? = playedSources.getString(itemId.toString(), null)?.toUUIDOrNull()
+
+        /** What resuming plays: the version chosen in the picker, else the one Play took last time */
+        fun lastSourceId(
+            itemId: UUID,
+            itemPlayback: ItemPlayback?,
+        ): UUID? = itemPlayback?.sourceId ?: playedSource(itemId)
+
         private val userConfig: UserConfiguration? get() = serverRepository.currentUserDto?.configuration
 
         private val decodeCapabilities by lazy {
@@ -115,24 +142,26 @@ class StreamChoiceService
         ) = saveSeriesTrackChoice(dto, type, null, ActivationFlag.ONLY_FORCED)
 
         /**
-         * Returns the [MediaSourceInfo] that matched the [ItemPlayback] or else the best ranked one
+         * Returns the [MediaSourceInfo] that matched the [ItemPlayback], else the one the item last played with,
+         * else the best one for Play ([SourceRanking.best])
          */
         fun chooseSource(
             dto: BaseItemDto,
             itemPlayback: ItemPlayback?,
         ): MediaSourceInfo? =
-            itemPlayback?.sourceId?.let { dto.mediaSources?.firstOrNull { it.id?.toUUIDOrNull() == itemPlayback.sourceId } }
+            lastSourceId(dto.id, itemPlayback)
+                ?.let { sourceId -> dto.mediaSources?.firstOrNull { it.id?.toUUIDOrNull() == sourceId } }
                 ?: chooseSource(dto.mediaSources, dto.runTimeTicks)
 
         /**
-         * Returns the [MediaSourceInfo] most likely to play well on this device
+         * Returns the [MediaSourceInfo] Play takes: Italian, as high a resolution as the Wi-Fi carries
          *
-         * @see SourceRanking
+         * @see SourceRanking.best
          */
         fun chooseSource(
             sources: List<MediaSourceInfo>?,
             runtimeTicks: Long? = null,
-        ): MediaSourceInfo? = sources?.letNotEmpty { rankSources(it, runtimeTicks).firstOrNull() }
+        ): MediaSourceInfo? = sources?.letNotEmpty { SourceRanking.best(it, decodeCapabilities, runtimeTicks) }
 
         /**
          * Orders media sources from the most to the least likely to play well on this device
@@ -765,3 +794,5 @@ sealed interface StreamChoiceReason {
         private val SEASON_PROVIDER: StringProvider by lazy { ResStringProvider(R.string.tv_season) }
     }
 }
+
+private const val PLAYED_SOURCES = "played_sources"

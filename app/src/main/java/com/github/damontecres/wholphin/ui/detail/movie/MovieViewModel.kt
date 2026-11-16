@@ -99,6 +99,19 @@ class MovieViewModel
         private val _state = MutableStateFlow(MovieState())
         val state: StateFlow<MovieState> = _state
 
+        /** "Choose a version" for the other titles on the page (similar movies), whose versions aren't loaded */
+        val versionPicker =
+            PlayVersionPicker(
+                scope = viewModelScope,
+                context = context,
+                api = api,
+                itemPlaybackRepository = itemPlaybackRepository,
+                userPreferencesService = userPreferencesService,
+                localTwinService = localTwinService,
+                streamChoiceService = streamChoiceService,
+                navigate = ::navigateTo,
+            )
+
         // Declared before the init block: initializers below it would run after init() and reset them
         private var started = false
         private var resumedOnce = false
@@ -317,10 +330,20 @@ class MovieViewModel
         }
 
         /**
-         * Play pressed: with one version (e.g. a file on disk) playback starts right away, with several the
-         * version picker opens. If the sources are still loading the picker shows a loading state meanwhile.
+         * Play pressed: playback starts right away with the version chosen before, else the one the movie
+         * last played with, else the best Italian one the Wi-Fi carries (see StreamChoiceService.chooseSource)
          */
         fun requestPlay(position: Duration) {
+            playJob?.cancel()
+            _state.update { it.copy(picker = null) }
+            playJob = viewModelScope.launchIO { startPlayback(position) }
+        }
+
+        /**
+         * "Choose a version": with one version (e.g. a file on disk) playback starts right away, with several the
+         * version picker opens. If the sources are still loading the picker shows a loading state meanwhile.
+         */
+        fun openVersionPicker(position: Duration) {
             playJob?.cancel()
             val pending = sources()
             if (!pending.isCompleted) {
@@ -348,7 +371,12 @@ class MovieViewModel
                         }
 
                         is PlayDecision.Pick -> {
-                            val chosenId = state.value.chosenStreams?.source?.id
+                            // "Last choice": the version picked before, else the one the movie last played with,
+                            // never just the default
+                            val lastId =
+                                streamChoiceService.lastSourceId(itemId, state.value.chosenStreams?.itemPlayback)
+                            val chosenId =
+                                decision.options.firstOrNull { it.source.id?.toUUIDOrNull() == lastId }?.source?.id
                             _state.update { it.copy(picker = PickerState.Options(decision.options, position, chosenId)) }
                         }
                     }

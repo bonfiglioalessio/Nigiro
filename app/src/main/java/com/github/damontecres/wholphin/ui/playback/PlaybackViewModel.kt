@@ -578,6 +578,11 @@ class PlaybackViewModel
                         SeriesTrackChoiceType.SUBTITLE,
                     )
 
+                // Resuming later takes the same source, unless a version gets chosen in the picker
+                if (itemPlayback == null && mediaSource != null) {
+                    streamChoiceService.rememberPlayedSource(base.id, mediaSource.id)
+                }
+
                 if (mediaSource == null && !isLiveTv) {
                     showToast(
                         context,
@@ -766,6 +771,8 @@ class PlaybackViewModel
                     .filter { it.id.isNotNullOrBlank() && it.id !in failedSourceIds }
             val next = streamChoiceService.chooseSource(remaining, item.data.runTimeTicks) ?: return false
             Timber.w("Media source %s failed, trying %s", failedSourceId, next.id)
+            // The failed one would come back on resume: remember the one that is tried now
+            streamChoiceService.rememberPlayedSource(item.id, next.id)
             showToast(
                 context,
                 context.getString(R.string.playback_source_unavailable_trying_next),

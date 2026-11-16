@@ -158,6 +158,7 @@ fun SeriesDetails(
                 onShowOverview = { overviewDialog = ItemDetailsDialogInfo(it) },
                 onClearChosenStreams = {},
                 onPlay = viewModel.versionPicker::play,
+                onChooseVersionPicker = viewModel.versionPicker::choose,
             )
         }
 

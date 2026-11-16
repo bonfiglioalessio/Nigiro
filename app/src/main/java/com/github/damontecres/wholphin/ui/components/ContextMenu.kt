@@ -98,6 +98,8 @@ data class ContextMenuActions(
     val onRemoveFromPlaylist: (Int, UUID) -> Unit = { _, _ -> },
     /** Resume, Restart and Play: through the version picker where the page has one, else straight to playback */
     val onPlay: ((BaseItem, Duration) -> Unit)? = null,
+    /** "Choose a version": the AIOStreams version picker, from where the item would resume */
+    val onChooseVersionPicker: ((BaseItem, Duration) -> Unit)? = null,
 )
 
 data class PersonContextActions(
@@ -389,6 +391,18 @@ private fun buildContextMenuItems(
                 )
             }
         }
+        val chooseVersion = actions.onChooseVersionPicker
+        if (chooseVersion != null && (item.type == BaseItemKind.MOVIE || item.type == BaseItemKind.EPISODE)) {
+            add(
+                DialogItem(
+                    text = R.string.choose_version_title,
+                    iconStringRes = R.string.fa_list_ul,
+                    dismissOnClick = true,
+                ) {
+                    chooseVersion(item, item.playbackPosition)
+                },
+            )
+        }
         if (item.type in supportedShufflableTypes) {
             add(
                 DialogItem(
@@ -442,7 +456,7 @@ private fun buildContextMenuItems(
                         )
                     }
                 }
-                if (sources.size > 1) {
+                if (sources.size > 1 && actions.onChooseVersionPicker == null) {
                     add(
                         DialogItem(
                             resources.getString(

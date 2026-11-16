@@ -43,7 +43,7 @@ class TestSeriesTrackChoice {
     private val mockSeriesTrackChoiceDao = mockk<SeriesTrackChoiceDao>(relaxed = false)
 
     private val streamChoiceService =
-        StreamChoiceService(mockServerRepository, mockSeriesTrackChoiceDao, mockk(relaxed = true))
+        StreamChoiceService(mockk(relaxed = true), mockServerRepository, mockSeriesTrackChoiceDao, mockk(relaxed = true))
 
     private val seriesId = UUID.randomUUID()
     private val season1Id = UUID.randomUUID()
@@ -69,7 +69,7 @@ class TestSeriesTrackChoice {
         runTest {
             val mockSeriesTrackChoiceDao = mockk<SeriesTrackChoiceDao>(relaxed = true)
             val streamChoiceService =
-                StreamChoiceService(mockServerRepository, mockSeriesTrackChoiceDao, mockk(relaxed = true))
+                StreamChoiceService(mockk(relaxed = true), mockServerRepository, mockSeriesTrackChoiceDao, mockk(relaxed = true))
 
             val seriesId = UUID.randomUUID()
             val seasonId = UUID.randomUUID()
@@ -151,7 +151,7 @@ class TestSeriesTrackChoice {
                     subtitleMode = SubtitlePlaybackMode.NONE,
                 )
             val streamChoiceService =
-                StreamChoiceService(mockServerRepository, mockSeriesTrackChoiceDao, mockk(relaxed = true))
+                StreamChoiceService(mockk(relaxed = true), mockServerRepository, mockSeriesTrackChoiceDao, mockk(relaxed = true))
 
             val result =
                 streamChoiceService.chooseSubtitleStream(

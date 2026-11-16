@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.main
 
 import com.github.damontecres.wholphin.data.ItemPlaybackRepository
 import com.github.damontecres.wholphin.services.LocalTwinService
+import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.ui.detail.movie.PlayVersionPicker
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -92,6 +93,7 @@ class HomeViewModel
         private val latestNextUpService: LatestNextUpService,
         private val itemPlaybackRepository: ItemPlaybackRepository,
         private val localTwinService: LocalTwinService,
+        private val streamChoiceService: StreamChoiceService,
     ) : ViewModel() {
         private val _state = MutableStateFlow(HomeState.EMPTY)
         val state: StateFlow<HomeState> = _state
@@ -105,6 +107,7 @@ class HomeViewModel
                 itemPlaybackRepository = itemPlaybackRepository,
                 userPreferencesService = userPreferencesService,
                 localTwinService = localTwinService,
+                streamChoiceService = streamChoiceService,
                 navigate = navigationManager::navigateTo,
             )
 

@@ -141,6 +141,13 @@ fun MovieDetails(
                 },
                 onShowOverview = { overviewDialog = ItemDetailsDialogInfo(it) },
                 onClearChosenStreams = { viewModel.clearChosenStreams(it) },
+                onChooseVersionPicker = { item, position ->
+                    if (item.id == viewModel.itemId) {
+                        viewModel.openVersionPicker(position)
+                    } else {
+                        viewModel.versionPicker.choose(item, position)
+                    }
+                },
             )
         }
 
@@ -256,6 +263,16 @@ fun MovieDetails(
                 onDismissRequest = viewModel::dismissPicker,
             )
         }
+    }
+    val otherPick by viewModel.versionPicker.request.collectAsState()
+    otherPick?.let { request ->
+        VersionPickerDialog(
+            item = request.item,
+            picker = request.picker,
+            onPick = viewModel.versionPicker::pick,
+            onDismissRequest = viewModel.versionPicker::dismiss,
+            onDetails = { viewModel.navigateTo(request.item.destination()) },
+        )
     }
     showContextMenu?.let { contextMenu ->
         ContextMenuDialog(
