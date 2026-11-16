@@ -868,4 +868,7 @@
     <string name="explore_sort_rating">Valutazione</string>
     <string name="explore_random">Scelta casuale</string>
     <string name="explore_sort_prefix">"Ordina: "</string>
+    <string name="search_no_results_for">Nessun risultato per «%1$s»</string>
+    <string name="search_no_results_hint">Prova con meno parole o controlla come è scritto</string>
+    <string name="search_popular_now">Popolari ora</string>
 </resources>

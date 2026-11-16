@@ -60,6 +60,10 @@ import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import com.github.damontecres.wholphin.services.RemoteConfigService
+import com.github.damontecres.wholphin.util.PlatformItemsRequest
+import com.github.damontecres.wholphin.util.PlatformItemsRequestHandler
+import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -82,6 +86,7 @@ class SearchViewModel
         private val keyValueService: KeyValueService,
         private val navDrawerService: NavDrawerService,
         private val localTwinService: LocalTwinService,
+        private val remoteConfigService: RemoteConfigService,
     ) : ViewModel(),
         ContextMenuProvider {
         val seerrActive =
@@ -109,12 +114,17 @@ class SearchViewModel
         private val _favorites = MutableStateFlow<List<BaseItem>>(emptyList())
         val favorites: StateFlow<List<BaseItem>> = _favorites
 
+        // "Popolari ora": the Top 10 Italia movies and series, to start without typing
+        private val _popular = MutableStateFlow<List<BaseItem>>(emptyList())
+        val popular: StateFlow<List<BaseItem>> = _popular
+
         init {
             init()
             loadIdleContent()
         }
 
         private fun loadIdleContent() {
+            viewModelScope.launchIO { loadPopular() }
             viewModelScope.launchIO {
                 val userId = serverRepository.currentUser?.id ?: return@launchIO
                 try {
@@ -149,6 +159,32 @@ class SearchViewModel
                 } catch (ex: Exception) {
                     Timber.w(ex, "Could not load favorites for search")
                 }
+            }
+        }
+
+        private suspend fun loadPopular() {
+            val home = remoteConfigService.config.value.home
+            // The Home hero source is the Top 10 Italia platform
+            val platform =
+                home.platforms.firstOrNull { it.key == home.hero.sourceKey }
+                    ?: home.platforms.firstOrNull { it.isHome }
+                    ?: return
+            try {
+                val result =
+                    PlatformItemsRequestHandler.execute(
+                        api,
+                        PlatformItemsRequest(
+                            userId = serverRepository.currentUser?.id,
+                            movieCollectionId = platform.movieCollectionId?.toUUIDOrNull(),
+                            seriesCollectionId = platform.seriesCollectionId?.toUUIDOrNull(),
+                            limit = POPULAR_LIMIT,
+                        ),
+                    )
+                _popular.value = result.content.items.map { BaseItem.from(it, api, true) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not load popular titles for search")
             }
         }
 
@@ -637,6 +673,7 @@ internal val DEFAULT_EXCLUDED_SEARCH_TYPES =
     allSearchableTypes.filterNot { it == BaseItemKind.MOVIE || it == BaseItemKind.SERIES }
 
 private const val SEARCH_LIMIT = 50
+private const val POPULAR_LIMIT = 20
 
 private const val RECENT_SEARCHES_KEY = "recent_searches"
 private const val MAX_RECENT_SEARCHES = 8

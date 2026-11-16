@@ -31,6 +31,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
+import com.github.damontecres.wholphin.ui.AspectRatios
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -161,6 +164,7 @@ fun SearchPage(
     val seerrActive by viewModel.seerrActive.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
     val favorites by viewModel.favorites.collectAsState()
+    val popular by viewModel.popular.collectAsState()
     var selectedTab by rememberSaveable(seerrActive, state.discoverEnabled) { mutableIntStateOf(0) }
     var showViewOptions by rememberSaveable { mutableStateOf(false) }
     var showFilterTypeDialog by rememberSaveable { mutableStateOf(false) }
@@ -373,6 +377,7 @@ fun SearchPage(
                     SearchIdleContent(
                         recentSearches = recentSearches,
                         favorites = favorites,
+                        popular = popular,
                         onClickRecent = { recent ->
                             query = recent
                             triggerImmediateSearch(recent)
@@ -387,6 +392,7 @@ fun SearchPage(
                 isLibraryTab && combinedMode -> {
                     SearchCombinedResults(
                         result = state.combinedResults,
+                        query = submittedQuery,
                         focusRequester = focusRequesters[COMBINED_ROW],
                         onClickItem = onClickItem,
                         onLongClickItem = { index, item ->
@@ -512,6 +518,7 @@ fun SearchPage(
 fun SearchCombinedResults(
     result: SearchResult,
     focusRequester: FocusRequester,
+    query: String? = null,
     onClickItem: (Int, BaseItem) -> Unit,
     onLongClickItem: (Int, BaseItem) -> Unit,
     onPlayItem: (Int, BaseItem) -> Unit,
@@ -542,10 +549,14 @@ fun SearchCombinedResults(
 
         is SearchResult.Success -> {
             if (result.items.isEmpty()) {
+                // Says what was searched and what to try, instead of a bare "no results"
                 SearchResultPlaceholder(
-                    title = stringResource(R.string.results),
-                    message = stringResource(R.string.no_results),
-                    modifier = modifier.padding(16.dp),
+                    title =
+                        query?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.search_no_results_for, it) }
+                            ?: stringResource(R.string.no_results),
+                    message = stringResource(R.string.search_no_results_hint),
+                    messageColor = NigiroPalette.TextMuted,
+                    modifier = modifier.padding(top = 16.dp),
                 )
             } else {
                 SearchGrid(
@@ -557,14 +568,23 @@ fun SearchCombinedResults(
                     onClickPosition = onClickPosition,
                     positionCallback = positionCallback,
                     cardContent = { details ->
-                        GridCard(
+                        // The AIOStreams poster card of Home and Explore: title, year, on-disk and episode badges
+                        val density = LocalDensity.current
+                        val cardHeight =
+                            if (details.widthPx > 0) {
+                                with(density) { details.widthPx.toDp() } / AspectRatios.TALL
+                            } else {
+                                NigiroDimens.PosterHeight
+                            }
+                        ExpandingPosterCard(
                             item = details.item,
                             onClick = details.onClick,
                             onLongClick = details.onLongClick,
+                            cardHeight = cardHeight,
+                            cornerText = details.item?.ui?.episodeUnplayedCornerText,
+                            onDisk = details.item?.isOnDisk() == true,
+                            expandable = false,
                             modifier = details.mod,
-                            fillWidth = details.widthPx,
-                            showTitle = false,
-                            imageContentScale = ContentScale.Crop,
                         )
                     },
                     focusedItemHeader = true,
@@ -643,6 +663,7 @@ private fun <T : CardGridItem> SearchGrid(
             letterPosition = { -1 },
             // Narrower area next to the keyboard
             columns = 4,
+            spacing = NigiroDimens.CardGap,
             // The "1 / 24" counter would cover the posters of the last visible row
             showPositionFooter = false,
             gridFocusRequester = focusRequester,
@@ -852,86 +873,112 @@ private fun searchHeaderMeta(item: BaseItem): String {
 private fun SearchIdleContent(
     recentSearches: List<String>,
     favorites: List<BaseItem>,
+    popular: List<BaseItem>,
     onClickRecent: (String) -> Unit,
     onClickItem: (Int, BaseItem) -> Unit,
     onLongClickItem: (Int, BaseItem) -> Unit,
     firstFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    val posterOptions =
-        remember {
-            HomeRowViewOptions(
-                heightDp = NigiroDimens.PosterHeight.value.toInt(),
-                spacing = NigiroDimens.CardGap.value.toInt(),
-                contentScale = PrefContentScale.CROP,
-                aspectRatio = AspectRatio.TALL,
-                showTitles = false,
-                useSeries = false,
-            )
+    // The first section takes the focus coming from the keyboard
+    val firstSection =
+        when {
+            recentSearches.isNotEmpty() -> "recent"
+            favorites.isNotEmpty() -> "favorites"
+            else -> "popular"
         }
-    Column(
+
+    @Composable
+    fun PosterRow(
+        title: String,
+        items: List<BaseItem>,
+        modifier: Modifier,
+    ) {
+        ItemRow(
+            title = title,
+            items = items,
+            onClickItem = onClickItem,
+            onLongClickItem = onLongClickItem,
+            cardContent = { _, item, cardModifier, onClick, onLongClick ->
+                // Same AIOStreams poster card as the results and Home
+                ExpandingPosterCard(
+                    item = item,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    cardHeight = NigiroDimens.PosterHeight,
+                    cornerText = item?.ui?.episodeUnplayedCornerText,
+                    onDisk = item?.isOnDisk() == true,
+                    expandable = false,
+                    modifier = cardModifier,
+                )
+            },
+            horizontalPadding = NigiroDimens.CardGap,
+            itemKey = { it.id.toString() },
+            contentStartPadding = 0.dp,
+            titleStartPadding = 0.dp,
+            titleStyle = NigiroDimens.RowTitle,
+            titleGap = NigiroDimens.TitleGap - 8.dp,
+            modifier = modifier,
+        )
+    }
+
+    // Scrolls: with recent searches, favourites and popular titles the page is taller than the screen
+    LazyColumn(
         verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
-        modifier = modifier.padding(top = 12.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp),
+        modifier = modifier,
     ) {
         if (recentSearches.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap)) {
-                ItemRowTitle(
-                    stringResource(R.string.recent_searches),
-                    startPadding = 0.dp,
-                    style = NigiroDimens.RowTitle,
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(start = 0.dp, end = NigiroDimens.ContentEnd),
-                    modifier = Modifier.focusGroup(),
-                ) {
-                    itemsIndexed(recentSearches, key = { _, it -> it }) { index, recent ->
-                        Button(
-                            onClick = { onClickRecent(recent) },
-                            shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
-                            colors =
-                                ButtonDefaults.colors(
-                                    containerColor = Color.White.copy(alpha = 0.10f),
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                    focusedContainerColor = Color.White,
-                                    focusedContentColor = NigiroPalette.Background,
-                                ),
-                            scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                            modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
-                        ) {
-                            Text(text = recent, fontSize = 16.sp)
+            item(key = "recent") {
+                Column(verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap)) {
+                    ItemRowTitle(
+                        stringResource(R.string.recent_searches),
+                        startPadding = 0.dp,
+                        style = NigiroDimens.RowTitle,
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(start = 0.dp, end = NigiroDimens.ContentEnd),
+                        modifier = Modifier.focusGroup(),
+                    ) {
+                        itemsIndexed(recentSearches, key = { _, it -> it }) { index, recent ->
+                            Button(
+                                onClick = { onClickRecent(recent) },
+                                shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
+                                colors =
+                                    ButtonDefaults.colors(
+                                        containerColor = Color.White.copy(alpha = 0.10f),
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                        focusedContainerColor = Color.White,
+                                        focusedContentColor = NigiroPalette.Background,
+                                    ),
+                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
+                            ) {
+                                Text(text = recent, fontSize = 16.sp)
+                            }
                         }
                     }
                 }
             }
         }
         if (favorites.isNotEmpty()) {
-            ItemRow(
-                title = stringResource(R.string.favorites_and_on_disk),
-                items = favorites,
-                onClickItem = onClickItem,
-                onLongClickItem = onLongClickItem,
-                cardContent = { index, item, cardModifier, onClick, onLongClick ->
-                    // Every favorite is marked: the heart would only repeat the row title
-                    HomePageCardContent(
-                        index = index,
-                        item = item,
-                        onClick = onClick,
-                        onLongClick = onLongClick,
-                        viewOptions = posterOptions,
-                        modifier = cardModifier,
-                        showFavorite = false,
-                    )
-                },
-                horizontalPadding = NigiroDimens.CardGap,
-                itemKey = { it.id.toString() },
-                contentStartPadding = 0.dp,
-                titleStartPadding = 0.dp,
-                titleStyle = NigiroDimens.RowTitle,
-                titleGap = NigiroDimens.TitleGap - 8.dp,
-                modifier =
-                    if (recentSearches.isEmpty()) Modifier.focusRequester(firstFocusRequester) else Modifier,
-            )
+            item(key = "favorites") {
+                PosterRow(
+                    title = stringResource(R.string.favorites_and_on_disk),
+                    items = favorites,
+                    modifier = if (firstSection == "favorites") Modifier.focusRequester(firstFocusRequester) else Modifier,
+                )
+            }
+        }
+        if (popular.isNotEmpty()) {
+            item(key = "popular") {
+                PosterRow(
+                    title = stringResource(R.string.search_popular_now),
+                    items = popular,
+                    modifier = if (firstSection == "popular") Modifier.focusRequester(firstFocusRequester) else Modifier,
+                )
+            }
         }
     }
 }

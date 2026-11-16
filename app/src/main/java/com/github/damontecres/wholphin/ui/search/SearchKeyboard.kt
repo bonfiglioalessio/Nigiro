@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -118,15 +120,20 @@ fun SearchKeyboard(
                 }
             }
         }
+        // Apostrophe for Italian titles (L'imperatrice, C'era una volta); clear is a compact ✕
         Row(horizontalArrangement = Arrangement.spacedBy(KeyGap)) {
             KeyboardKey(onClick = onSpace, span = 2) {
                 Text(text = stringResource(R.string.keyboard_space), fontSize = 14.sp)
             }
+            KeyboardKey(onClick = { onChar('\'') }) {
+                Text(text = "'", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            }
             KeyboardKey(onClick = onBackspace, span = 2) {
                 Text(text = "⌫", fontSize = 18.sp)
             }
-            KeyboardKey(onClick = onClear, span = 2) {
-                Text(text = stringResource(R.string.keyboard_clear), fontSize = 14.sp)
+            val clearLabel = stringResource(R.string.keyboard_clear)
+            KeyboardKey(onClick = onClear, modifier = Modifier.semantics { contentDescription = clearLabel }) {
+                Text(text = "✕", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KeyGap)) {
