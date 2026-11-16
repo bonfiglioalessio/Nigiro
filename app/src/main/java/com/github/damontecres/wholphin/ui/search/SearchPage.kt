@@ -31,6 +31,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import org.jellyfin.sdk.model.api.BaseItemKind
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
 import com.github.damontecres.wholphin.ui.AspectRatios
 import androidx.compose.ui.platform.LocalDensity
@@ -339,15 +342,10 @@ fun SearchPage(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.focusGroup(),
         ) {
-            SearchQueryDisplay(query = query)
-            SearchKeyboard(
-                onChar = { query += it },
-                onSpace = { if (query.isNotEmpty() && !query.endsWith(" ")) query += " " },
-                onBackspace = { query = query.dropLast(1) },
-                onClear = { query = "" },
-                onSubmit = { triggerImmediateSearch(query) },
-                firstKeyFocusRequester = focusRequesters[SEARCH_ROW],
-                voiceKey =
+            SearchQueryDisplay(
+                query = query,
+                // Voice next to the field, like Google TV: the keyboard is only for typing
+                trailing =
                     if (voiceSearchButtonVisible) {
                         {
                             VoiceSearchButton(
@@ -356,11 +354,22 @@ fun SearchPage(
                                     triggerImmediateSearch(spokenText)
                                 },
                                 voiceInputManager = viewModel.voiceInputManager,
+                                keyContent = { onClick -> VoiceFieldButton(onClick) },
                             )
                         }
                     } else {
                         null
                     },
+            )
+            SearchKeyboard(
+                onChar = { query += it },
+                onSpace = { if (query.isNotEmpty() && !query.endsWith(" ")) query += " " },
+                onBackspace = { query = query.dropLast(1) },
+                onClear = { query = "" },
+                onSubmit = { triggerImmediateSearch(query) },
+                firstKeyFocusRequester = focusRequesters[SEARCH_ROW],
+                // Back from the results, focus returns to the last key pressed
+                modifier = Modifier.focusRestorer(),
             )
         }
         Box(
@@ -559,35 +568,11 @@ fun SearchCombinedResults(
                     modifier = modifier.padding(top = 16.dp),
                 )
             } else {
-                SearchGrid(
+                SearchSplitResults(
                     items = result.items,
                     focusRequester = focusRequester,
                     onClickItem = onClickItem,
                     onLongClickItem = onLongClickItem,
-                    onPlayItem = onPlayItem,
-                    onClickPosition = onClickPosition,
-                    positionCallback = positionCallback,
-                    cardContent = { details ->
-                        // The AIOStreams poster card of Home and Explore: title, year, on-disk and episode badges
-                        val density = LocalDensity.current
-                        val cardHeight =
-                            if (details.widthPx > 0) {
-                                with(density) { details.widthPx.toDp() } / AspectRatios.TALL
-                            } else {
-                                NigiroDimens.PosterHeight
-                            }
-                        ExpandingPosterCard(
-                            item = details.item,
-                            onClick = details.onClick,
-                            onLongClick = details.onLongClick,
-                            cardHeight = cardHeight,
-                            cornerText = details.item?.ui?.episodeUnplayedCornerText,
-                            onDisk = details.item?.isOnDisk() == true,
-                            expandable = false,
-                            modifier = details.mod,
-                        )
-                    },
-                    focusedItemHeader = true,
                     modifier = modifier,
                 )
             }
@@ -619,6 +604,80 @@ fun SearchCombinedResults(
                     },
                     modifier = modifier,
                 )
+            }
+        }
+    }
+}
+
+private val ResultPosterHeight = 160.dp
+
+/**
+ * Results split by kind: a "Film" row and a "Serie TV" row (others after), each with its count, under the details
+ * of the focused title. Clicks keep the index in the full result list, which the context menu refreshes by.
+ */
+@Composable
+private fun SearchSplitResults(
+    items: List<BaseItem?>,
+    focusRequester: FocusRequester,
+    onClickItem: (Int, BaseItem) -> Unit,
+    onLongClickItem: (Int, BaseItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val sections =
+        remember(items) {
+            val all = items.filterNotNull()
+            listOf(
+                R.string.home_filter_movies to all.filter { it.type == BaseItemKind.MOVIE },
+                R.string.home_filter_series to all.filter { it.type == BaseItemKind.SERIES },
+                R.string.search_other_results to
+                    all.filter { it.type != BaseItemKind.MOVIE && it.type != BaseItemKind.SERIES },
+            ).filter { it.second.isNotEmpty() }
+        }
+    var focused by remember(items) { mutableStateOf(sections.firstOrNull()?.second?.firstOrNull()) }
+    Column(modifier = modifier) {
+        SearchFocusedHeader(itemProvider = { focused })
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
+            contentPadding = PaddingValues(bottom = 48.dp),
+        ) {
+            sections.forEachIndexed { sectionIndex, (title, list) ->
+                item(key = title) {
+                    Column(verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap - 4.dp)) {
+                        Text(
+                            text = "${stringResource(title)} · ${list.size}",
+                            style = NigiroDimens.RowTitle,
+                            color = NigiroPalette.Text,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
+                            contentPadding = PaddingValues(end = NigiroDimens.ContentEnd, top = 4.dp, bottom = 4.dp),
+                            modifier = Modifier.focusRestorer(),
+                        ) {
+                            itemsIndexed(list, key = { _, it -> it.id }) { index, item ->
+                                val fullIndex = remember(items, item.id) { items.indexOf(item) }
+                                ExpandingPosterCard(
+                                    item = item,
+                                    onClick = { onClickItem(fullIndex, item) },
+                                    onLongClick = { onLongClickItem(fullIndex, item) },
+                                    cardHeight = ResultPosterHeight,
+                                    cornerText = item.ui.episodeUnplayedCornerText,
+                                    onDisk = item.isOnDisk(),
+                                    expandable = false,
+                                    modifier =
+                                        Modifier
+                                            .onFocusChanged { if (it.hasFocus) focused = item }
+                                            .then(
+                                                if (sectionIndex == 0 && index == 0) {
+                                                    Modifier.focusRequester(focusRequester)
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

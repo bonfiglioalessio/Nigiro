@@ -85,6 +85,8 @@ fun VoiceSearchButton(
     onSpeechResult: (String) -> Unit,
     voiceInputManager: VoiceInputManager?,
     modifier: Modifier = Modifier,
+    // Draws the trigger instead of the round button, eg as a key of the on-screen keyboard
+    keyContent: (@Composable (onClick: () -> Unit) -> Unit)? = null,
 ) {
     if (voiceInputManager == null || !voiceInputManager.isAvailable) return
 
@@ -139,24 +141,30 @@ fun VoiceSearchButton(
         )
     }
 
-    Button(
-        onClick = {
-            when (state) {
-                is VoiceInputState.Starting,
-                is VoiceInputState.Listening,
-                -> {
-                    voiceInputManager.stopListening()
-                }
+    val onClick = {
+        when (state) {
+            is VoiceInputState.Starting,
+            is VoiceInputState.Listening,
+            -> {
+                voiceInputManager.stopListening()
+            }
 
-                else -> {
-                    if (voiceInputManager.hasPermission) {
-                        voiceInputManager.startListening()
-                    } else {
-                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    }
+            else -> {
+                if (voiceInputManager.hasPermission) {
+                    voiceInputManager.startListening()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 }
             }
-        },
+        }
+    }
+    if (keyContent != null) {
+        keyContent(onClick)
+        return
+    }
+
+    Button(
+        onClick = onClick,
         modifier =
             modifier.requiredSizeIn(
                 minWidth = MinButtonSize,

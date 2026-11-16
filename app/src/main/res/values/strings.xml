@@ -1075,4 +1075,5 @@
     <string name="search_no_results_for">No results for “%1$s”</string>
     <string name="search_no_results_hint">Try fewer words or check the spelling</string>
     <string name="search_popular_now">Popular now</string>
+    <string name="search_other_results">Other</string>
 </resources>

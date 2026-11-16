@@ -871,4 +871,5 @@
     <string name="search_no_results_for">Nessun risultato per «%1$s»</string>
     <string name="search_no_results_hint">Prova con meno parole o controlla come è scritto</string>
     <string name="search_popular_now">Popolari ora</string>
+    <string name="search_other_results">Altro</string>
 </resources>

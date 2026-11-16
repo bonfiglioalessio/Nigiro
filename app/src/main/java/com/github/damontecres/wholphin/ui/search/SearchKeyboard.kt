@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.github.damontecres.wholphin.ui.FontAwesome
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.focus.FocusRequester
@@ -48,39 +49,82 @@ private val CharRows =
         "567890",
     )
 
+private val FieldHeight = 52.dp
+private val FieldShape = RoundedCornerShape(12.dp)
+
 /**
- * The query being typed, shown above the keyboard (not focusable: typing happens on the keyboard)
+ * The query being typed, shown above the keyboard (not focusable: typing happens on the keyboard), with an optional
+ * trailing control such as the microphone, like the Google TV search bar
  */
 @Composable
 fun SearchQueryDisplay(
     query: String,
     modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
-    Box(
-        contentAlignment = Alignment.CenterStart,
-        modifier =
-            modifier
-                .width(SearchKeyboardWidth)
-                .height(52.dp)
-                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 14.dp),
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(KeyGap),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.width(SearchKeyboardWidth),
     ) {
-        if (query.isEmpty()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .height(FieldHeight)
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), FieldShape)
+                    .padding(horizontal = 14.dp),
+        ) {
             Text(
-                text = stringResource(R.string.search_placeholder),
-                fontSize = 17.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                text = stringResource(R.string.fa_magnifying_glass),
+                fontFamily = FontAwesome,
+                fontSize = 15.sp,
+                color = NigiroPalette.TextMuted,
             )
-        } else {
-            Text(
-                text = "$query|",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.StartEllipsis,
-            )
+            if (query.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.search_placeholder),
+                    fontSize = 17.sp,
+                    color = NigiroPalette.TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else {
+                Text(
+                    text = "$query|",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.StartEllipsis,
+                )
+            }
+        }
+        trailing?.invoke()
+    }
+}
+
+/** Voice search next to the field: a square key as tall as the field */
+@Composable
+fun VoiceFieldButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.voice_search)
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(FieldShape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = Color.White.copy(alpha = 0.08f),
+                contentColor = Color.White,
+                focusedContainerColor = Color.White,
+                focusedContentColor = NigiroPalette.Background,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+        modifier = Modifier.size(FieldHeight).semantics { contentDescription = label },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(FieldHeight)) {
+            Text(text = stringResource(R.string.fa_microphone), fontFamily = FontAwesome, fontSize = 18.sp)
         }
     }
 }
@@ -120,7 +164,7 @@ fun SearchKeyboard(
                 }
             }
         }
-        // Apostrophe for Italian titles (L'imperatrice, C'era una volta); clear is a compact ✕
+        // Apostrophe for Italian titles (L'imperatrice, C'era una volta)
         Row(horizontalArrangement = Arrangement.spacedBy(KeyGap)) {
             KeyboardKey(onClick = onSpace, span = 2) {
                 Text(text = stringResource(R.string.keyboard_space), fontSize = 14.sp)
@@ -128,30 +172,31 @@ fun SearchKeyboard(
             KeyboardKey(onClick = { onChar('\'') }) {
                 Text(text = "'", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             }
-            KeyboardKey(onClick = onBackspace, span = 2) {
+            KeyboardKey(onClick = onBackspace) {
                 Text(text = "⌫", fontSize = 18.sp)
             }
-            val clearLabel = stringResource(R.string.keyboard_clear)
-            KeyboardKey(onClick = onClear, modifier = Modifier.semantics { contentDescription = clearLabel }) {
-                Text(text = "✕", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            // Written out: a ✕ here read as the letter X right above it
+            KeyboardKey(onClick = onClear, span = 2) {
+                Text(text = stringResource(R.string.keyboard_clear), fontSize = 14.sp)
             }
         }
+        // Search and voice are keys too: same height, gaps and focus as the rest of the keyboard
         Row(horizontalArrangement = Arrangement.spacedBy(KeyGap)) {
             KeyboardKey(
                 onClick = onSubmit,
                 span = if (voiceKey != null) 4 else COLUMNS,
-                containerColor = NigiroPalette.Pink.copy(alpha = 0.25f),
+                containerColor = NigiroPalette.Pink,
             ) {
-                Text(text = stringResource(R.string.search), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-            if (voiceKey != null) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(width = KeySize * 2 + KeyGap, height = KeySize),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    voiceKey()
+                    Text(text = stringResource(R.string.search), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    // Goes to the results
+                    Text(text = "→", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             }
+            voiceKey?.invoke()
         }
     }
 }
