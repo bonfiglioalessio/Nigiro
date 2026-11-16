@@ -1020,4 +1020,13 @@
     <string name="keyboard_clear">Clear</string>
     <string name="home_platforms_all">All</string>
     <string name="on_disk">On disk</string>
+    <string name="sources_unavailable">Couldn\'t load the sources</string>
+    <string name="cast_title">Cast</string>
+    <string name="crew_title">Crew</string>
+    <string name="details_title">Details</string>
+    <string name="released">Released</string>
+    <string name="country">Country</string>
+    <string name="versions_count_label">%1$d versions</string>
+    <string name="searching_sources">Searching sources…</string>
+    <string name="choose_version_title">Choose a version</string>
 </resources>

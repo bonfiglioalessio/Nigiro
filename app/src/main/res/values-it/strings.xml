@@ -815,4 +815,13 @@
     <string name="keyboard_clear">Svuota</string>
     <string name="home_platforms_all">Tutte</string>
     <string name="on_disk">Su disco</string>
+    <string name="sources_unavailable">Impossibile caricare le sorgenti</string>
+    <string name="cast_title">Cast</string>
+    <string name="crew_title">Troupe</string>
+    <string name="details_title">Dettagli</string>
+    <string name="released">Uscita</string>
+    <string name="country">Paese</string>
+    <string name="versions_count_label">%1$d versioni</string>
+    <string name="searching_sources">Ricerca sorgenti…</string>
+    <string name="choose_version_title">Scegli una versione</string>
 </resources>

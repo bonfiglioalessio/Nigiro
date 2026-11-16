@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.detail.movie
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -88,7 +89,8 @@ fun MovieDetails(
 ) {
     val context = LocalContext.current
     LifecycleResumeEffect(Unit) {
-        viewModel.init()
+        // First resume loads the page, later ones (e.g. back from playback) only refresh the user data
+        viewModel.onResume()
         onPauseOrDispose { }
     }
     val state by viewModel.state.collectAsState()
@@ -163,14 +165,7 @@ fun MovieDetails(
                         ),
                     )
                 },
-                playOnClick = {
-                    viewModel.navigateTo(
-                        Destination.Playback(
-                            movie.id,
-                            it.inWholeMilliseconds,
-                        ),
-                    )
-                },
+                playOnClick = { viewModel.requestPlay(it) },
                 overviewOnClick = {
                     overviewDialog =
                         ItemDetailsDialogInfo(movie)
@@ -237,6 +232,16 @@ fun MovieDetails(
             )
         }
     }
+    state.picker?.let { picker ->
+        state.movie?.let { movie ->
+            VersionPickerDialog(
+                movie = movie,
+                picker = picker,
+                onPick = viewModel::pickVersion,
+                onDismissRequest = viewModel::dismissPicker,
+            )
+        }
+    }
     showContextMenu?.let { contextMenu ->
         ContextMenuDialog(
             onDismissRequest = { showContextMenu = null },
@@ -277,7 +282,8 @@ fun MovieDetails(
 
 private const val HEADER_ROW = 0
 private const val PEOPLE_ROW = HEADER_ROW + 1
-private const val TRAILER_ROW = PEOPLE_ROW + 1
+private const val CREW_ROW = PEOPLE_ROW + 1
+private const val TRAILER_ROW = CREW_ROW + 1
 private const val CHAPTER_ROW = TRAILER_ROW + 1
 private const val EXTRAS_ROW = CHAPTER_ROW + 1
 private const val SIMILAR_ROW = EXTRAS_ROW + 1
@@ -316,6 +322,8 @@ fun MovieDetailsContent(
 
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
+    val castAndCrew = remember(state.people) { splitCastAndCrew(state.people) { it.type } }
+
     val listState = rememberLazyListState()
     DetailPageFrame(item = movie, modifier = modifier, backdropAlpha = { listState.headerBackdropAlpha() }) {
         LazyColumn(
@@ -325,77 +333,83 @@ fun MovieDetailsContent(
             modifier = Modifier.fillMaxSize(),
         ) {
             item {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .bringIntoViewRequester(bringIntoViewRequester)
-                            .padding(start = DetailContentInset),
+                            .padding(start = DetailContentInset + HeaderUtils.startPadding, top = HeaderUtils.topPadding),
                 ) {
-                    MovieDetailsHeader(
-                        preferences = preferences,
-                        movie = movie,
-                        chosenStreams = state.chosenStreams,
-                        bringIntoViewRequester = bringIntoViewRequester,
-                        overviewOnClick = overviewOnClick,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = HeaderUtils.topPadding, bottom = 16.dp),
-                    )
-                    ExpandablePlayButtons(
-                        title = movie.title ?: "",
-                        resumePosition = resumePosition,
-                        watched = dto.userData?.played ?: false,
-                        favorite = dto.userData?.isFavorite ?: false,
-                        playOnClick = {
-                            position = HEADER_ROW
-                            playOnClick.invoke(it)
-                        },
-                        moreOnClick = moreOnClick,
-                        watchOnClick = watchOnClick,
-                        favoriteOnClick = favoriteOnClick,
-                        buttonOnFocusChanged = {
-                            if (it.isFocused) {
+                    MoviePoster(movie = movie, modifier = Modifier.padding(top = 8.dp))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        MovieDetailsHeader(
+                            preferences = preferences,
+                            movie = movie,
+                            bringIntoViewRequester = bringIntoViewRequester,
+                            overviewOnClick = overviewOnClick,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                        )
+                        ExpandablePlayButtons(
+                            title = movie.title ?: "",
+                            resumePosition = resumePosition,
+                            watched = dto.userData?.played ?: false,
+                            favorite = dto.userData?.isFavorite ?: false,
+                            playOnClick = {
                                 position = HEADER_ROW
-                                scope.launch(ExceptionHandler()) {
-                                    bringIntoViewRequester.bringIntoView()
-                                }
-                            }
-                        },
-                        trailers = state.trailers,
-                        trailerOnClick = {
-                            position = TRAILER_ROW
-                            trailerOnClick.invoke(it)
-                        },
-                        canDelete = canDelete,
-                        onConfirmDelete = onConfirmDelete,
-                        chooseVersionParams =
-                            remember(state.chosenStreams, movie, state.localCopy, onChooseVersion) {
-                                ChooseVersionParams(
-                                    chosenStreams = state.chosenStreams,
-                                    // The downloaded copy (if any) first, then the streamed versions
-                                    mediaSources =
-                                        state.localCopy
-                                            ?.data
-                                            ?.mediaSources
-                                            .orEmpty() + movie.data.mediaSources.orEmpty(),
-                                    onChooseVersion = onChooseVersion,
-                                )
+                                playOnClick.invoke(it)
                             },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                                .focusRequester(focusRequesters[HEADER_ROW]),
-                    )
+                            moreOnClick = moreOnClick,
+                            watchOnClick = watchOnClick,
+                            favoriteOnClick = favoriteOnClick,
+                            buttonOnFocusChanged = {
+                                if (it.isFocused) {
+                                    position = HEADER_ROW
+                                    scope.launch(ExceptionHandler()) {
+                                        bringIntoViewRequester.bringIntoView()
+                                    }
+                                }
+                            },
+                            trailers = state.trailers,
+                            trailerOnClick = {
+                                position = TRAILER_ROW
+                                trailerOnClick.invoke(it)
+                            },
+                            canDelete = canDelete,
+                            onConfirmDelete = onConfirmDelete,
+                            chooseVersionParams =
+                                remember(state.chosenStreams, movie, state.localCopy, onChooseVersion) {
+                                    ChooseVersionParams(
+                                        chosenStreams = state.chosenStreams,
+                                        // The downloaded copy (if any) first, then the streamed versions
+                                        mediaSources =
+                                            state.localCopy
+                                                ?.data
+                                                ?.mediaSources
+                                                .orEmpty() + movie.data.mediaSources.orEmpty(),
+                                        onChooseVersion = onChooseVersion,
+                                    )
+                                },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp)
+                                    .focusRequester(focusRequesters[HEADER_ROW]),
+                        )
+                    }
                 }
             }
-            state.people.letNotEmpty { people ->
+            castAndCrew.first.letNotEmpty { people ->
                 item {
                     PersonRow(
                         people = people,
+                        title = R.string.cast_title,
                         onClick = {
                             position = PEOPLE_ROW
                             onClickPerson.invoke(it)
@@ -410,6 +424,32 @@ fun MovieDetailsContent(
                                 .focusRequester(focusRequesters[PEOPLE_ROW]),
                     )
                 }
+            }
+            castAndCrew.second.letNotEmpty { people ->
+                item {
+                    PersonRow(
+                        people = people,
+                        title = R.string.crew_title,
+                        onClick = {
+                            position = CREW_ROW
+                            onClickPerson.invoke(it)
+                        },
+                        onLongClick = { index, person ->
+                            position = CREW_ROW
+                            onLongClickPerson.invoke(index, person)
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequesters[CREW_ROW]),
+                    )
+                }
+            }
+            item {
+                MovieFacts(
+                    movie = movie,
+                    modifier = Modifier.padding(start = DetailContentInset + HeaderUtils.startPadding, end = 48.dp),
+                )
             }
             state.chapters.letNotEmpty { chapters ->
                 item {

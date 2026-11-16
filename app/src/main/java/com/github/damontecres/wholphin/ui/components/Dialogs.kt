@@ -659,7 +659,7 @@ fun chooseVersionParams(
 /**
  * A short summary of a media source, skipping what its name already says (eg AIOStreams names)
  */
-private fun versionDetails(
+internal fun versionDetails(
     resources: Resources,
     source: MediaSourceInfo,
     title: String,
