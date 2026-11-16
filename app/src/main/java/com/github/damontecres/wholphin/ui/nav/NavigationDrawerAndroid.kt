@@ -23,6 +23,17 @@ package com.github.damontecres.wholphin.ui.nav
 
 import androidx.compose.foundation.layout.requiredSize
 import com.github.damontecres.wholphin.ui.theme.px
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.text.font.FontWeight
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.ProvideTextStyle
+import androidx.tv.material3.Surface
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
@@ -59,7 +70,6 @@ import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Glow
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.ListItemDefaults
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.NavigationDrawerItemColors
 import androidx.tv.material3.NavigationDrawerItemDefaults
 import androidx.tv.material3.NavigationDrawerScope
@@ -228,24 +238,31 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         if (supportingContent == null) {
             DrawerItemHeight
         } else {
-            NavigationDrawerItemDefaults.ContainerHeightTwoLine
+            px(64)
         }
 
-    ListItem(
-        selected = selected,
+    // AIOStreams vertical-menu item: a pill of fixed height with the icon centred in the collapsed width and the
+    // name beside it when the drawer is open. Own layout rather than a ListItem, whose fixed inner paddings clip
+    // the name at the 48 px item height.
+    val shape = FlatDrawerItemShape
+    Surface(
         onClick = onClick,
-        headlineContent = content,
-        leadingContent = {
-            // requiredSize: the list item's slot would shrink the icon in the narrow collapsed pill
-            Box(
-                Modifier
-                    .padding(horizontal = DrawerIconPadding)
-                    .requiredSize(DrawerIconSize),
-                contentAlignment = Alignment.Center,
-            ) { leadingContent() }
-        },
-        trailingContent = trailingContent,
-        supportingContent = supportingContent,
+        onLongClick = onLongClick,
+        enabled = enabled,
+        interactionSource = interactionSource,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = if (selected) colors.selectedContainerColor else colors.containerColor,
+                contentColor = if (hasFocus) colors.contentColor else colors.inactiveContentColor,
+                focusedContainerColor = if (selected) colors.focusedSelectedContainerColor else colors.focusedContainerColor,
+                focusedContentColor = colors.focusedContentColor,
+                pressedContainerColor = colors.pressedContainerColor,
+                pressedContentColor = colors.pressedContentColor,
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 1f),
+        glow = ClickableSurfaceDefaults.glow(glow = Glow.None, focusedGlow = Glow.None, pressedGlow = Glow.None),
+        tonalElevation = tonalElevation,
         modifier =
             modifier
                 .layout { measurable, constraints ->
@@ -253,24 +270,43 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
                     val height = navDrawerItemHeight.roundToPx()
                     val placeable =
                         measurable.measure(
-                            constraints.copy(
-                                minWidth = width,
-                                maxWidth = width,
-                                minHeight = height,
-                                maxHeight = height,
-                            ),
+                            constraints.copy(minWidth = width, maxWidth = width, minHeight = height, maxHeight = height),
                         )
                     layout(placeable.width, placeable.height) { placeable.place(0, 0) }
                 },
-        enabled = enabled,
-        onLongClick = onLongClick,
-        tonalElevation = tonalElevation,
-        shape = ListItemDefaults.shape(shape = FlatDrawerItemShape),
-        colors = colors.toToggleableListItemColors(hasFocus),
-        scale = ListItemDefaults.scale(1f, 1f),
-        glow = ListItemDefaults.glow(glow = Glow.None, focusedGlow = Glow.None, pressedGlow = Glow.None),
-        interactionSource = interactionSource,
-    )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = (CollapsedDrawerPillWidth - DrawerIconSize) / 2),
+        ) {
+            Box(Modifier.requiredSize(DrawerIconSize), contentAlignment = Alignment.Center) { leadingContent() }
+            if (hasFocus) {
+                Spacer(Modifier.width(px(12)))
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    // text-base font-medium; the supporting line text-xs muted
+                    ProvideTextStyle(
+                        MaterialTheme.typography.bodyLarge.copy(fontSize = pxSp(16), lineHeight = pxSp(20), fontWeight = FontWeight.Medium),
+                    ) { content() }
+                    supportingContent?.let {
+                        ProvideTextStyle(
+                            MaterialTheme.typography.bodySmall.copy(
+                                fontSize = pxSp(12),
+                                lineHeight = pxSp(16),
+                                color = androidx.compose.ui.graphics.Color.White.copy(alpha = .4f),
+                            ),
+                        ) { it() }
+                    }
+                }
+                trailingContent?.invoke()
+            }
+        }
+    }
 }
 
 @Composable

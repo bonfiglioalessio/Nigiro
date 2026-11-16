@@ -184,83 +184,70 @@ fun SeriesDetails(
             }
             val series = st.data
             val played = series.data.userData?.played ?: false
-            SeriesDetailsContent(
+            val similarMenu = { item: BaseItem ->
+                showContextMenu =
+                    ContextMenu.ForBaseItem(
+                        fromLongClick = true,
+                        item = item,
+                        chosenStreams = null,
+                        showGoTo = true,
+                        showStreamChoices = false,
+                        canDelete = viewModel.canDelete(item, preferences.appPreferences),
+                        canRemoveContinueWatching = false,
+                        canRemoveNextUp = false,
+                        actions = contextActions,
+                    )
+            }
+            AioSeriesDetailsContent(
                 preferences = preferences,
                 series = series,
-                seasons = state.seasons,
-                trailers = state.trailers,
-                extras = state.extras,
-                people = state.people,
-                similar = state.similar,
-                played = played,
-                favorite = series.data.userData?.isFavorite ?: false,
-                canDelete = state.canDeleteSeries,
+                state = state,
                 modifier = modifier,
-                onClickItem = { index, item ->
-                    viewModel.navigateTo(item.destination())
+                onPlay = { fromStart ->
+                    val next = state.nextUp
+                    if (next != null) {
+                        viewModel.navigateTo(Destination.Playback(next.id, if (fromStart) 0L else next.resumeMs))
+                    } else {
+                        viewModel.playNextUp()
+                    }
                 },
-                onClickPerson = {
-                    viewModel.navigateTo(
-                        Destination.MediaItem(
-                            it.id,
-                            BaseItemKind.PERSON,
-                        ),
-                    )
+                onShuffle = {
+                    viewModel.navigateTo(Destination.PlaybackList(itemId = series.id, shuffle = true))
                 },
-                onLongClickItem = { index, season ->
+                onTrailer = {
+                    state.trailers.firstOrNull()?.let { TrailerService.onClick(context, it, viewModel::navigateTo) }
+                },
+                onWatched = { showWatchConfirmation = true },
+                onFavorite = {
+                    val favorite = series.data.userData?.isFavorite ?: false
+                    viewModel.setFavorite(series.id, !favorite, null)
+                },
+                onMore = {
                     showContextMenu =
                         ContextMenu.ForBaseItem(
-                            fromLongClick = true,
-                            item = season,
+                            fromLongClick = false,
+                            item = series,
                             chosenStreams = null,
-                            showGoTo = true,
+                            showGoTo = false,
                             showStreamChoices = false,
-                            canDelete = viewModel.canDelete(season, preferences.appPreferences),
+                            canDelete = state.canDeleteSeries,
                             canRemoveContinueWatching = false,
                             canRemoveNextUp = false,
                             actions = contextActions,
                         )
                 },
-                overviewOnClick = {
-                    overviewDialog = ItemDetailsDialogInfo(series)
+                overviewOnClick = { overviewDialog = ItemDetailsDialogInfo(series) },
+                onSelectSeason = { season -> viewModel.loadEpisodes(season.id, season.data.indexNumber) },
+                onLongClickSeason = { _, season -> similarMenu(season) },
+                onAllEpisodes = { season -> viewModel.navigateTo(season.destination()) },
+                onPlayEpisode = { episode -> viewModel.navigateTo(Destination.Playback(episode)) },
+                onLongClickEpisode = { _, episode -> similarMenu(episode) },
+                onClickPerson = {
+                    viewModel.navigateTo(Destination.MediaItem(it.id, BaseItemKind.PERSON))
                 },
-                playOnClick = { shuffle ->
-                    if (shuffle) {
-                        viewModel.navigateTo(
-                            Destination.PlaybackList(
-                                itemId = series.id,
-                                shuffle = true,
-                            ),
-                        )
-                    } else {
-                        viewModel.playNextUp()
-                    }
-                },
-                watchOnClick = { showWatchConfirmation = true },
-                favoriteOnClick = {
-                    val favorite = series.data.userData?.isFavorite ?: false
-                    viewModel.setFavorite(series.id, !favorite, null)
-                },
-                trailerOnClick = {
-                    TrailerService.onClick(context, it, viewModel::navigateTo)
-                },
-                onClickExtra = { _, extra ->
-                    viewModel.navigateTo(extra.destination)
-                },
-                discoverSeries = state.discoverSeries,
-                onClickDiscoverSeries = {
-                    state.discoverSeries?.let {
-                        viewModel.navigateTo(Destination.DiscoveredItem(it))
-                    }
-                },
-                discovered = state.discovered,
-                onClickDiscover = { index, item ->
-                    viewModel.navigateTo(item.destination)
-                },
-                onShowContextMenu = {
-                    showContextMenu = it
-                },
-                actions = contextActions,
+                onLongClickPerson = { _, _ -> },
+                onClickSimilar = { _, item -> viewModel.navigateTo(item.destination()) },
+                onLongClickSimilar = { _, item -> similarMenu(item) },
             )
             if (showWatchConfirmation) {
                 ConfirmDialog(

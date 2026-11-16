@@ -472,11 +472,13 @@ fun AioPillButton(
 /** IconButton size md (40x40, icon text-2xl) rounded-full, "gray-subtle" or an active intent */
 @Composable
 fun AioIconButton(
-    icon: ImageVector,
+    icon: ImageVector?,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     activeTint: Color? = null,
+    // A FontAwesome glyph instead of [icon], for icons the bundled Material set lacks (eg shuffle)
+    glyph: String? = null,
 ) {
     val circle = CircleShape
     val tint = activeTint ?: Color(0xFFE1E1E1)
@@ -503,7 +505,11 @@ fun AioIconButton(
         modifier = modifier.size(px(40)),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(px(22)))
+            if (glyph != null) {
+                Text(text = glyph, fontFamily = FontAwesome, fontSize = pxSp(18), lineHeight = pxSp(18))
+            } else if (icon != null) {
+                Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(px(22)))
+            }
         }
     }
 }

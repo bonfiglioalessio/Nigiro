@@ -564,10 +564,10 @@ fun MovieDetailsContent(
 }
 
 /** Nigiro pages start 12 dp right of the 60 dp sidebar; AIOStreams content starts right after it */
-private val PageToSidebarGap = 12.dp
+internal val PageToSidebarGap = 12.dp
 
 /** Lets content extend past the page's horizontal padding (like the home hero) */
-private fun Modifier.bleedHorizontally(
+internal fun Modifier.bleedHorizontally(
     start: androidx.compose.ui.unit.Dp,
     end: androidx.compose.ui.unit.Dp,
 ): Modifier =
@@ -582,7 +582,7 @@ private fun Modifier.bleedHorizontally(
     }
 
 /** Crew jobs in Italian, as the AIOStreams app shows them ("Regista Scrittore") */
-private fun crewJobName(kind: PersonKind): String =
+internal fun crewJobName(kind: PersonKind): String =
     when (kind) {
         PersonKind.DIRECTOR -> "Regista"
         PersonKind.WRITER -> "Scrittore"

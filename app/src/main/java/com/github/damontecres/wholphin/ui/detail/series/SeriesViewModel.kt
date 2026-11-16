@@ -242,6 +242,51 @@ class SeriesViewModel
                 }
 
                 if (seriesPageType == SeriesPageType.DETAILS) {
+                    // AIOStreams-style page: the episodes of the opening season are shown on the page itself
+                    viewModelScope.launchIO {
+                        val next =
+                            try {
+                                api.tvShowsApi
+                                    .getNextUp(
+                                        userId = serverRepository.currentUser?.id,
+                                        seriesId = seriesId,
+                                        limit = 1,
+                                        fields = listOf(ItemFields.PRIMARY_IMAGE_ASPECT_RATIO),
+                                    ).content.items
+                                    .firstOrNull()
+                                    ?.let { BaseItem(it) }
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                Timber.w(ex, "No next up for %s", seriesId)
+                                null
+                            }
+                        _state.update { it.copy(nextUp = next) }
+                        val seasonList = seasons.filterNotNull()
+                        val opening =
+                            seasonList.firstOrNull { it.id == next?.data?.seasonId }
+                                ?: seasonList.firstOrNull { it.data.userData?.played != true }
+                                ?: seasonList.firstOrNull()
+                        opening?.let { loadEpisodes(it.id, it.data.indexNumber) }
+                    }
+                    viewModelScope.launchIO {
+                        val upcoming =
+                            try {
+                                api.tvShowsApi
+                                    .getUpcomingEpisodes(
+                                        userId = serverRepository.currentUser?.id,
+                                        parentId = seriesId,
+                                        limit = 1,
+                                    ).content.items
+                                    .firstOrNull()
+                                    ?.let { BaseItem(it) }
+                            } catch (ex: CancellationException) {
+                                throw ex
+                            } catch (ex: Exception) {
+                                null
+                            }
+                        _state.update { it.copy(nextAiring = upcoming) }
+                    }
                     viewModelScope.launchIO {
                         trailerService.getLocalTrailers(series).letNotEmpty { localTrailers ->
                             _state.update { it.copy(trailers = localTrailers + remoteTrailers) }
@@ -913,6 +958,10 @@ data class SeriesState(
     val discoverSeries: DiscoverItem? = null,
     val chosenStreams: ChosenStreams? = null,
     val localEpisodes: LocalEpisodes? = null,
+    /** The episode Play starts (or resumes), as the AIOStreams "Resume S02E01" button */
+    val nextUp: BaseItem? = null,
+    /** The next episode still to air, for the "S03E01 airs in 3 weeks" line */
+    val nextAiring: BaseItem? = null,
 )
 
 /**

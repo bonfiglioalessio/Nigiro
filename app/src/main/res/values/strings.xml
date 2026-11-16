@@ -1031,4 +1031,5 @@
     <string name="choose_version_title">Choose a version</string>
     <string name="last_choice">Last choice</string>
     <string name="hero_more_info">More info</string>
+    <string name="all_episodes">All episodes</string>
 </resources>
