@@ -39,6 +39,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
+import com.github.damontecres.wholphin.ui.cards.AioWatchedMark
+import android.widget.Toast
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -84,6 +87,10 @@ import kotlin.math.roundToInt
 
 private val ItalianShortDate = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN)
 private val ItalianDay = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ITALIAN)
+private val ItalianReleaseDay = DateTimeFormatter.ofPattern("d MMM", Locale.ITALIAN)
+
+/** An episode whose air date is still to come: it can't be played yet */
+fun BaseItem.isUnreleased(): Boolean = data.premiereDate?.toLocalDate()?.isAfter(LocalDate.now()) == true
 
 /** "2024–" while airing, "2019–2023" when ended, like the AIOStreams MetaRow for a show */
 fun seriesYears(series: BaseItem): String? {
@@ -226,7 +233,10 @@ fun AioSeasonPoster(
 /** "7 nov 2025 · 8m rimanenti · ★ 7.2" (or the runtime when not started) */
 fun episodeMeta(episode: BaseItem): String {
     val data = episode.data
-    val date = data.premiereDate?.let { ItalianShortDate.format(it) }
+    val date =
+        data.premiereDate?.let {
+            if (episode.isUnreleased()) "Esce il ${ItalianReleaseDay.format(it)}" else ItalianShortDate.format(it)
+        }
     val position = data.userData?.playbackPositionTicks ?: 0L
     val runtime = data.runTimeTicks
     val time =
@@ -278,9 +288,18 @@ fun AioEpisodeCard(
     val shape = RoundedCornerShape(AioTokens.RadiusXl)
     val played = data.userData?.played == true
     val percent = data.userData?.playedPercentage ?: 0.0
+    val unreleased = remember(episode.id, data.premiereDate) { episode.isUnreleased() }
     Column(verticalArrangement = Arrangement.spacedBy(px(8)), modifier = modifier.width(width)) {
         Card(
-            onClick = { currentOnClick() },
+            onClick = {
+                if (unreleased) {
+                    // Not out yet: nothing to play, say when it comes out instead
+                    val day = data.premiereDate?.let { ItalianReleaseDay.format(it) }.orEmpty()
+                    Toast.makeText(context, "Non ancora uscito: esce il $day", Toast.LENGTH_SHORT).show()
+                } else {
+                    currentOnClick()
+                }
+            },
             onLongClick = { currentOnLongClick() },
             interactionSource = interaction,
             shape = CardDefaults.shape(shape),
@@ -296,10 +315,28 @@ fun AioEpisodeCard(
                         model = request,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        // Dimmed until it airs
+                        alpha = if (unreleased) .45f else 1f,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-                if (focused) {
+                if (unreleased) {
+                    // "In uscita" chip, top left, like the on-disk one
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier =
+                            Modifier
+                                .align(Alignment.TopStart)
+                                .padding(px(8))
+                                .background(Color.Black.copy(alpha = .72f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Icon(AioIcons.Calendar, null, tint = AioTokens.Ring, modifier = Modifier.size(12.dp))
+                        Text(text = "In uscita", fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    }
+                }
+                if (focused && !unreleased) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier =
@@ -311,18 +348,8 @@ fun AioEpisodeCard(
                     }
                 }
                 if (played && (percent <= 0 || percent >= 100)) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier =
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(px(8))
-                                .size(px(24))
-                                .clip(CircleShape)
-                                .background(AioTokens.Brand),
-                    ) {
-                        Icon(AioIcons.Check, null, tint = Color.White, modifier = Modifier.size(px(18)))
-                    }
+                    // Same quiet watched mark as the posters
+                    AioWatchedMark()
                 }
                 if (percent > 0 && percent < 100) {
                     Box(
