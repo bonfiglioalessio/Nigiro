@@ -13,6 +13,7 @@ import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.ui.components.ViewOptions
 import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.detail.series.SeasonEpisodeIds
+import com.github.damontecres.wholphin.ui.explore.ExploreGridSource
 import com.github.damontecres.wholphin.ui.preferences.PreferenceScreenOption
 import com.github.damontecres.wholphin.ui.util.StringProvider
 import com.github.damontecres.wholphin.util.DiscoverRequestType
@@ -118,6 +119,8 @@ sealed class Destination(
         val requestHandler: RequestHandler<T>,
         val initialPosition: Int = 0,
         val viewOptions: ViewOptions = ViewOptions(),
+        // Opened from an Explore tile: the grid shows the all/movies/series filter
+        val explore: ExploreGridSource? = null,
     ) : Destination(false)
 
     @Serializable

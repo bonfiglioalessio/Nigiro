@@ -68,6 +68,8 @@ val SlimItemFields =
         ItemFields.SORT_NAME,
         ItemFields.MEDIA_SOURCE_COUNT,
         ItemFields.CAN_DELETE,
+        // "Su disco" badge on the poster cards (isOnDisk)
+        ItemFields.PATH,
     )
 
 /**

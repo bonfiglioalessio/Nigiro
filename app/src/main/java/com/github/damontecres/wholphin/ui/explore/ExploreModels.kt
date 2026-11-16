@@ -1,8 +1,21 @@
+@file:UseSerializers(UUIDSerializer::class)
+
 package com.github.damontecres.wholphin.ui.explore
 
 import androidx.annotation.StringRes
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.main.HomeMediaFilter
+import com.github.damontecres.wholphin.util.GetItemsRequestHandler
+import com.github.damontecres.wholphin.util.PlatformItemsRequest
+import com.github.damontecres.wholphin.util.PlatformItemsRequestHandler
+import com.github.damontecres.wholphin.util.RequestHandler
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
+import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.serializer.UUIDSerializer
 import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.Locale
 import java.util.UUID
@@ -61,3 +74,39 @@ data class ExploreGenreTile(
     val count: Int,
     val imageUrl: String?,
 )
+
+/**
+ * What an Explore tile opens: a platform (its movie and series collections) or a genre folder. Kept in the title
+ * grid's destination so the grid can switch between all, movies and series itself.
+ */
+@Serializable
+data class ExploreGridSource(
+    val movieCollectionId: UUID? = null,
+    val seriesCollectionId: UUID? = null,
+    val genreIds: List<UUID> = emptyList(),
+    val filter: HomeMediaFilter = HomeMediaFilter.ALL,
+)
+
+/** The grid request for [filter]: a platform keeps only the matching collection, a genre the matching kinds. */
+internal fun ExploreGridSource.request(
+    userId: UUID?,
+    filter: HomeMediaFilter,
+): Pair<Any, RequestHandler<*>> =
+    if (genreIds.isEmpty()) {
+        PlatformItemsRequest(
+            userId = userId,
+            movieCollectionId = movieCollectionId.takeIf { filter != HomeMediaFilter.SERIES },
+            seriesCollectionId = seriesCollectionId.takeIf { filter != HomeMediaFilter.MOVIE },
+        ) to PlatformItemsRequestHandler
+    } else {
+        GetItemsRequest(
+            userId = userId,
+            recursive = true,
+            includeItemTypes = filter.itemKinds(),
+            genreIds = genreIds,
+            // Newest first, like the streaming apps
+            sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.SORT_NAME),
+            sortOrder = listOf(SortOrder.DESCENDING, SortOrder.ASCENDING),
+            fields = SlimItemFields,
+        ) to GetItemsRequestHandler
+    }

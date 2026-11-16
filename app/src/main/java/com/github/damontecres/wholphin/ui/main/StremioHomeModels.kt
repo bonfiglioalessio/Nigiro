@@ -5,6 +5,7 @@ import com.github.damontecres.wholphin.data.model.RemotePlatformConfig
 import java.util.Locale
 import java.util.UUID
 
+@kotlinx.serialization.Serializable
 enum class HomeMediaFilter(
     val wireValue: String,
 ) {

@@ -10,6 +10,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.Job
+import com.github.damontecres.wholphin.ui.explore.request
+import com.github.damontecres.wholphin.ui.main.HomeMediaFilterBar
+import com.github.damontecres.wholphin.ui.main.HomeMediaFilter
+import com.github.damontecres.wholphin.ui.ifElse
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.Alignment
+import androidx.compose.runtime.key
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.main.NigiroDimens
 import com.github.damontecres.wholphin.ui.main.isOnDisk
@@ -86,31 +97,53 @@ class ItemGridViewModel
         private val _state = MutableStateFlow(ItemGridState())
         val state: StateFlow<ItemGridState> = _state
 
+        private var loadJob: Job? = null
+
         init {
-            viewModelScope.launchIO {
-                try {
-                    val request = destination.request as Any
-                    val pager =
-                        ApiRequestPager(
-                            api,
-                            request,
-                            destination.requestHandler as RequestHandler<Any>,
-                            viewModelScope,
-                            useSeriesForPrimary = true,
-                        ).init()
-                    if (pager.isNotEmpty()) {
-                        pager.getBlocking(0)
+            _state.update { it.copy(exploreFilter = destination.explore?.filter) }
+            load(destination.request as Any, destination.requestHandler as RequestHandler<Any>)
+        }
+
+        /** Explore grids: show all titles, only movies or only series */
+        fun setExploreFilter(filter: HomeMediaFilter) {
+            val source = destination.explore ?: return
+            if (_state.value.exploreFilter == filter) return
+            _state.update { it.copy(exploreFilter = filter) }
+            val (request, handler) = source.request(serverRepository.currentUser?.id, filter)
+            @Suppress("UNCHECKED_CAST")
+            load(request, handler as RequestHandler<Any>)
+        }
+
+        // The current titles stay on screen until the new ones are loaded, so focus on the filter is not lost
+        private fun load(
+            request: Any,
+            handler: RequestHandler<Any>,
+        ) {
+            loadJob?.cancel()
+            loadJob =
+                viewModelScope.launchIO {
+                    try {
+                        val pager =
+                            ApiRequestPager(
+                                api,
+                                request,
+                                handler,
+                                viewModelScope,
+                                useSeriesForPrimary = true,
+                            ).init()
+                        if (pager.isNotEmpty()) {
+                            pager.getBlocking(0)
+                        }
+                        _state.update {
+                            it.copy(items = DataLoadingState.Success(pager))
+                        }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.e(ex, "Error fetching items")
+                        _state.update { it.copy(items = DataLoadingState.Error(ex)) }
                     }
-                    _state.update {
-                        it.copy(items = DataLoadingState.Success(pager))
-                    }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.e(ex, "Error fetching items")
-                    _state.update { it.copy(items = DataLoadingState.Error(ex)) }
                 }
-            }
         }
 
         override fun navigateTo(destination: Destination) {
@@ -189,6 +222,8 @@ class ItemGridViewModel
 
 data class ItemGridState(
     val items: DataLoadingState<List<BaseItem?>> = DataLoadingState.Pending,
+    // Null when the grid was not opened from Explore and has no filter
+    val exploreFilter: HomeMediaFilter? = null,
 )
 
 /**
@@ -222,6 +257,7 @@ fun ItemGrid(
         is DataLoadingState.Success<List<BaseItem?>> -> {
             var position by rememberInt(destination.initialPosition)
             val focusRequester = remember { FocusRequester() }
+            val filterFocusRequester = remember { FocusRequester() }
             LaunchedEffect(Unit) {
                 focusRequester.tryRequestFocus()
             }
@@ -231,15 +267,28 @@ fun ItemGrid(
                 verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap),
                 modifier = modifier.padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd, top = 20.dp),
             ) {
-                // AIOStreams page title: left, like the Explore header
-                Text(
-                    text = destination.title.getString(),
-                    style = NigiroDimens.RowTitle.copy(fontSize = 26.sp, lineHeight = 30.sp),
-                    color = NigiroPalette.Text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // AIOStreams page title: left, like the Explore header, with the filter on the right
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = destination.title.getString(),
+                        style = NigiroDimens.RowTitle.copy(fontSize = 26.sp, lineHeight = 30.sp),
+                        color = NigiroPalette.Text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    state.exploreFilter?.let { filter ->
+                        Spacer(Modifier.weight(1f))
+                        HomeMediaFilterBar(
+                            selectedFilter = filter,
+                            onSelectFilter = viewModel::setExploreFilter,
+                            firstButtonFocusRequester = filterFocusRequester,
+                        )
+                    }
+                }
 
+                // A new grid for each filter: it starts from the top instead of the old position
+                key(state.exploreFilter) {
                 CardGrid(
                     pager = st.data,
                     onClickItem = { index: Int, item: BaseItem ->
@@ -279,8 +328,13 @@ fun ItemGrid(
                         )
                     },
                     columns = destination.viewOptions.columns,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            // The filter sits at the right edge: Up from the first row reaches it
+                            .ifElse(state.exploreFilter != null, Modifier.focusProperties { up = filterFocusRequester }),
                 )
+                }
             }
         }
     }

@@ -8,15 +8,12 @@ import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.NavigationManager
 import com.github.damontecres.wholphin.services.RemoteConfigService
-import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.main.HomeMediaFilter
 import com.github.damontecres.wholphin.ui.main.PlatformTile
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
-import com.github.damontecres.wholphin.util.GetItemsRequestHandler
-import com.github.damontecres.wholphin.util.PlatformItemsRequest
-import com.github.damontecres.wholphin.util.PlatformItemsRequestHandler
+import com.github.damontecres.wholphin.util.RequestHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -35,7 +32,6 @@ import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
-import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetGenresRequest
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
@@ -82,50 +78,36 @@ class ExploreViewModel
         }
 
         fun openPlatform(tile: PlatformTile) {
-            val filter = _state.value.filter
-            val movieId = tile.movieCollectionId?.toUUIDOrNull()?.takeIf { filter != HomeMediaFilter.SERIES }
-            val seriesId = tile.seriesCollectionId?.toUUIDOrNull()?.takeIf { filter != HomeMediaFilter.MOVIE }
-            if (movieId == null && seriesId == null) return
-            navigationManager.navigateTo(
-                Destination.ItemGrid(
-                    title = StringStringProvider(titleWithFilter(tile.name, filter)),
-                    request = PlatformItemsRequest(serverRepository.currentUser?.id, movieId, seriesId),
-                    requestHandler = PlatformItemsRequestHandler,
-                ),
-            )
+            val source =
+                ExploreGridSource(
+                    movieCollectionId = tile.movieCollectionId?.toUUIDOrNull(),
+                    seriesCollectionId = tile.seriesCollectionId?.toUUIDOrNull(),
+                    filter = _state.value.filter,
+                )
+            if (source.movieCollectionId == null && source.seriesCollectionId == null) return
+            openGrid(tile.name, source)
         }
 
         fun openGenre(tile: ExploreGenreTile) {
-            val filter = _state.value.filter
             val name = "${tile.genre.emoji} ${context.getString(tile.genre.label)}"
+            openGrid(name, ExploreGridSource(genreIds = tile.genreIds, filter = _state.value.filter))
+        }
+
+        private fun openGrid(
+            title: String,
+            source: ExploreGridSource,
+        ) {
+            val (request, handler) = source.request(serverRepository.currentUser?.id, source.filter)
+            @Suppress("UNCHECKED_CAST")
             navigationManager.navigateTo(
                 Destination.ItemGrid(
-                    title = StringStringProvider(titleWithFilter(name, filter)),
-                    request =
-                        GetItemsRequest(
-                            userId = serverRepository.currentUser?.id,
-                            recursive = true,
-                            includeItemTypes = filter.itemKinds(),
-                            genreIds = tile.genreIds,
-                            // Newest first, like the streaming apps
-                            sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.SORT_NAME),
-                            sortOrder = listOf(SortOrder.DESCENDING, SortOrder.ASCENDING),
-                            fields = SlimItemFields,
-                        ),
-                    requestHandler = GetItemsRequestHandler,
+                    title = StringStringProvider(title),
+                    request = request,
+                    requestHandler = handler as RequestHandler<Any>,
+                    explore = source,
                 ),
             )
         }
-
-        private fun titleWithFilter(
-            name: String,
-            filter: HomeMediaFilter,
-        ): String =
-            when (filter) {
-                HomeMediaFilter.ALL -> name
-                HomeMediaFilter.MOVIE -> "$name · ${context.getString(R.string.home_filter_movies)}"
-                HomeMediaFilter.SERIES -> "$name · ${context.getString(R.string.home_filter_series)}"
-            }
 
         private fun buildPlatforms(): List<PlatformTile> =
             remoteConfigService.config.value.home.platforms
