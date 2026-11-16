@@ -42,6 +42,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Row
+import com.github.damontecres.wholphin.ui.theme.pxSp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.Image
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -420,7 +425,7 @@ fun NavDrawer(
                                             focusRequester.tryRequestFocus()
                                         }
                                     }
-                                }.fillMaxHeight(),
+                                }.weight(1f),
                     ) {
                         item {
                             val interactionSource = remember { MutableInteractionSource() }
@@ -575,6 +580,26 @@ fun NavDrawer(
                                     modifier = Modifier,
                                 )
                             }
+                        }
+                    }
+                    // The Nigiro mascot at the foot of the rail, centred under the icons; its name beside it when open
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(px(12)),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = (CollapsedDrawerPillWidth - MascotWidth) / 2, top = px(8)),
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.nigiro_mascot),
+                            contentDescription = "Nigiro",
+                            modifier = Modifier.width(MascotWidth),
+                        )
+                        if (isOpen) {
+                            Text(
+                                text = "Nigiro",
+                                fontSize = pxSp(16),
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White.copy(alpha = .7f),
+                            )
                         }
                     }
                 }
@@ -867,3 +892,5 @@ fun navItemColor(
 val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
 
 val DrawerValue.isOpen: Boolean get() = this == DrawerValue.Open
+
+private val MascotWidth = px(44)
