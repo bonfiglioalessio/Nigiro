@@ -12,6 +12,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.github.damontecres.wholphin.ui.cards.noButtonGlow
 import com.github.damontecres.wholphin.ui.FontAwesome
 import androidx.tv.material3.LocalContentColor
@@ -445,55 +451,25 @@ fun ItemGrid(
 
                 // A new grid for each filter or sort: it starts from the top instead of the old position
                 key(state.exploreFilter, state.exploreSort) {
-                CardGrid(
-                    pager = st.data,
-                    onClickItem = { index: Int, item: BaseItem ->
-                        position = index
-                        viewModel.navigateTo(item.destination(index))
-                    },
-                    onLongClickItem = { index: Int, item: BaseItem ->
-                        position = index
-                        contextMenu.showContextMenu(index, item)
-                    },
-                    onClickPlay = { _, item -> viewModel.navigateTo(Destination.Playback(item)) },
-                    letterPosition = { c: Char -> 0 },
-                    gridFocusRequester = focusRequester,
-                    showJumpButtons = false,
-                    showLetterButtons = false,
-                    initialPosition = destination.initialPosition,
-                    spacing = NigiroDimens.CardGap,
-                    // The "1 / 183" counter covered the titles of the last row
-                    showPositionFooter = false,
-                    cardContent = @Composable { (item, index, onClick, onLongClick, widthPx, mod) ->
-                        // The same poster card as the Home rows, sized to the grid cell
-                        val cardHeight =
-                            if (widthPx > 0) {
-                                with(density) { widthPx.toDp() } / AspectRatios.TALL
-                            } else {
-                                NigiroDimens.PosterHeight
-                            }
-                        ExpandingPosterCard(
-                            item = item,
-                            onClick = onClick,
-                            onLongClick = onLongClick,
-                            cardHeight = cardHeight,
-                            onDisk = item?.isOnDisk() == true,
-                            // Expands like on Home, over the neighbours; the last two columns grow to the left
-                            overflowAlign =
-                                destination.viewOptions.columns.let { columns ->
-                                    if (index % columns >= columns - 2) Alignment.End else Alignment.Start
-                                },
-                            showFavorite = destination.explore?.favorites != true,
-                            modifier = mod,
-                        )
-                    },
-                    columns = destination.viewOptions.columns,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            // The filter sits at the right edge: Up from the first row reaches it
-                            .ifElse(state.exploreFilter != null, Modifier.focusProperties { up = filterFocusRequester }),
-                )
+                    ExpandingPosterGrid(
+                        items = st.data,
+                        columns = destination.viewOptions.columns,
+                        onClickItem = { index, item ->
+                            position = index
+                            viewModel.navigateTo(item.destination(index))
+                        },
+                        onLongClickItem = { index, item ->
+                            position = index
+                            contextMenu.showContextMenu(index, item)
+                        },
+                        firstFocusRequester = focusRequester,
+                        showFavorite = destination.explore?.favorites != true,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                // The filter sits at the right edge: Up from the first row reaches it
+                                .ifElse(state.exploreFilter != null, Modifier.focusProperties { up = filterFocusRequester }),
+                    )
                 }
             }
         }
@@ -599,6 +575,64 @@ internal fun HeaderIconButton(
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             FaGlyph(text = glyph, fontFamily = FontAwesome, fontSize = 15.sp, lineHeight = 15.sp)
+        }
+    }
+}
+
+/**
+ * A grid of the Home poster cards that expand like on Home: each line is its own row, so the focused poster
+ * widening pushes the ones after it (the row scrolls to keep it in view) instead of covering its neighbours.
+ */
+@Composable
+private fun ExpandingPosterGrid(
+    items: List<BaseItem?>,
+    columns: Int,
+    onClickItem: (Int, BaseItem) -> Unit,
+    onLongClickItem: (Int, BaseItem) -> Unit,
+    firstFocusRequester: FocusRequester,
+    showFavorite: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (items.isEmpty()) {
+        Box(contentAlignment = Alignment.Center, modifier = modifier) {
+            Text(text = stringResource(R.string.no_results), color = NigiroPalette.TextMuted, fontSize = 18.sp)
+        }
+        return
+    }
+    BoxWithConstraints(modifier = modifier) {
+        val cardWidth = (maxWidth - NigiroDimens.CardGap * (columns - 1)) / columns
+        val cardHeight = cardWidth / AspectRatios.TALL
+        val rows = (items.size + columns - 1) / columns
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
+            modifier = Modifier.fillMaxSize().focusRestorer(),
+        ) {
+            items(rows, key = { it }) { row ->
+                val first = row * columns
+                val count = minOf(columns, items.size - first)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
+                    // Room after the last poster, so an expanded one at the end can scroll fully into view
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp, end = NigiroDimens.ContentEnd),
+                    modifier = Modifier.fillMaxWidth().focusRestorer(),
+                ) {
+                    items(count, key = { first + it }) { column ->
+                        val index = first + column
+                        // Reading the pager position loads its page
+                        val item = items[index]
+                        ExpandingPosterCard(
+                            item = item,
+                            onClick = { item?.let { onClickItem(index, it) } },
+                            onLongClick = { item?.let { onLongClickItem(index, it) } },
+                            cardHeight = cardHeight,
+                            onDisk = item?.isOnDisk() == true,
+                            showFavorite = showFavorite,
+                            modifier = if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier,
+                        )
+                    }
+                }
+            }
         }
     }
 }
