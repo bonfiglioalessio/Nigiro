@@ -269,13 +269,13 @@ fun ContextMenu(
                 onClickPlayWith = { showPlayWithDialog = true },
             )
         }
-    DialogPopup(
-        showDialog = true,
+    val anchor = rememberFocusAnchor()
+    AioItemMenu(
         title = item.title ?: "",
-        dialogItems = dialogItems,
+        entries = dialogItems,
+        anchor = anchor,
+        fromLongClick = contextMenu.fromLongClick,
         onDismissRequest = onDismissRequest,
-        dismissOnClick = false,
-        waitToLoad = contextMenu.fromLongClick,
     )
     if (chooseVersion != null) {
         chooseVersion?.let { params ->
@@ -344,19 +344,12 @@ private fun buildContextMenuItems(
     onClearChosenStreams: () -> Unit,
     onClickDelete: () -> Unit,
     onClickPlayWith: () -> Unit,
-): List<DialogItem> =
+): List<DialogItemEntry> =
     buildList {
-        // Songs should not show Go to
-        if (contextMenu.showGoTo && item.type != BaseItemKind.AUDIO) {
-            add(
-                DialogItem(
-                    resources.getString(R.string.go_to),
-                    Icons.Default.ArrowForward,
-                    dismissOnClick = true,
-                ) {
-                    actions.onClickGoTo(item)
-                },
-            )
+        // The AIOStreams item menu's groups: play and go places, then the item's state, then the rest. Each
+        // group after the first starts with a separator when there is something above it.
+        fun section() {
+            if (isNotEmpty() && last() !is DialogItemDivider) add(DialogItemDivider)
         }
         if (item.type in supportedPlayableTypes) {
             if (item.playbackPosition > Duration.ZERO) {
@@ -474,6 +467,16 @@ private fun buildContextMenuItems(
                 }
             }
         }
+        if (item.type in supportedPlayableTypes) {
+            add(
+                DialogItem(
+                    resources.getString(R.string.play_with),
+                    Icons.Default.PlayArrow,
+                    dismissOnClick = false,
+                    onClick = onClickPlayWith,
+                ),
+            )
+        }
         if (item.type == BaseItemKind.MUSIC_ALBUM || item.type == BaseItemKind.AUDIO) {
             add(
                 DialogItem(
@@ -482,17 +485,6 @@ private fun buildContextMenuItems(
                     dismissOnClick = true,
                 ) {
                     actions.onClickAddToQueue(item)
-                },
-            )
-        }
-        if (contextMenu.showRemoveFromPlaylist) {
-            add(
-                DialogItem(
-                    text = R.string.remove_from_playlist,
-                    iconStringRes = R.string.fa_circle_xmark,
-                    dismissOnClick = true,
-                ) {
-                    actions.onRemoveFromPlaylist.invoke(contextMenu.index, item.id)
                 },
             )
         }
@@ -505,59 +497,46 @@ private fun buildContextMenuItems(
                 actions.onClickAddPlaylist.invoke(item.id)
             },
         )
-        if (contextMenu.canDelete) {
+        if (contextMenu.showRemoveFromPlaylist) {
             add(
                 DialogItem(
-                    resources.getString(R.string.delete),
-                    Icons.Default.Delete,
-                    iconColor = Color.Red.copy(alpha = .8f),
-                    dismissOnClick = false,
-                ) {
-                    onClickDelete.invoke()
-                },
-            )
-        }
-        if (contextMenu.canRemoveContinueWatching && !watched && item.playbackPosition > Duration.ZERO) {
-            add(
-                DialogItem(
-                    text = R.string.remove_continue_watching,
-                    iconStringRes = R.string.fa_eye,
+                    text = R.string.remove_from_playlist,
+                    iconStringRes = R.string.fa_circle_xmark,
                     dismissOnClick = true,
                 ) {
-                    actions.onClickWatch.invoke(item.id, false)
+                    actions.onRemoveFromPlaylist.invoke(contextMenu.index, item.id)
                 },
             )
         }
-        if (contextMenu.canRemoveNextUp && item.type == BaseItemKind.EPISODE && item.data.seriesId != null) {
+        // Songs should not show Go to
+        if (contextMenu.showGoTo && item.type != BaseItemKind.AUDIO) {
             add(
                 DialogItem(
-                    text = R.string.remove_next_up,
-                    iconStringRes = R.string.fa_tag,
+                    resources.getString(R.string.go_to),
+                    Icons.Default.ArrowForward,
                     dismissOnClick = true,
                 ) {
-                    actions.onClickRemoveFromNextUp.invoke(item)
+                    actions.onClickGoTo(item)
                 },
             )
         }
-        add(
-            DialogItem(
-                text = if (watched) R.string.mark_unwatched else R.string.mark_watched,
-                iconStringRes = if (watched) R.string.fa_eye else R.string.fa_eye_slash,
-                dismissOnClick = true,
-            ) {
-                actions.onClickWatch.invoke(item.id, !watched)
-            },
-        )
-        add(
-            DialogItem(
-                text = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
-                iconColor = if (favorite) Color.Red else Color.Unspecified,
-                dismissOnClick = true,
-            ) {
-                actions.onClickFavorite.invoke(item.id, !favorite)
-            },
-        )
+        seriesId?.let {
+            add(
+                DialogItem(
+                    resources.getString(R.string.go_to_series),
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    dismissOnClick = true,
+                ) {
+                    actions.navigateTo(
+                        Destination.MediaItem(
+                            seriesId,
+                            BaseItemKind.SERIES,
+                            null,
+                        ),
+                    )
+                },
+            )
+        }
         item.data.albumId?.let { albumId ->
             add(
                 DialogItem(
@@ -592,23 +571,49 @@ private fun buildContextMenuItems(
                 },
             )
         }
-        seriesId?.let {
+        section()
+        add(
+            DialogItem(
+                text = if (watched) R.string.mark_unwatched else R.string.mark_watched,
+                iconStringRes = if (watched) R.string.fa_eye else R.string.fa_eye_slash,
+                dismissOnClick = true,
+            ) {
+                actions.onClickWatch.invoke(item.id, !watched)
+            },
+        )
+        if (contextMenu.canRemoveContinueWatching && !watched && item.playbackPosition > Duration.ZERO) {
             add(
                 DialogItem(
-                    resources.getString(R.string.go_to_series),
-                    Icons.AutoMirrored.Filled.ArrowForward,
+                    text = R.string.remove_continue_watching,
+                    iconStringRes = R.string.fa_eye,
                     dismissOnClick = true,
                 ) {
-                    actions.navigateTo(
-                        Destination.MediaItem(
-                            seriesId,
-                            BaseItemKind.SERIES,
-                            null,
-                        ),
-                    )
+                    actions.onClickWatch.invoke(item.id, false)
                 },
             )
         }
+        if (contextMenu.canRemoveNextUp && item.type == BaseItemKind.EPISODE && item.data.seriesId != null) {
+            add(
+                DialogItem(
+                    text = R.string.remove_next_up,
+                    iconStringRes = R.string.fa_tag,
+                    dismissOnClick = true,
+                ) {
+                    actions.onClickRemoveFromNextUp.invoke(item)
+                },
+            )
+        }
+        add(
+            DialogItem(
+                text = if (favorite) R.string.remove_favorite else R.string.add_favorite,
+                iconStringRes = R.string.fa_heart,
+                iconColor = if (favorite) Color.Red else Color.Unspecified,
+                dismissOnClick = true,
+            ) {
+                actions.onClickFavorite.invoke(item.id, !favorite)
+            },
+        )
+        section()
         if (item.data.mediaSources?.isNotEmpty() == true) {
             add(
                 DialogItem(
@@ -631,16 +636,6 @@ private fun buildContextMenuItems(
                 },
             )
         }
-        if (item.type in supportedPlayableTypes) {
-            add(
-                DialogItem(
-                    resources.getString(R.string.play_with),
-                    Icons.Default.PlayArrow,
-                    dismissOnClick = false,
-                    onClick = onClickPlayWith,
-                ),
-            )
-        }
         if (item.data.mediaSources?.isNotEmpty() == true) {
             add(
                 DialogItem(
@@ -652,6 +647,19 @@ private fun buildContextMenuItems(
                 },
             )
         }
+        if (contextMenu.canDelete) {
+            add(
+                DialogItem(
+                    resources.getString(R.string.delete),
+                    Icons.Default.Delete,
+                    iconColor = Color.Red.copy(alpha = .8f),
+                    dismissOnClick = false,
+                ) {
+                    onClickDelete.invoke()
+                },
+            )
+        }
+        if (lastOrNull() is DialogItemDivider) removeAt(lastIndex)
     }
 
 private fun buildPlayWith(
@@ -711,13 +719,14 @@ fun ContextMenu(
                 },
             )
         }
-    DialogPopup(
-        showDialog = true,
+    val anchor = rememberFocusAnchor()
+    AioItemMenu(
         title = person.name ?: "",
-        dialogItems = dialogItems,
+        entries = dialogItems,
+        anchor = anchor,
+        fromLongClick = item.fromLongClick,
         onDismissRequest = onDismissRequest,
         dismissOnClick = true,
-        waitToLoad = item.fromLongClick,
     )
 }
 
