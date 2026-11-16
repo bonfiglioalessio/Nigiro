@@ -39,6 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.delay
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import com.github.damontecres.wholphin.ui.cards.showNotReleasedToast
 import com.github.damontecres.wholphin.ui.cards.AioUnreleasedChip
 import androidx.compose.ui.unit.sp
@@ -441,6 +446,15 @@ fun AioEpisodesSection(
         )
         // Coming down from the buttons lands on the season shown, not on whichever poster is under them
         val selectedSeasonFocus = remember { FocusRequester() }
+        // Resting on a season shows its episodes (cached, so instant); the short delay skips the posters only passed
+        var focusedSeason by remember { mutableStateOf<BaseItem?>(null) }
+        val currentOnSelectSeason by rememberUpdatedState(onSelectSeason)
+        LaunchedEffect(focusedSeason?.id) {
+            val season = focusedSeason ?: return@LaunchedEffect
+            if (season.id == selectedSeasonId) return@LaunchedEffect
+            delay(SEASON_FOCUS_DELAY_MS)
+            currentOnSelectSeason(season)
+        }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(px(16)),
             contentPadding = PaddingValues(start = contentStart, end = px(32)),
@@ -454,7 +468,10 @@ fun AioEpisodesSection(
                         selected = selected,
                         onClick = { onSelectSeason(season) },
                         onLongClick = { onLongClickSeason(index, season) },
-                        modifier = if (selected) Modifier.focusRequester(selectedSeasonFocus) else Modifier,
+                        modifier =
+                            Modifier
+                                .onFocusChanged { if (it.isFocused) focusedSeason = season }
+                                .then(if (selected) Modifier.focusRequester(selectedSeasonFocus) else Modifier),
                     )
                 }
             }
@@ -507,3 +524,5 @@ fun AioEpisodesSection(
         }
     }
 }
+
+private const val SEASON_FOCUS_DELAY_MS = 300L
