@@ -882,7 +882,6 @@ internal fun PlatformTileCard(
                     .Builder(context)
                     .data(url)
                     .size(tileWidthPx, tileHeightPx)
-                    .bitmapConfig(Bitmap.Config.RGB_565)
                     .build()
             }
         }

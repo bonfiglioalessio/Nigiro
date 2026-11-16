@@ -147,9 +147,6 @@ fun ItemCardImage(
                         if (decodeWidth.gt(0) && decodeHeight.gt(0)) {
                             size(decodeWidth!!, decodeHeight!!)
                         }
-                        if (useRgb565) {
-                            bitmapConfig(Bitmap.Config.RGB_565)
-                        }
                     }.build()
             } else {
                 null

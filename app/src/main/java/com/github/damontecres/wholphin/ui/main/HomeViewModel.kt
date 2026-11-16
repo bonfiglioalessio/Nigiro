@@ -594,7 +594,7 @@ class HomeViewModel
                     imageUrlService.getItemImageUrl(
                         item = item,
                         imageType = ImageType.BACKDROP,
-                        fillWidth = 1280,
+                        fillWidth = 1920,
                         fillHeight = null,
                         useSeriesForPrimary = false,
                     ) ?: imageUrlService.getItemImageUrl(

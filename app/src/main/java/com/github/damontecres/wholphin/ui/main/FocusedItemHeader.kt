@@ -73,13 +73,11 @@ fun FocusedItemBackdrop(
     val backdropRequest =
         remember(backdropItem?.id) {
             backdropItem?.let {
-                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 960)?.let { url ->
+                imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 1920)?.let { url ->
                     ImageRequest
                         .Builder(context)
                         .data(url)
-                        // Cap decoded backdrop size and use RGB_565 (opaque surface) to halve GPU upload cost
-                        .size(960, 540)
-                        .bitmapConfig(Bitmap.Config.RGB_565)
+                        .size(1920, 1080)
                         // Keep showing the previous backdrop until the new one is ready: no flash
                         .useExistingImageAsPlaceholder(true)
                         .build()

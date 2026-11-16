@@ -93,7 +93,7 @@ private fun BoxScope.DetailBackdrop(
     val imageUrlService = LocalImageUrlService.current
     val url =
         remember(item?.id) {
-            item?.let { imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 1280) }
+            item?.let { imageUrlService.getItemImageUrl(it, ImageType.BACKDROP, fillWidth = 1920) }
         } ?: return
     MaskedBackdrop(
         model = url,

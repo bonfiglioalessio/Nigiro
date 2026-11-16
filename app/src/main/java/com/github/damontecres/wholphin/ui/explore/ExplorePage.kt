@@ -252,7 +252,6 @@ private fun GenreTileCard(
                     .Builder(context)
                     .data(url)
                     .size(w, h)
-                    .bitmapConfig(Bitmap.Config.RGB_565)
                     .build()
             }
         }

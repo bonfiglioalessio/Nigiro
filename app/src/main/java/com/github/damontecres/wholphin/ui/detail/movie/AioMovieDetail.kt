@@ -106,12 +106,11 @@ fun AioDetailBackdrop(
     val height = screenHeight * .85f
     val request =
         remember(movie.id) {
-            imageUrlService.getItemImageUrl(movie, ImageType.BACKDROP, fillWidth = 1280)?.let {
+            imageUrlService.getItemImageUrl(movie, ImageType.BACKDROP, fillWidth = 1920)?.let {
                 ImageRequest
                     .Builder(context)
                     .data(it)
-                    .size(1280, 720)
-                    .bitmapConfig(Bitmap.Config.RGB_565)
+                    .size(1920, 1080)
                     .build()
             }
         } ?: return
@@ -192,7 +191,6 @@ fun AioPoster(
                     .Builder(context)
                     .data(it)
                     .size(384, 576)
-                    .bitmapConfig(Bitmap.Config.RGB_565)
                     .build()
             }
         }

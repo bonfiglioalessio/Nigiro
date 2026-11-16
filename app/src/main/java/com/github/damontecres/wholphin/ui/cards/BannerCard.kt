@@ -129,8 +129,7 @@ fun BannerCard(
                         if (fillWidth != null && fillHeight != null && fillWidth > 0 && fillHeight > 0) {
                             size(fillWidth, fillHeight)
                         }
-                    }.bitmapConfig(Bitmap.Config.RGB_565)
-                    .build()
+                    }.build()
             }
         }
 

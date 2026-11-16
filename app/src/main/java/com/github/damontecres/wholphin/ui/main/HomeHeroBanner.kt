@@ -152,9 +152,8 @@ fun HomeHeroBanner(
                     ImageRequest
                         .Builder(context)
                         .data(slide.backdropUrl)
-                        // Cap hero backdrop decode size and use RGB_565 (opaque) for 50% lighter GPU uploads
-                        .size(960, 540)
-                        .bitmapConfig(Bitmap.Config.RGB_565)
+                        // Full 1080p and full colour: at 960x540 RGB_565 the hero looked soft and banded on the TV
+                        .size(1920, 1080)
                         .useExistingImageAsPlaceholder(true)
                         .apply {
                             if (enableAnimations) {

@@ -179,7 +179,6 @@ private fun rememberImageRequest(
                 .Builder(context)
                 .data(it)
                 .size(w, h)
-                .bitmapConfig(Bitmap.Config.RGB_565)
                 .build()
         }
     }
