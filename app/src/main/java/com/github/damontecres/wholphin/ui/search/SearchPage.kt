@@ -952,6 +952,7 @@ private fun SearchIdleContent(
         title: String,
         items: List<BaseItem>,
         modifier: Modifier,
+        showFavorite: Boolean = true,
     ) {
         ItemRow(
             title = title,
@@ -968,6 +969,7 @@ private fun SearchIdleContent(
                     cornerText = item?.ui?.episodeUnplayedCornerText,
                     onDisk = item?.isOnDisk() == true,
                     expandable = false,
+                    showFavorite = showFavorite,
                     modifier = cardModifier,
                 )
             },
@@ -1027,6 +1029,8 @@ private fun SearchIdleContent(
                     title = stringResource(R.string.favorites_and_on_disk),
                     items = favorites,
                     modifier = if (firstSection == "favorites") Modifier.focusRequester(firstFocusRequester) else Modifier,
+                    // Every card here is a favourite
+                    showFavorite = false,
                 )
             }
         }

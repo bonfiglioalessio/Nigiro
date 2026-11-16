@@ -82,6 +82,8 @@ fun ExpandingPosterCard(
     onDisk: Boolean = false,
     // false: a plain poster card (AIOStreams PosterCard), eg for "More like this"
     expandable: Boolean = true,
+    // The heart is left out where every card is a favourite
+    showFavorite: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -134,7 +136,7 @@ fun ExpandingPosterCard(
                 ExpandedContent(item, wideWidth, cardHeight)
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    PosterContent(item, posterWidth, cardHeight, cornerText, onDisk)
+                    PosterContent(item, posterWidth, cardHeight, cornerText, onDisk, showFavorite)
                     // poster-card-shade: bg-black/20 while focused
                     AioFocusShade(visible = focused, alpha = .2f)
                 }
@@ -191,6 +193,7 @@ private fun PosterContent(
     height: Dp,
     cornerText: String?,
     onDisk: Boolean,
+    showFavorite: Boolean,
 ) {
     val imageUrlService = LocalImageUrlService.current
     val density = LocalDensity.current
@@ -221,6 +224,9 @@ private fun PosterContent(
             AioWatchedMark()
         } else if (cornerText != null) {
             AioUnwatchedCount(cornerText)
+        }
+        if (showFavorite && item?.data?.userData?.isFavorite == true) {
+            AioFavoriteMark()
         }
         if (onDisk) {
             OnDiskCardBadge(

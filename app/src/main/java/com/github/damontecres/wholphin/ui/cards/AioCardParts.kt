@@ -19,6 +19,10 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.github.damontecres.wholphin.ui.FontAwesome
+import com.github.damontecres.wholphin.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -44,20 +48,41 @@ internal fun aioCardBorder(shape: Shape) =
         pressedBorder = Border(BorderStroke(px(3), AioTokens.Ring), shape = shape),
     )
 
-/** WatchedMark: size-6 rounded-full bg-brand-500, white check, top right */
+/** Watched: a small dark glass circle with a white check, top right (quieter than a brand-coloured disc) */
 @Composable
 internal fun BoxScope.AioWatchedMark() {
+    CardMark(Alignment.TopEnd) {
+        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(px(16)))
+    }
+}
+
+/** Favourite: the same circle with a red heart, top left */
+@Composable
+internal fun BoxScope.AioFavoriteMark() {
+    CardMark(Alignment.TopStart) {
+        Text(text = stringResource(R.string.fa_heart), fontFamily = FontAwesome, fontSize = pxSp(11), color = FavoriteRed)
+    }
+}
+
+private val FavoriteRed = Color(0xFFFF4D6D)
+
+@Composable
+private fun BoxScope.CardMark(
+    alignment: Alignment,
+    content: @Composable () -> Unit,
+) {
     Box(
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .align(Alignment.TopEnd)
+                .align(alignment)
                 .padding(px(8))
-                .size(px(24))
+                .size(px(26))
                 .clip(CircleShape)
-                .background(AioTokens.Brand),
+                .background(Color.Black.copy(alpha = .6f))
+                .border(px(1), Color.White.copy(alpha = .18f), CircleShape),
     ) {
-        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(px(18)))
+        content()
     }
 }
 

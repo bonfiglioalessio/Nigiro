@@ -63,4 +63,5 @@
     <string name="fa_dice" translatable="false">&#xf522;</string>
     <string name="fa_circle_xmark" translatable="false">&#xf057;</string>
     <string name="fa_magnifying_glass" translatable="false">&#xf002;</string>
+    <string name="fa_hard_drive" translatable="false">&#xf0a0;</string>
 </resources>

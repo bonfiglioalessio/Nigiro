@@ -478,6 +478,7 @@ fun ItemGrid(
                             cornerText = item?.ui?.episodeUnplayedCornerText,
                             onDisk = item?.isOnDisk() == true,
                             expandable = false,
+                            showFavorite = destination.explore?.favorites != true,
                             modifier = mod,
                         )
                     },

@@ -364,15 +364,28 @@ fun BannerCardWithTitle(
  */
 @Composable
 fun OnDiskCardBadge(modifier: Modifier = Modifier) {
-    Text(
-        text = stringResource(R.string.on_disk),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = NigiroPalette.Disk,
-        maxLines = 1,
+    // Compact dark chip: a green drive icon and small white text, so it marks the poster without covering it
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
-                .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(25))
-                .padding(horizontal = 5.dp, vertical = 2.dp),
-    )
+                .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.fa_hard_drive),
+            fontFamily = FontAwesome,
+            fontSize = 9.sp,
+            color = NigiroPalette.Disk,
+        )
+        Text(
+            text = stringResource(R.string.on_disk),
+            fontSize = 11.sp,
+            lineHeight = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 1,
+        )
+    }
 }
