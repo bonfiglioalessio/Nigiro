@@ -80,6 +80,7 @@ import com.github.damontecres.wholphin.util.SourceRanking
 import com.github.damontecres.wholphin.util.StreamSourceParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.model.api.MediaProtocol
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.MediaStream
 import org.jellyfin.sdk.model.api.MediaStreamType
@@ -668,7 +669,8 @@ internal fun versionDetails(
     val videoStream = source.mediaStreams?.firstOrNull { it.type == MediaStreamType.VIDEO }
     fun String.ifNotInTitle() = takeIf { !title.contains(it, ignoreCase = true) }
     return buildList {
-        if (!source.isRemote) add(resources.getString(R.string.version_local))
+        // Gelato marks its HTTP streams as not remote: only a real file is local
+        if (!source.isRemote && source.protocol == MediaProtocol.FILE) add(resources.getString(R.string.version_local))
         if (videoStream?.displayTitle != null) {
             add(videoStream.displayTitle!!)
         } else {

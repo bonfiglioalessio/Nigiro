@@ -20,6 +20,13 @@ object NigiroDimens {
     val TitleGap = 10.dp
     val CardGap = 14.dp
     val PosterHeight = 180.dp
+
+    // AIOStreams-style home: continue watching cards (16:9) and the fixed height of the focused row
+    val ContinueCardHeight = 128.dp
+    val FocusedRowTop = 120.dp
+
+    // AIOStreams hero: sm:h-[30rem] minus the top bar on the 960x540 dp TV screen
+    val AioHeroHeight = 430.dp
     val WideCardHeight = 124.dp
     val PlatformTileWidth = 120.dp
     val PlatformTileHeight = 68.dp

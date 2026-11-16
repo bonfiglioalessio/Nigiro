@@ -84,6 +84,8 @@ import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.Cards
+import com.github.damontecres.wholphin.ui.cards.ContinueWatchingCard
+import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
 import com.github.damontecres.wholphin.ui.cards.BannerCard
 import com.github.damontecres.wholphin.ui.cards.BannerCardWithTitle
 import com.github.damontecres.wholphin.ui.cards.GenreCard
@@ -483,10 +485,10 @@ fun StremioHomeContent(
         }
 
     val density = LocalDensity.current
-    // The focused card sits below the focused item header plus its row's title (23 dp + gaps)
+    // Focused row kept at a fixed height: its title and the bottom of the row above stay visible (AIOStreams-style)
     val spaceAbovePx =
         remember(density) {
-            with(density) { (FocusedItemHeaderHeight + 44.dp).toPx() }
+            with(density) { NigiroDimens.FocusedRowTop.toPx() }
         }
     // Row (index in homeRows) holding focus, -1 when focus is on the hero, filters or platforms
     var focusedRowIndex by remember { mutableIntStateOf(-1) }
@@ -514,8 +516,6 @@ fun StremioHomeContent(
                     when {
                         // Hero scrolls to index 0 via LaunchedEffect so bottom-aligned buttons never clip the banner top
                         isHeroFocused -> 0f
-                        // Card rows are placed right below the focused item header by a LaunchedEffect
-                        focusedRowIndex >= 0 -> 0f
                         isFilterFocused && offset >= spaceAbovePx && offset + size <= containerSize - spaceAbovePx -> 0f
                         else -> offset - spaceAbovePx
                     }
@@ -534,56 +534,23 @@ fun StremioHomeContent(
         }
     }
 
-    // Put the focused row (with its title) right below the focused item header, so rows above it
-    // are hidden under the header instead of showing as a cut-off strip
-    val headerPx = remember(density) { with(density) { FocusedItemHeaderHeight.toPx() } }
-    // A full screen of room: scrollToItem must be able to put even the last row at the top, otherwise it stops
-    // short and the scrollBy(-header) below leaves that row too low (posters cut at the bottom)
+    // Room below the last row, so it too can scroll up to the fixed focused-row height
     val bottomRoom = LocalConfiguration.current.screenHeightDp.dp
-    LaunchedEffect(listState, headerPx) {
-        snapshotFlow { focusedRowIndex }.collectLatest { row ->
-            if (row < 0) return@collectLatest
-            val continueIdx = currentContinueRowIndex
-            val continueItems = if (continueIdx == 0) 1 else 0
-            val platformItems = if (currentHasPlatforms) 1 else 0
-            // Item 0 is the hero (or the filter bar without a hero)
-            val lazyIndex =
-                if (row == 0 && continueIdx == 0) {
-                    1
-                } else {
-                    1 + continueItems + platformItems + (row - currentCatalogStartIndex)
-                }
-            listState.scrollToItem(lazyIndex)
-            listState.scrollBy(-headerPx)
-        }
-    }
 
     Box(modifier = modifier) {
-        // Always mounted in its own restart scope so focusing between hero/platforms/rows never recomposes LazyColumn
-        FocusedBackdropSlot(itemProvider = { focusedItem })
         CompositionLocalProvider(
             LocalBringIntoViewSpec provides stremioBringIntoViewSpec,
         ) {
             LazyColumn(
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
-                // Room below the last row so it too can scroll up under the focused item header
-                // (eg a platform filter leaves only two rows)
                 contentPadding = PaddingValues(bottom = bottomRoom),
                 modifier =
                     Modifier
                         .fillMaxSize()
                         // Span full screen width so LazyColumn's vertical scroll clip never cuts the hero at the sidebar
                         .bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd)
-                        // With a card focused, rows above the focused one are hidden under the details instead
-                        // of showing as a cut-off strip (read while drawing: no recomposition)
-                        .drawWithContent {
-                            if (focusedRowIndex >= 0) {
-                                clipRect(top = headerPx) { this@drawWithContent.drawContent() }
-                            } else {
-                                drawContent()
-                            }
-                        }.focusRestorer()
+                        .focusRestorer()
                         .focusProperties {
                             onEnter = {
                                 val currentRow = positionProvider().row
@@ -661,6 +628,7 @@ fun StremioHomeContent(
                                 onClickItem = onClickItem,
                                 onLongClickItem = onLongClickItem,
                                 onClickViewMore = onClickViewMore,
+                                aioCards = true,
                                 modifier =
                                     Modifier
                                         .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd)
@@ -714,6 +682,7 @@ fun StremioHomeContent(
                             onClickItem = onClickItem,
                             onLongClickItem = onLongClickItem,
                             onClickViewMore = onClickViewMore,
+                            aioCards = true,
                             modifier =
                                 Modifier
                                     .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd)
@@ -729,7 +698,6 @@ fun StremioHomeContent(
                 }
             }
         }
-        FocusedHeaderSlot(itemProvider = { focusedItem })
         when (loadingState) {
             LoadingState.Pending,
             LoadingState.Loading,
@@ -1013,6 +981,8 @@ private fun HomeRowItemContent(
     onLongClickItem: (RowColumn, BaseItem) -> Unit,
     onClickViewMore: (RowColumn, HomeRowLoadingState.Success) -> Unit,
     modifier: Modifier = Modifier,
+    // AIOStreams-style cards (expanding posters, landscape continue watching): Stremio home only
+    aioCards: Boolean = false,
 ) {
     when (val r = row) {
         is HomeRowLoadingState.Loading,
@@ -1037,6 +1007,7 @@ private fun HomeRowItemContent(
         is HomeRowLoadingState.Success -> {
             if (r.items.isNotEmpty()) {
                 val viewOptions = r.viewOptions
+                val isContinueRow = aioCards && r.isContinueWatchingNextUp
                 ItemRow(
                     title = r.title.getString(),
                     items = r.items,
@@ -1087,17 +1058,44 @@ private fun HomeRowItemContent(
                                     }
                                 }
                             }
-                        HomePageCardContent(
-                            index = index,
-                            item = item,
-                            onClick = onClick,
-                            onLongClick = onLongClick,
-                            viewOptions = viewOptions,
-                            modifier =
-                                cardModifier
-                                    .onFocusChanged { onFocus(it.isFocused) }
-                                    .onKeyEvent { onKey(it) },
-                        )
+                        val cardMod =
+                            cardModifier
+                                .onFocusChanged { onFocus(it.isFocused) }
+                                .onKeyEvent { onKey(it) }
+                        when {
+                            isContinueRow -> {
+                                ContinueWatchingCard(
+                                    item = item,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    cardHeight = NigiroDimens.ContinueCardHeight,
+                                    modifier = cardMod,
+                                )
+                            }
+
+                            aioCards && (item?.type == BaseItemKind.MOVIE || item?.type == BaseItemKind.SERIES) -> {
+                                ExpandingPosterCard(
+                                    item = item,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    cardHeight = NigiroDimens.PosterHeight,
+                                    cornerText = item.ui.episodeUnplayedCornerText,
+                                    onDisk = item.isOnDisk(),
+                                    modifier = cardMod,
+                                )
+                            }
+
+                            else -> {
+                                HomePageCardContent(
+                                    index = index,
+                                    item = item,
+                                    onClick = onClick,
+                                    onLongClick = onLongClick,
+                                    viewOptions = viewOptions,
+                                    modifier = cardMod,
+                                )
+                            }
+                        }
                     },
                     showViewMore = showViewMore && r.showViewMore,
                     itemKey = { it.id.toString() },

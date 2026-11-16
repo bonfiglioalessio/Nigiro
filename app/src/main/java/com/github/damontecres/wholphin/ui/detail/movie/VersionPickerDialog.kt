@@ -1,6 +1,10 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,36 +25,46 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
-import androidx.tv.material3.ListItem
-import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.components.versionDetails
+import com.github.damontecres.wholphin.ui.theme.AioTokens
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import org.jellyfin.sdk.model.api.ImageType
 
 /**
- * The version picker shown when play is pressed and the movie has more than one version: a header with the
- * movie's backdrop, title, year and number of versions, then one row per version (name, details, audio).
+ * The version picker shown when play is pressed and the movie has more than one version. Same look as the
+ * AIOStreams app's (packages/web/src/components/version-picker.tsx): a dimmed backdrop banner with title and
+ * count, then one bordered row per version with a round play icon and the version's name.
  */
 @Composable
 fun VersionPickerDialog(
@@ -63,21 +77,26 @@ fun VersionPickerDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Modal overlay: bg-black/80
+        (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(AioTokens.OverlayAlpha)
+        val maxHeight = LocalConfiguration.current.screenHeightDp.dp * .85f
         Column(
             modifier =
                 Modifier
-                    .width(760.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surface),
+                    .width(680.dp)
+                    .heightIn(max = maxHeight)
+                    .clip(RoundedCornerShape(AioTokens.Radius2xl))
+                    .background(AioTokens.Paper)
+                    .border(1.dp, AioTokens.BorderFaint, RoundedCornerShape(AioTokens.Radius2xl)),
         ) {
             PickerHeader(movie, (picker as? PickerState.Options)?.options?.size)
             when (picker) {
                 is PickerState.Loading -> {
                     Text(
                         text = stringResource(R.string.searching_sources),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        fontSize = 14.sp,
+                        color = AioTokens.Muted,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp),
                     )
                 }
 
@@ -96,43 +115,50 @@ private fun PickerHeader(
 ) {
     val imageUrlService = LocalImageUrlService.current
     val backdrop =
-        remember(movie.id) { imageUrlService.getItemImageUrl(movie, ImageType.BACKDROP, fillWidth = 760) }
+        remember(movie.id) { imageUrlService.getItemImageUrl(movie, ImageType.BACKDROP, fillWidth = 680) }
+    val fade =
+        remember {
+            Brush.verticalGradient(
+                0f to AioTokens.Paper.copy(alpha = .3f),
+                .5f to AioTokens.Paper.copy(alpha = .7f),
+                1f to AioTokens.Paper,
+            )
+        }
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(130.dp),
+                .height(104.dp),
     ) {
         if (backdrop != null) {
             AsyncImage(
                 model = backdrop,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .alpha(AioTokens.BannerArtAlpha),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(fade),
             )
         }
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            0f to Color.Black.copy(alpha = .85f),
-                            .7f to Color.Black.copy(alpha = .45f),
-                            1f to Color.Black.copy(alpha = .25f),
-                        ),
-                    ),
-        )
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
+            // text-lg font-semibold, then text-sm muted
             Text(
                 text = movie.title ?: movie.name.orEmpty(),
-                style = MaterialTheme.typography.titleLarge,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -141,9 +167,9 @@ private fun PickerHeader(
                 listOfNotNull(
                     movie.data.productionYear?.toString(),
                     count?.let { stringResource(R.string.versions_count_label, it) },
-                ).joinToString("  ·  ")
+                ).joinToString(" · ")
             if (sub.isNotEmpty()) {
-                Text(text = sub, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .75f))
+                Text(text = sub, fontSize = 14.sp, color = AioTokens.Muted)
             }
         }
     }
@@ -154,54 +180,132 @@ private fun VersionList(
     picker: PickerState.Options,
     onPick: (VersionOption) -> Unit,
 ) {
-    val resources = LocalResources.current
     val initialIndex =
         remember(picker) {
             picker.options.indexOfFirst { it.source.id == picker.chosenSourceId }.coerceAtLeast(0)
         }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(picker) { focusRequester.tryRequestFocus() }
+    // space-y-2 px-5 pb-3
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp),
-        modifier = Modifier.heightIn(max = 420.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp, top = 4.dp),
     ) {
         itemsIndexed(picker.options, key = { _, option -> option.source.id.orEmpty() }) { index, option ->
-            val details = remember(option) { versionDetails(resources, option.source, option.title) }
-            ListItem(
-                selected = option.source.id == picker.chosenSourceId,
+            VersionRow(
+                option = option,
+                chosen = option.source.id == picker.chosenSourceId,
                 onClick = { onPick(option) },
-                headlineContent = {
-                    Text(text = option.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                },
-                supportingContent =
-                    listOfNotNull(details.takeIf { it.isNotBlank() }, option.audio?.let { "🗣 $it" })
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { lines ->
-                            {
-                                Column {
-                                    lines.forEach { line ->
-                                        Text(text = line, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    }
-                                }
-                            }
-                        },
-                leadingContent = {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
+                modifier = if (index == initialIndex) Modifier.focusRequester(focusRequester) else Modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun VersionRow(
+    option: VersionOption,
+    chosen: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val resources = LocalResources.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    // A downloaded copy has no addon name: describe the file instead. Streamed names already carry the
+    // quality, size and audio (eg "⚡ RD · 🇮🇹 ITA · 1080p\n🗣 Italian, English").
+    val description =
+        remember(option) {
+            if (option.isLocal) {
+                listOfNotNull(
+                    versionDetails(resources, option.source, option.title).takeIf { it.isNotBlank() },
+                    option.audio?.let { "🗣 $it" },
+                ).joinToString("\n").takeIf { it.isNotEmpty() }
+            } else if (option.audio != null && !option.title.contains('\n') && !option.title.contains("🗣")) {
+                "🗣 ${option.audio}"
+            } else {
+                null
+            }
+        }
+    val shape = RoundedCornerShape(AioTokens.RadiusXl)
+    Surface(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors =
+            ClickableSurfaceDefaults.colors(
+                containerColor = AioTokens.RowBackground,
+                focusedContainerColor = AioTokens.RowBackgroundFocused,
+                pressedContainerColor = AioTokens.RowBackgroundFocused,
+                contentColor = Color.White,
+                focusedContentColor = Color.White,
+                pressedContentColor = Color.White,
+            ),
+        border =
+            ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, AioTokens.BorderFaint), shape = shape),
+                focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = shape),
+            ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.padding(12.dp),
+        ) {
+            // size-9 rounded-full bg-white/10, white with a black icon when focused
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                    Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (focused) Color.White else Color.White.copy(alpha = .1f)),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = if (focused) Color.Black else Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                if (chosen) {
+                    Text(
+                        text = stringResource(R.string.last_choice),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black,
                         modifier =
                             Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = .12f)),
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                    }
-                },
-                modifier =
-                    if (index == initialIndex) Modifier.focusRequester(focusRequester) else Modifier,
-            )
+                                .clip(RoundedCornerShape(50))
+                                .background(Color.White)
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
+                // text-base font-medium, line breaks kept
+                Text(
+                    text = option.title,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // text-sm text-gray-300
+                description?.let {
+                    Text(
+                        text = it,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        color = AioTokens.Gray300,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

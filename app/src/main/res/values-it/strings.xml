@@ -824,4 +824,6 @@
     <string name="versions_count_label">%1$d versioni</string>
     <string name="searching_sources">Ricerca sorgenti…</string>
     <string name="choose_version_title">Scegli una versione</string>
+    <string name="last_choice">Ultima scelta</string>
+    <string name="hero_more_info">Altre info</string>
 </resources>

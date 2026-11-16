@@ -21,9 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,9 +72,8 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.RemoteHeroConfig
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
-import com.github.damontecres.wholphin.ui.cards.buttonScale
 import com.github.damontecres.wholphin.ui.cards.noButtonGlow
-import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
+import com.github.damontecres.wholphin.ui.theme.AioTokens
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
@@ -112,33 +111,31 @@ fun HomeHeroBanner(
     }
 
     val background = MaterialTheme.colorScheme.background
-    // Static scrims, built once per background color
-    val horizontalScrim =
+    // AIOStreams hero-shade (packages/web/src/components/hero.tsx):
+    // side: from-background via-background/70 at 35% to-transparent;
+    // bottom: on the lower 2/3, from-background via-background/60 to-transparent
+    val sideShade =
         remember(background) {
             Brush.horizontalGradient(
                 0f to background,
-                0.38f to background.copy(alpha = 0.85f),
-                0.75f to background.copy(alpha = 0f),
+                0.35f to background.copy(alpha = 0.7f),
+                1f to background.copy(alpha = 0f),
             )
         }
-    val bottomScrim =
+    val bottomShade =
         remember(background) {
             Brush.verticalGradient(
-                0.62f to background.copy(alpha = 0f),
+                (1f / 3f) to background.copy(alpha = 0f),
+                (2f / 3f) to background.copy(alpha = 0.6f),
                 1f to background,
             )
-        }
-    val meta =
-        remember(slide) {
-            listOfNotNull(slide.yearText, slide.typeLabel, slide.ratingText?.let { "★ $it" }, runtimeText(slide.item))
-                .joinToString(" · ")
         }
 
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(NigiroDimens.HeroHeight)
+                .height(NigiroDimens.AioHeroHeight)
                 .onFocusChanged { focusState ->
                     isHeroFocused = focusState.hasFocus
                 },
@@ -159,7 +156,7 @@ fun HomeHeroBanner(
                         .apply {
                             if (enableAnimations) {
                                 transitionFactory(
-                                    CrossFadeFactory(config.crossfadeMs.coerceIn(100, 600).milliseconds),
+                                    CrossFadeFactory(config.crossfadeMs.coerceIn(100, 700).milliseconds),
                                 )
                             }
                         }.build()
@@ -168,30 +165,31 @@ fun HomeHeroBanner(
                 model = request,
                 contentDescription = slide.title,
                 contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter,
+                alignment = Alignment.TopEnd,
                 modifier = Modifier.fillMaxSize(),
             )
         }
         Box(
             Modifier
                 .fillMaxSize()
-                .background(horizontalScrim),
+                .background(sideShade),
         )
         Box(
             Modifier
                 .fillMaxSize()
-                .background(bottomScrim),
+                .background(bottomShade),
         )
 
+        // hero-content: bottom-left, space-y-4, pb-8 (14 on large screens), max-w-3xl
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Bottom),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Bottom),
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(
                         start = NigiroDimens.ContentStart + NigiroDimens.HeroBleedStart,
                         end = NigiroDimens.ContentEnd + NigiroDimens.HeroBleedEnd,
-                        bottom = NigiroDimens.HeroBottomPadding,
+                        bottom = 32.dp,
                     ),
         ) {
             var logoFailed by remember(slide.logoUrl) { mutableStateOf(false) }
@@ -202,56 +200,51 @@ fun HomeHeroBanner(
                         ImageRequest
                             .Builder(context)
                             .data(slide.logoUrl)
-                            .size(600, 136)
+                            .size(768, 160)
                             .build()
                     }
+                // hero-logo: max-h-20 max-w-[min(24rem,75%)] object-contain object-left
                 AsyncImage(
                     model = logoRequest,
                     contentDescription = slide.title,
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.BottomStart,
                     onError = { logoFailed = true },
-                    // Kept short so badge, logo, details, overview and buttons fit the hero's height
-                    modifier = Modifier.size(width = 300.dp, height = 68.dp),
+                    modifier = Modifier.size(width = 384.dp, height = 80.dp),
                 )
             } else {
+                // hero-title: text-3xl font-bold leading-tight, 2 lines
                 Text(
                     text = slide.title,
                     fontSize = 30.sp,
-                    lineHeight = 34.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.width(560.dp),
                 )
             }
-            if (meta.isNotBlank()) {
-                Text(
-                    text = meta,
-                    style = NigiroDimens.Meta,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            HeroMeta(slide)
             if (!slide.overview.isNullOrBlank()) {
+                // hero-overview: max-w-2xl text-gray-300, 2 lines (text-base from sm up)
                 Text(
                     text = slide.overview,
-                    style = NigiroDimens.Body,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                    color = AioTokens.Gray300,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(470.dp),
+                    modifier = Modifier.width(560.dp),
                 )
             }
+            // hero-actions: flex gap-2
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
             ) {
                 HeroButton(
+                    primary = true,
                     onClick = { onPlay(slide.item) },
                     modifier = Modifier.focusRequester(watchFocusRequester),
                 ) {
@@ -260,14 +253,12 @@ fun HomeHeroBanner(
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )
-                    Spacer(Modifier.width(6.dp))
-                    Text(text = stringResource(R.string.play), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-                HeroButton(onClick = { onDetails(slide.item) }) {
-                    Text(text = stringResource(R.string.hero_details), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.play), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
                 HeroButton(
-                    onClick = { onToggleFavorite(slide.item, !slide.isFavorite) },
+                    primary = false,
+                    onClick = { onDetails(slide.item) },
                     modifier =
                         Modifier.onPreviewKeyEvent { event ->
                             // Right on the last button shows the next slide
@@ -282,36 +273,36 @@ fun HomeHeroBanner(
                             }
                         },
                 ) {
-                    // Outline when not a favorite, filled pink when it is
                     Icon(
-                        imageVector = if (slide.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription =
-                            stringResource(
-                                if (slide.isFavorite) R.string.hero_favorite_remove else R.string.hero_favorite_add,
-                            ),
-                        tint = if (slide.isFavorite) NigiroPalette.Pink else LocalContentColor.current,
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = stringResource(R.string.hero_more_info), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
-                if (slides.size > 1) {
-                    Spacer(Modifier.weight(1f))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        repeat(slides.size) { idx ->
-                            val active = idx == safeIndex
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(width = if (active) 18.dp else 8.dp, height = 4.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(
-                                            if (active) Color.White else Color.White.copy(alpha = 0.35f),
-                                        ),
-                            )
-                        }
-                    }
+            }
+        }
+
+        // hero-dots: absolute bottom-6 right-4, gap-1.5; h-1.5 rounded-full, current w-6 white, others w-1.5 white/40
+        if (slides.size > 1) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 24.dp, end = 16.dp + NigiroDimens.HeroBleedEnd),
+            ) {
+                repeat(slides.size) { idx ->
+                    val active = idx == safeIndex
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(width = if (active) 24.dp else 6.dp, height = 6.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(if (active) Color.White else Color.White.copy(alpha = 0.4f)),
+                    )
                 }
             }
         }
@@ -332,33 +323,87 @@ fun HomeHeroBanner(
 }
 
 /**
- * Hero button: translucent when idle, solid white with dark text when focused, so focus is obvious from the sofa
+ * hero-meta: text-sm text-gray-200, parts separated by a gray-500 "•": year, ★ score, 🍅 critics, genres
+ */
+@Composable
+private fun HeroMeta(slide: HeroSlide) {
+    val data = slide.item.data
+    val parts =
+        remember(slide) {
+            listOfNotNull(
+                slide.yearText,
+                data.communityRating?.takeIf { it > 0f }?.let { "★ " + String.format(java.util.Locale.ROOT, "%.1f", it) },
+                data.criticRating?.takeIf { it > 0f }?.let { "\uD83C\uDF45 ${it.toInt()}%" },
+                data.genres?.take(3)?.takeIf { it.isNotEmpty() }?.joinToString(", "),
+            )
+        }
+    if (parts.isEmpty()) return
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        parts.forEachIndexed { index, part ->
+            if (index > 0) {
+                Text(text = "•", fontSize = 14.sp, color = Color(0xFF5A5A5A))
+            }
+            if (part.startsWith("★ ")) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFACC15),
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(text = part.removePrefix("★ "), fontSize = 14.sp, color = AioTokens.Foreground)
+                }
+            } else {
+                Text(text = part, fontSize = 14.sp, color = AioTokens.Foreground, maxLines = 1)
+            }
+        }
+    }
+}
+
+/**
+ * AIOStreams Button, size md (h-10), rounded-full: "white" (white, black text) for play, "gray-outline" (bordered,
+ * white text) for the rest. Focus adds the --ring outline (2 px) without changing the colors.
  */
 @Composable
 private fun HeroButton(
+    primary: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val pill = RoundedCornerShape(50)
+    val container = if (primary) Color.White else Color.Transparent
+    val focusedContainer = if (primary) Color.White else Color.White.copy(alpha = 0.1f)
+    val contentColor = if (primary) Color.Black else Color.White
     Button(
         onClick = onClick,
-        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+        shape = ButtonDefaults.shape(pill),
         colors =
             ButtonDefaults.colors(
-                containerColor = Color.White.copy(alpha = 0.10f),
-                contentColor = Color.White,
-                focusedContainerColor = Color.White,
-                focusedContentColor = NigiroPalette.Background,
+                containerColor = container,
+                contentColor = contentColor,
+                focusedContainerColor = focusedContainer,
+                focusedContentColor = contentColor,
+                pressedContainerColor = focusedContainer,
+                pressedContentColor = contentColor,
             ),
         border =
             ButtonDefaults.border(
-                border = Border(BorderStroke(2.dp, Color.White.copy(alpha = 0.35f)), shape = RoundedCornerShape(8.dp)),
-                focusedBorder = Border(BorderStroke(3.dp, Color.White), shape = RoundedCornerShape(8.dp)),
+                border =
+                    Border(
+                        BorderStroke(1.dp, if (primary) Color.Transparent else Color.White.copy(alpha = 0.3f)),
+                        shape = pill,
+                    ),
+                focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = pill),
             ),
-        scale = buttonScale(),
+        scale = ButtonDefaults.scale(focusedScale = 1f),
         glow = noButtonGlow(),
-        contentPadding = PaddingValues(horizontal = 22.dp),
-        modifier = modifier.height(NigiroDimens.ButtonHeight),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = modifier.height(40.dp),
     ) {
         // The button has a fixed height, so the content has to fill it to be centered
         Row(

@@ -1029,4 +1029,6 @@
     <string name="versions_count_label">%1$d versions</string>
     <string name="searching_sources">Searching sources…</string>
     <string name="choose_version_title">Choose a version</string>
+    <string name="last_choice">Last choice</string>
+    <string name="hero_more_info">More info</string>
 </resources>
