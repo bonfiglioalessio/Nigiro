@@ -573,7 +573,7 @@ fun AioActions(
             contentDescription = stringResource(if (watched) R.string.mark_unwatched else R.string.mark_watched),
             onClick = onWatched,
             // primary-subtle when watched
-            activeTint = if (watched) Color(0xFFC7C2FF) else null,
+            activeTint = if (watched) AioTokens.Brand else null,
             modifier = focusMod,
         )
         AioIconButton(

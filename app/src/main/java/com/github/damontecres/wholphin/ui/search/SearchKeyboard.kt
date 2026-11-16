@@ -187,6 +187,7 @@ fun SearchKeyboard(
                 onClick = onSubmit,
                 span = if (voiceKey != null) 4 else COLUMNS,
                 containerColor = NigiroPalette.Pink,
+                contentColor = NigiroPalette.OnPink,
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -208,6 +209,7 @@ private fun KeyboardKey(
     modifier: Modifier = Modifier,
     span: Int = 1,
     containerColor: Color = Color.White.copy(alpha = 0.08f),
+    contentColor: Color = Color.White,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
@@ -217,7 +219,7 @@ private fun KeyboardKey(
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = containerColor,
-                contentColor = Color.White,
+                contentColor = contentColor,
                 focusedContainerColor = Color.White,
                 focusedContentColor = NigiroPalette.Background,
             ),

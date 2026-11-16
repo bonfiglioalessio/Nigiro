@@ -212,7 +212,7 @@ fun AioSeasonPoster(
                                 .padding(px(6))
                                 .size(px(20))
                                 .clip(CircleShape)
-                                .background(AioTokens.Brand),
+                                .background(Color.Black.copy(alpha = .6f)),
                     ) {
                         Icon(AioIcons.Check, null, tint = Color.White, modifier = Modifier.size(px(14)))
                     }
@@ -228,7 +228,7 @@ fun AioSeasonPoster(
             overflow = TextOverflow.Ellipsis,
         )
         if (selected) {
-            // The current season is underlined in the brand color
+            // The current season is underlined in the accent
             Box(
                 Modifier
                     .width(px(24))

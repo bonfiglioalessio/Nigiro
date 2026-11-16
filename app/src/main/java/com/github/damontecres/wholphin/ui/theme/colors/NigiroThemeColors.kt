@@ -31,15 +31,15 @@ object NigiroPalette {
     val TextSecondary = Color(0xFFCACACA)
     val TextMuted = Color(0xFF9C9C9C)
 
-    /** brand-500, brand-300 and the text on top of them */
-    val Pink = Color(0xFF6152DF)
-    val PinkSoft = Color(0xFFC7C2FF)
-    val OnPink = Color(0xFFFFFFFF)
+    /** The accent (Nigiro beige, named Pink from the AIOStreams brand it replaces), a lighter one and the text on it */
+    val Pink = Color(0xFFDCD3CA)
+    val PinkSoft = Color(0xFFEDE7E1)
+    val OnPink = Color(0xFF1A1714)
 
-    val Disk = Color(0xFF9FEBC4)
+    val Disk = Color(0xFFDCD3CA)
 
     /** --ring (dark) = brand-200 */
-    val Focus = Color(0xFFD4D0FF)
+    val Focus = Color(0xFFDCD3CA)
 }
 
 val NigiroThemeColors =

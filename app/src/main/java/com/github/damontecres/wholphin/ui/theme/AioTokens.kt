@@ -38,11 +38,14 @@ object AioTokens {
     /** --foreground (dark) = gray-200 */
     val Foreground = Color(0xFFD1D1D1)
 
-    /** --ring (dark) = brand-200: focus outlines */
-    val Ring = Color(0xFFD4D0FF)
+    /** Focus outlines: Nigiro's beige (the icon's), not AIOStreams' lilac */
+    val Ring = Color(0xFFDCD3CA)
 
-    /** brand-500: the accent */
-    val Brand = Color(0xFF6152DF)
+    /** The accent: Nigiro's beige, so the palette is black, greys, white and beige */
+    val Brand = Color(0xFFDCD3CA)
+
+    /** Text and icons on the beige accent */
+    val OnBrand = Color(0xFF1A1714)
 
     /** --muted / --muted-highlight (dark) */
     val Muted = Color.White.copy(alpha = .4f)

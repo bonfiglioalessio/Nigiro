@@ -42,6 +42,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import com.github.damontecres.wholphin.ui.theme.pxSp
@@ -582,16 +584,21 @@ fun NavDrawer(
                             }
                         }
                     }
-                    // The Nigiro mascot at the foot of the rail, centred under the icons; its name beside it when open
+                    // The Nigiro logo (the app icon) at the foot of the rail, centred under the icons, its name beside it when open
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(px(12)),
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = (CollapsedDrawerPillWidth - MascotWidth) / 2, top = px(8)),
+                        modifier =
+                            Modifier.padding(
+                                start = (CollapsedDrawerPillWidth - LogoSize) / 2,
+                                top = px(8),
+                                bottom = px(16),
+                            ),
                     ) {
                         Image(
-                            painter = painterResource(R.drawable.nigiro_mascot),
+                            painter = painterResource(R.drawable.nigiro_logo),
                             contentDescription = "Nigiro",
-                            modifier = Modifier.width(MascotWidth),
+                            modifier = Modifier.size(LogoSize).clip(RoundedCornerShape(px(8))),
                         )
                         if (isOpen) {
                             Text(
@@ -893,4 +900,4 @@ val DrawerState.isOpen: Boolean get() = this.currentValue.isOpen
 
 val DrawerValue.isOpen: Boolean get() = this == DrawerValue.Open
 
-private val MascotWidth = px(44)
+private val LogoSize = px(36)

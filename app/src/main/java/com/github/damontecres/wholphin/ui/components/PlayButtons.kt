@@ -367,7 +367,7 @@ fun FavoriteButton(
             Icon(
                 imageVector = if (favorite) AioIcons.HeartFilled else AioIcons.Heart,
                 contentDescription = null,
-                tint = if (favorite) NigiroPalette.Pink else LocalContentColor.current,
+                tint = if (favorite) Color(0xFFFF4D6D) else LocalContentColor.current,
                 modifier = Modifier.size(20.dp).align(Alignment.Center),
             )
         }

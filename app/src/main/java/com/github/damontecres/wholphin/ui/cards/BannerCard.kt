@@ -210,7 +210,7 @@ fun BannerCard(
             }
             if (favorite) {
                 FaGlyph(
-                    color = NigiroPalette.Pink,
+                    color = Color(0xFFFF4D6D),
                     text = stringResource(R.string.fa_heart),
                     fontSize = 14.sp,
                     fontFamily = FontAwesome,
