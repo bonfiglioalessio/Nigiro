@@ -293,11 +293,11 @@ private fun ExpandedContent(
                     .background(scrim),
         )
         Column(
-            verticalArrangement = Arrangement.spacedBy(px(3), Alignment.Bottom),
+            verticalArrangement = Arrangement.spacedBy(px(4), Alignment.Bottom),
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = px(14), vertical = px(12)),
+                    .padding(horizontal = px(18), vertical = px(16)),
         ) {
             var logoFailed by remember(logoUrl) { mutableStateOf(false) }
             if (logoUrl != null && !logoFailed) {
@@ -309,6 +309,7 @@ private fun ExpandedContent(
                     onError = { logoFailed = true },
                     modifier =
                         Modifier
+                            .padding(bottom = px(6))
                             .fillMaxWidth(.6f)
                             .height(height * .26f),
                 )
@@ -320,6 +321,7 @@ private fun ExpandedContent(
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = px(6)),
                 )
             }
             if (meta.isNotEmpty()) {
@@ -332,10 +334,12 @@ private fun ExpandedContent(
                 Text(
                     text = it,
                     fontSize = pxSp(12),
-                    lineHeight = pxSp(16),
-                    color = Color.White.copy(alpha = .9f),
+                    lineHeight = pxSp(17),
+                    color = Color.White.copy(alpha = .85f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    // Overview set apart from the meta lines above
+                    modifier = Modifier.padding(top = px(6)),
                 )
             }
         }

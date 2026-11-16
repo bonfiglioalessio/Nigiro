@@ -534,7 +534,7 @@ fun AioActions(
 ) {
     val focusMod = Modifier.onFocusChanged { if (it.isFocused) onButtonFocused() }
     Row(
-        horizontalArrangement = Arrangement.spacedBy(px(8)),
+        horizontalArrangement = Arrangement.spacedBy(px(16)),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier,
     ) {

@@ -240,9 +240,9 @@ fun HomeHeroBanner(
                     modifier = Modifier.width(px(560)),
                 )
             }
-            // hero-actions: flex gap-2
+            // hero-actions: wider than AIOStreams' gap-2, the focused button grows by 6%
             Row(
-                horizontalArrangement = Arrangement.spacedBy(px(8)),
+                horizontalArrangement = Arrangement.spacedBy(px(16)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 HeroButton(
