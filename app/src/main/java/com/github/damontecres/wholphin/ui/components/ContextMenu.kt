@@ -1,6 +1,9 @@
 package com.github.damontecres.wholphin.ui.components
 
 import android.content.res.Resources
+import androidx.tv.material3.Text
+import androidx.tv.material3.LocalContentColor
+import androidx.tv.material3.Icon
 import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
