@@ -685,6 +685,14 @@ private fun AioPersonCard(
                             CircleShape,
                         ),
             ) {
+                // The initials sit under the photo: they show while it loads and stay when it can't be loaded
+                // (a person with an image tag whose file is missing gave an empty circle)
+                Text(
+                    text = initials(entry.person.name.orEmpty()),
+                    fontSize = pxSp(18),
+                    fontWeight = FontWeight.SemiBold,
+                    color = AioTokens.Muted,
+                )
                 if (entry.person.imageUrl != null) {
                     AsyncImage(
                         model = entry.person.imageUrl,
@@ -694,13 +702,6 @@ private fun AioPersonCard(
                             Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape),
-                    )
-                } else {
-                    Text(
-                        text = initials(entry.person.name.orEmpty()),
-                        fontSize = pxSp(18),
-                        fontWeight = FontWeight.SemiBold,
-                        color = AioTokens.Muted,
                     )
                 }
             }
