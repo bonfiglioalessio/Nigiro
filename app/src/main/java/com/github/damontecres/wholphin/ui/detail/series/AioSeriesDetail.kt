@@ -39,9 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.github.damontecres.wholphin.ui.cards.showNotReleasedToast
+import com.github.damontecres.wholphin.ui.cards.AioUnreleasedChip
 import androidx.compose.ui.unit.sp
 import com.github.damontecres.wholphin.ui.cards.AioWatchedMark
-import android.widget.Toast
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -91,6 +92,9 @@ private val ItalianReleaseDay = DateTimeFormatter.ofPattern("d MMM", Locale.ITAL
 
 /** An episode whose air date is still to come: it can't be played yet */
 fun BaseItem.isUnreleased(): Boolean = data.premiereDate?.toLocalDate()?.isAfter(LocalDate.now()) == true
+
+/** "13 dic": the air day, for "Esce il …" */
+fun BaseItem.releaseDay(): String? = data.premiereDate?.let { ItalianReleaseDay.format(it) }
 
 /** "2024–" while airing, "2019–2023" when ended, like the AIOStreams MetaRow for a show */
 fun seriesYears(series: BaseItem): String? {
@@ -294,8 +298,7 @@ fun AioEpisodeCard(
             onClick = {
                 if (unreleased) {
                     // Not out yet: nothing to play, say when it comes out instead
-                    val day = data.premiereDate?.let { ItalianReleaseDay.format(it) }.orEmpty()
-                    Toast.makeText(context, "Non ancora uscito: esce il $day", Toast.LENGTH_SHORT).show()
+                    showNotReleasedToast(context, episode.releaseDay())
                 } else {
                     currentOnClick()
                 }
@@ -321,20 +324,7 @@ fun AioEpisodeCard(
                     )
                 }
                 if (unreleased) {
-                    // "In uscita" chip, top left, like the on-disk one
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier =
-                            Modifier
-                                .align(Alignment.TopStart)
-                                .padding(px(8))
-                                .background(Color.Black.copy(alpha = .72f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Icon(AioIcons.Calendar, null, tint = AioTokens.Ring, modifier = Modifier.size(12.dp))
-                        Text(text = "In uscita", fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                    }
+                    AioUnreleasedChip()
                 }
                 if (focused && !unreleased) {
                     Box(

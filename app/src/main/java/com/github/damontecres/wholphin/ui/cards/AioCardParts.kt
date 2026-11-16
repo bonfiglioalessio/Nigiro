@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import com.github.damontecres.wholphin.ui.FontAwesome
 import com.github.damontecres.wholphin.R
 import androidx.compose.ui.res.stringResource
@@ -126,4 +128,32 @@ internal fun BoxScope.AioFocusShade(
                 .background(Color.Black.copy(alpha = alpha)),
         content = content,
     )
+}
+
+/** "In uscita": an episode not aired yet, top left, as a compact dark chip like the on-disk one */
+@Composable
+internal fun BoxScope.AioUnreleasedChip() {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(px(8))
+                .background(Color.Black.copy(alpha = .72f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Icon(AioIcons.Calendar, null, tint = AioTokens.Ring, modifier = Modifier.size(12.dp))
+        Text(text = "In uscita", fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+    }
+}
+
+/** Not aired yet: says when it comes out instead of starting playback */
+internal fun showNotReleasedToast(
+    context: android.content.Context,
+    day: String?,
+) {
+    android.widget.Toast
+        .makeText(context, "Non ancora uscito: esce il ${day.orEmpty()}", android.widget.Toast.LENGTH_SHORT)
+        .show()
 }

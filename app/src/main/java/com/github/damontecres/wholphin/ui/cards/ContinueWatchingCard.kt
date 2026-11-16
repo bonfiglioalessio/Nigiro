@@ -29,6 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.github.damontecres.wholphin.ui.detail.series.releaseDay
+import com.github.damontecres.wholphin.ui.detail.series.isUnreleased
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -106,7 +108,16 @@ fun ContinueWatchingCard(
         } else {
             data?.productionYear?.toString()
         }
-    val remaining = remember(item?.id, data?.userData) { remainingLabel(data?.runTimeTicks, data?.userData?.playbackPositionTicks) }
+    // A followed series whose next episode hasn't aired: kept here, marked "In uscita" and not playable
+    val unreleased = remember(item?.id, data?.premiereDate) { item?.isUnreleased() == true }
+    val remaining =
+        remember(item?.id, data?.userData, unreleased) {
+            if (unreleased) {
+                item?.releaseDay()?.let { "Esce il $it" }
+            } else {
+                remainingLabel(data?.runTimeTicks, data?.userData?.playbackPositionTicks)
+            }
+        }
 
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongClick by rememberUpdatedState(onLongClick)
@@ -119,7 +130,7 @@ fun ContinueWatchingCard(
         val shape = RoundedCornerShape(AioTokens.RadiusXl)
         val focused by interactionSource.collectIsFocusedAsState()
         Card(
-            onClick = { currentOnClick() },
+            onClick = { if (unreleased) showNotReleasedToast(context, item?.releaseDay()) else currentOnClick() },
             onLongClick = { currentOnLongClick() },
             interactionSource = interactionSource,
             shape = CardDefaults.shape(shape),
@@ -135,11 +146,15 @@ fun ContinueWatchingCard(
                         model = request,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        alpha = if (unreleased) .45f else 1f,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
+                if (unreleased) {
+                    AioUnreleasedChip()
+                }
                 // wide-card-play: bg-black/30 with a play icon while focused
-                AioFocusShade(visible = focused, alpha = .3f) {
+                AioFocusShade(visible = focused && !unreleased, alpha = .3f) {
                     Icon(
                         imageVector = AioIcons.Play,
                         contentDescription = null,
