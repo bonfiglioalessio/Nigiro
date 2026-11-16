@@ -762,6 +762,12 @@ class PlaybackViewModel
          */
         private fun directPlayAllowed(sourceId: String?): Boolean = !forceTranscoding && sourceId !in transcodeOnlySourceIds
 
+        /** A Gelato HLS stream the player can read itself, unless it already failed that way */
+        private fun isDirectHlsCandidate(source: MediaSourceInfo): Boolean =
+            source.isGelatoStream() &&
+                source.container.equals(Codec.Container.HLS, ignoreCase = true) &&
+                source.id !in transcodeOnlySourceIds
+
         /**
          * Marks [failedSourceId] as failed and starts the next best media source of the current item, if any remain
          *
@@ -1061,8 +1067,13 @@ class PlaybackViewModel
                             )
                         }
                     }
+                    // Gelato's web streams (StreamVix/VixSrc) are HLS playlists of public CDN segments: Jellyfin never
+                    // offers them for direct play and remuxes them with ffmpeg on the server instead, which costs
+                    // seconds at every start. The static stream is that playlist, which the player reads itself.
+                    val directHls = enableDirectPlay && !source.supportsDirectPlay && isDirectHlsCandidate(source)
+                    if (directHls) Timber.i("Playing HLS source %s directly instead of a server remux", source.id)
                     val mediaUrl =
-                        if (source.supportsDirectPlay) {
+                        if (source.supportsDirectPlay || directHls) {
                             if (source.isRemote && source.path.isNotNullOrBlank()) {
                                 Timber.i("Playback is remote for source: %s", source.id)
                                 source.path
@@ -1093,7 +1104,7 @@ class PlaybackViewModel
                     val transcodeType =
                         when {
 //                        playerBackend == PlayerBackend.MPV -> PlayMethod.DIRECT_PLAY
-                            source.supportsDirectPlay -> PlayMethod.DIRECT_PLAY
+                            source.supportsDirectPlay || directHls -> PlayMethod.DIRECT_PLAY
 
                             source.supportsDirectStream -> PlayMethod.DIRECT_STREAM
 
@@ -1206,8 +1217,9 @@ class PlaybackViewModel
                             if (player is MpvPlayer && externalSubtitle != null) {
                                 // MpvPlayer may change tracks more than once to add external subtitles
                                 trackChangeListener?.let { player.addListener(it) }
-                            } else if (source.isRemote) {
-                                // The server's stream indexes often don't match a remote (debrid/web) file.
+                            } else if (source.isStreamed()) {
+                                // The server's stream indexes often don't match a remote (debrid/web) file, nor the
+                                // renditions of an HLS playlist; Gelato's streams count too, though not "remote".
                                 // Keep direct play with the player's own choice (preferred language) rather than
                                 // making the server remux the remote URL
                                 Timber.w("Could not map tracks of remote source %s, keeping direct play", source.id)
@@ -1828,8 +1840,12 @@ class PlaybackViewModel
                     val canTranscode = currentPlayback.playMethod != PlayMethod.TRANSCODE
                     // A dead link won't work when transcoded either, and for remote (debrid/web) sources
                     // another version is a better bet than a CPU-only transcode on the server
+                    // An HLS web stream played directly gets the server remux of the same (Italian) source first
+                    val directHlsFailed =
+                        currentPlayback.playMethod == PlayMethod.DIRECT_PLAY && isDirectHlsCandidate(source)
                     val preferAnotherSource =
-                        kind == PlaybackErrorKind.SOURCE_UNAVAILABLE || source.isStreamed() || !canTranscode
+                        !directHlsFailed &&
+                            (kind == PlaybackErrorKind.SOURCE_UNAVAILABLE || source.isStreamed() || !canTranscode)
                     Timber.i(
                         "Playback error kind=%s, playMethod=%s, remote=%s",
                         kind,
