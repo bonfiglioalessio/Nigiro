@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,29 +52,29 @@ fun MovieFacts(
         }
     if (facts.isEmpty()) return
     Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(px(12)),
         modifier = modifier.fillMaxWidth(),
     ) {
         AioSectionTitle(stringResource(R.string.details_title))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            horizontalArrangement = Arrangement.spacedBy(px(32)),
             modifier = Modifier.fillMaxWidth(),
         ) {
             facts.forEach { (label, value) ->
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(px(4)),
                     modifier = Modifier.weight(1f),
                 ) {
                     // dt: text-xs uppercase tracking-wide muted; dd: mt-1 text-sm
                     Text(
                         text = label.uppercase(Locale.getDefault()),
-                        fontSize = 12.sp,
+                        fontSize = pxSp(12),
                         letterSpacing = .6.sp,
                         color = AioTokens.Muted,
                     )
                     Text(
                         text = value,
-                        fontSize = 14.sp,
+                        fontSize = pxSp(14),
                         color = AioTokens.Foreground,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,

@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.nav
+import androidx.compose.foundation.background
 
+import com.github.damontecres.wholphin.ui.theme.px
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.VisibilityThreshold
@@ -16,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -337,7 +341,8 @@ fun NavDrawer(
         drawerState = drawerState,
         drawerContent = { drawerValue ->
             val isOpen = drawerValue.isOpen
-            val spacedBy = 4.dp
+            // vertical-menu: gap-1
+            val spacedBy = px(4)
             val searchFocusRequester = remember { FocusRequester() }
 
             ProvideTextStyle(MaterialTheme.typography.labelMedium) {
@@ -347,6 +352,8 @@ fun NavDrawer(
                     modifier =
                         Modifier
                             .fillMaxHeight()
+                            // Centred in the rail like the AIOStreams sidebar, whatever the collapsed pill width
+                            .widthIn(min = CollapsedDrawerItemWidth)
                             .padding(vertical = 8.dp),
                 ) {
                     // Even though some must be clicked, focusing on it should clear other focused items
@@ -364,6 +371,14 @@ fun NavDrawer(
                             )
                         },
                         modifier = Modifier,
+                    )
+                    // AIOStreams: a short divider under the account (h-px w-8 bg-white/10)
+                    Box(
+                        modifier =
+                            Modifier
+                                .padding(vertical = px(8))
+                                .size(width = px(32), height = 1.dp)
+                                .background(Color.White.copy(alpha = .1f)),
                     )
                     LazyColumn(
                         state = navDrawerListState,
@@ -624,15 +639,16 @@ fun NavigationDrawerScope.IconNavItem(
     val focused by interactionSource.collectIsFocusedAsState()
     NavigationDrawerItem(
         modifier = modifier,
-        selected = false,
+        selected = selected,
         onClick = onClick,
+        colors = aioDrawerItemColors(),
         leadingContent = {
             val color = navItemColor(selected, focused, drawerOpen)
             Icon(
                 icon,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(DrawerIconSize),
+                modifier = Modifier.requiredSize(DrawerIconSize),
             )
         },
         supportingContent =
@@ -699,12 +715,9 @@ fun NavigationDrawerScope.NavItem(
     val focused by interactionSource.collectIsFocusedAsState()
     NavigationDrawerItem(
         modifier = modifier,
-        selected = false,
+        selected = selected,
         onClick = onClick,
-        colors =
-            NavigationDrawerItemDefaults.colors(
-                containerColor = containerColor,
-            ),
+        colors = aioDrawerItemColors(containerColor),
         leadingContent = {
             val color = navItemColor(selected, focused, drawerOpen)
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -712,7 +725,8 @@ fun NavigationDrawerScope.NavItem(
                     Text(
                         text = stringResource(icon),
                         textAlign = TextAlign.Center,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
+                        lineHeight = 15.sp,
                         fontFamily = FontAwesome,
                         color = color,
                         modifier = Modifier,
@@ -748,6 +762,19 @@ fun NavigationDrawerScope.NavItem(
     }
 }
 
+/**
+ * AIOStreams vertical-menu item: transparent, the current page and the focused entry on --subtle (white 6%)
+ */
+@Composable
+fun aioDrawerItemColors(containerColor: Color = Color.Unspecified) =
+    NavigationDrawerItemDefaults.colors(
+        containerColor = if (containerColor == Color.Unspecified) Color.Transparent else containerColor,
+        focusedContainerColor = Color.White.copy(alpha = .06f),
+        pressedContainerColor = Color.White.copy(alpha = .08f),
+        selectedContainerColor = Color.White.copy(alpha = .06f),
+        focusedSelectedContainerColor = Color.White.copy(alpha = .08f),
+    )
+
 @Composable
 @ReadOnlyComposable
 fun navItemColor(
@@ -756,6 +783,15 @@ fun navItemColor(
     drawerOpen: Boolean,
 ): Color {
     val theme = LocalTheme.current
+    if (theme == AppThemeColors.NIGIRO) {
+        // AIOStreams: icons --muted (white 40%), the current page --foreground, focus white
+        return when {
+            focused -> Color.White
+            selected -> Color(0xFFD1D1D1)
+            drawerOpen -> Color.White.copy(alpha = .6f)
+            else -> Color.White.copy(alpha = .4f)
+        }
+    }
     if (theme == AppThemeColors.OLED_BLACK) {
         return when {
             selected && focused -> Color.Black

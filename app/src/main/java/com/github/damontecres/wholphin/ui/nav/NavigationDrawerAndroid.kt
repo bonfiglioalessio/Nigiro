@@ -21,6 +21,8 @@
 
 package com.github.damontecres.wholphin.ui.nav
 
+import androidx.compose.foundation.layout.requiredSize
+import com.github.damontecres.wholphin.ui.theme.px
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
@@ -180,10 +182,16 @@ internal class NavigationDrawerScopeImpl(
 
 internal val CollapsedDrawerItemWidth = 60.dp
 internal val ExpandedDrawerItemWidth = 220.dp
-internal val DrawerIconSize = 24.dp
-internal val DrawerIconPadding = (ListItemDefaults.IconSize - DrawerIconSize) / 2
+
+// AIOStreams sidebar (ui vertical-menu, size lg on the TV; 1 css px = 0.75 dp): 48 px items, 24 px icons,
+// collapsed entries a 56 px wide pill
+internal val DrawerIconSize = px(24)
+internal val DrawerIconPadding = 0.dp
+// 64 px: the list item's own paddings leave the icon its full size (at 56 px it gets squeezed)
+internal val CollapsedDrawerPillWidth = px(64)
+internal val DrawerItemHeight = px(48)
 internal val DrawerAnimationStiffness = Spring.StiffnessMedium
-internal val FlatDrawerItemShape = RoundedCornerShape(10.dp)
+internal val FlatDrawerItemShape = RoundedCornerShape(50)
 
 @Composable
 internal fun NavigationDrawerScope.NavigationDrawerItem(
@@ -205,7 +213,7 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         if (hasFocus) {
             ExpandedDrawerItemWidth
         } else {
-            CollapsedDrawerItemWidth
+            CollapsedDrawerPillWidth
         }
     val animatedWidth =
         if (enableAnimations) {
@@ -218,7 +226,7 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         }
     val navDrawerItemHeight =
         if (supportingContent == null) {
-            NavigationDrawerItemDefaults.ContainerHeightOneLine
+            DrawerItemHeight
         } else {
             NavigationDrawerItemDefaults.ContainerHeightTwoLine
         }
@@ -228,10 +236,12 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         onClick = onClick,
         headlineContent = content,
         leadingContent = {
+            // requiredSize: the list item's slot would shrink the icon in the narrow collapsed pill
             Box(
                 Modifier
                     .padding(horizontal = DrawerIconPadding)
-                    .size(DrawerIconSize),
+                    .requiredSize(DrawerIconSize),
+                contentAlignment = Alignment.Center,
             ) { leadingContent() }
         },
         trailingContent = trailingContent,

@@ -19,7 +19,8 @@ object NigiroDimens {
     val SectionGap = 16.dp
     val TitleGap = 10.dp
     val CardGap = 14.dp
-    val PosterHeight = 180.dp
+    // AIOStreams lg row cards (1 css px = 0.75 dp): posters 168x252 px, wide cards 304x171 px
+    val PosterHeight = 189.dp
 
     // AIOStreams-style home: continue watching cards (16:9) and the fixed height of the focused row
     val ContinueCardHeight = 128.dp

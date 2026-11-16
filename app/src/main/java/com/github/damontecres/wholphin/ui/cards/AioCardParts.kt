@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -37,9 +39,9 @@ import com.github.damontecres.wholphin.ui.theme.AioTokens
 @Composable
 internal fun aioCardBorder(shape: Shape) =
     CardDefaults.border(
-        border = Border(BorderStroke(1.dp, AioTokens.BorderFaint), shape = shape),
-        focusedBorder = Border(BorderStroke(3.dp, AioTokens.Ring), shape = shape),
-        pressedBorder = Border(BorderStroke(3.dp, AioTokens.Ring), shape = shape),
+        border = Border(BorderStroke(px(1), AioTokens.BorderFaint), shape = shape),
+        focusedBorder = Border(BorderStroke(px(3), AioTokens.Ring), shape = shape),
+        pressedBorder = Border(BorderStroke(px(3), AioTokens.Ring), shape = shape),
     )
 
 /** WatchedMark: size-6 rounded-full bg-brand-500, white check, top right */
@@ -50,12 +52,12 @@ internal fun BoxScope.AioWatchedMark() {
         modifier =
             Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(24.dp)
+                .padding(px(8))
+                .size(px(24))
                 .clip(CircleShape)
                 .background(AioTokens.Brand),
     ) {
-        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(px(18)))
     }
 }
 
@@ -64,16 +66,16 @@ internal fun BoxScope.AioWatchedMark() {
 internal fun BoxScope.AioUnwatchedCount(text: String) {
     Text(
         text = text,
-        fontSize = 12.sp,
+        fontSize = pxSp(12),
         fontWeight = FontWeight.SemiBold,
         color = Color.White,
         modifier =
             Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
+                .padding(px(8))
                 .clip(RoundedCornerShape(50))
                 .background(AioTokens.Brand)
-                .padding(horizontal = 8.dp, vertical = 2.dp),
+                .padding(horizontal = px(8), vertical = px(2)),
     )
 }
 
@@ -86,7 +88,7 @@ internal fun BoxScope.AioProgressBar(percent: Double) {
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .height(4.dp)
+                .height(px(4))
                 .background(Color.Black.copy(alpha = .6f)),
     ) {
         Box(

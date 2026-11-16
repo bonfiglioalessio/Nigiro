@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -86,7 +88,10 @@ import kotlin.time.Duration
  * components/overview.tsx, ui button/badge variants), written for Compose on a 960x540 dp TV screen.
  */
 
-/** item-backdrop: top 55vh, image right-aligned and kept within 2.6x its height, bottom 3/4 shaded */
+/**
+ * item-backdrop (lg): top 85vh, image right-aligned within 2.6x its height and faded in over its first 12rem,
+ * side shade from-background via-background/60 at 40%, bottom 3/4 from-background via-background/70
+ */
 @Composable
 fun AioDetailBackdrop(
     movie: BaseItem,
@@ -96,7 +101,7 @@ fun AioDetailBackdrop(
     val imageUrlService = LocalImageUrlService.current
     val context = LocalContext.current
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val height = screenHeight * .55f
+    val height = screenHeight * .85f
     val request =
         remember(movie.id) {
             imageUrlService.getItemImageUrl(movie, ImageType.BACKDROP, fillWidth = 1280)?.let {
@@ -111,7 +116,15 @@ fun AioDetailBackdrop(
     // mask-image linear-gradient(to right, transparent, black 12rem) on the frame
     val leftFade =
         remember(background) {
-            Brush.horizontalGradient(0f to background, 0.2f to background.copy(alpha = 0f))
+            Brush.horizontalGradient(0f to background, 0.15f to background.copy(alpha = 0f))
+        }
+    val sideShade =
+        remember(background) {
+            Brush.horizontalGradient(
+                0f to background,
+                0.4f to background.copy(alpha = 0.6f),
+                1f to background.copy(alpha = 0f),
+            )
         }
     // bottom: h-3/4 from-background via-background/70 to-transparent
     val bottomShade =
@@ -152,12 +165,17 @@ fun AioDetailBackdrop(
         Box(
             Modifier
                 .fillMaxSize()
+                .background(sideShade),
+        )
+        Box(
+            Modifier
+                .fillMaxSize()
                 .background(bottomShade),
         )
     }
 }
 
-/** item-poster: w-48 aspect-[2/3] rounded-xl ring-1 ring-white/10 */
+/** item-poster: lg:w-56 aspect-[2/3] rounded-xl ring-1 ring-white/10 */
 @Composable
 fun AioPoster(
     movie: BaseItem,
@@ -180,11 +198,11 @@ fun AioPoster(
     Box(
         modifier =
             modifier
-                .width(192.dp)
+                .width(px(224))
                 .aspectRatio(2f / 3f)
                 .clip(shape)
                 .background(AioTokens.Gray900)
-                .border(1.dp, Color.White.copy(alpha = .1f), shape),
+                .border(px(1), Color.White.copy(alpha = .1f), shape),
     ) {
         if (request != null) {
             AsyncImage(
@@ -197,7 +215,7 @@ fun AioPoster(
     }
 }
 
-/** item-logo (max-h-24, max-w min(26rem, 85%)) or item-title (text-4xl bold) */
+/** item-logo (lg:max-h-32, max-w min(26rem, 85%)) or item-title (lg:text-5xl bold) */
 @Composable
 fun AioTitle(
     movie: BaseItem,
@@ -218,13 +236,13 @@ fun AioTitle(
             contentScale = ContentScale.Fit,
             alignment = Alignment.BottomStart,
             onError = { logoFailed = true },
-            modifier = Modifier.size(width = 416.dp, height = 80.dp),
+            modifier = Modifier.size(width = px(416), height = px(128)),
         )
     } else {
         Text(
             text = movie.title ?: movie.name.orEmpty(),
-            fontSize = 36.sp,
-            lineHeight = 40.sp,
+            fontSize = pxSp(48),
+            lineHeight = pxSp(52),
             fontWeight = FontWeight.Bold,
             color = Color.White,
             maxLines = 2,
@@ -236,7 +254,7 @@ fun AioTitle(
 /** item-tagline: text-base italic text-gray-300 */
 @Composable
 fun AioTagline(text: String) {
-    Text(text = text, fontSize = 16.sp, fontStyle = FontStyle.Italic, color = AioTokens.Gray300)
+    Text(text = text, fontSize = pxSp(16), fontStyle = FontStyle.Italic, color = AioTokens.Gray300)
 }
 
 /** "2h 35m" like the AIOStreams duration() */
@@ -266,10 +284,10 @@ fun AioMetaRow(movie: BaseItem) {
     var drawn = 0
     @Composable
     fun Separator() {
-        if (drawn++ > 0) Text(text = "•", fontSize = 14.sp, color = Color(0xFF5A5A5A))
+        if (drawn++ > 0) Text(text = "•", fontSize = pxSp(14), color = Color(0xFF5A5A5A))
     }
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(px(10)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         year?.let {
@@ -280,12 +298,12 @@ fun AioMetaRow(movie: BaseItem) {
             Separator()
             Text(
                 text = it,
-                fontSize = 12.sp,
+                fontSize = pxSp(12),
                 color = AioTokens.Foreground,
                 modifier =
                     Modifier
-                        .border(1.dp, Color.White.copy(alpha = .3f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                        .border(px(1), Color.White.copy(alpha = .3f), RoundedCornerShape(px(4)))
+                        .padding(horizontal = px(6), vertical = px(1)),
             )
         }
         runtime?.let {
@@ -295,8 +313,8 @@ fun AioMetaRow(movie: BaseItem) {
         score?.let {
             Separator()
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Filled.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(16)))
+                Spacer(Modifier.width(px(4)))
                 MetaText(it)
             }
         }
@@ -309,27 +327,27 @@ fun AioMetaRow(movie: BaseItem) {
 
 @Composable
 private fun MetaText(text: String) {
-    Text(text = text, fontSize = 14.sp, color = AioTokens.Foreground, maxLines = 1)
+    Text(text = text, fontSize = pxSp(14), color = AioTokens.Foreground, maxLines = 1)
 }
 
 /** item-genres: Badge intent white size md (h-6 px-2 text-xs semibold tracking-wide rounded-full, gray border) */
 @Composable
 fun AioGenres(genres: List<String>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(px(6))) {
         genres.take(4).forEach { genre ->
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .height(24.dp)
+                        .height(px(24))
                         .clip(RoundedCornerShape(50))
                         .background(Color(0xFF1C1C1C).copy(alpha = .1f))
-                        .border(1.dp, Color(0xFF5A5A5A).copy(alpha = .4f), RoundedCornerShape(50))
-                        .padding(horizontal = 8.dp),
+                        .border(px(1), Color(0xFF5A5A5A).copy(alpha = .4f), RoundedCornerShape(50))
+                        .padding(horizontal = px(8)),
             ) {
                 Text(
                     text = genre,
-                    fontSize = 12.sp,
+                    fontSize = pxSp(12),
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = .3.sp,
                     color = Color.White,
@@ -368,34 +386,36 @@ fun AioOverview(
     ) {
         // "More" floats at the end of the last line, over a fade so the clipped text runs under it
         val background = androidx.tv.material3.MaterialTheme.colorScheme.background
-        Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
+        var cut by remember(overview) { mutableStateOf(false) }
+        Box(modifier = Modifier.padding(horizontal = px(4), vertical = px(2))) {
             Text(
                 text = overview,
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
+                onTextLayout = { cut = it.hasVisualOverflow },
+                fontSize = pxSp(16),
+                lineHeight = pxSp(24),
                 maxLines = 4,
                 overflow = TextOverflow.Clip,
             )
-            Row(
+            if (cut) Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.BottomEnd),
             ) {
                 Box(
                     Modifier
-                        .width(48.dp)
-                        .height(24.dp)
+                        .width(px(48))
+                        .height(px(24))
                         .background(Brush.horizontalGradient(listOf(background.copy(alpha = 0f), background))),
                 )
                 Text(
                     text = stringResource(R.string.more),
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
+                    fontSize = pxSp(16),
+                    lineHeight = pxSp(24),
                     fontWeight = FontWeight.Medium,
                     color = AioTokens.Muted,
                     modifier =
                         Modifier
                             .background(background)
-                            .padding(start = 4.dp),
+                            .padding(start = px(4)),
                 )
             }
         }
@@ -430,15 +450,15 @@ fun AioPillButton(
             ButtonDefaults.border(
                 border =
                     Border(
-                        BorderStroke(1.dp, if (white) Color.Transparent else Color(0xFF8F8F8F).copy(alpha = .2f)),
+                        BorderStroke(px(1), if (white) Color.Transparent else Color(0xFF8F8F8F).copy(alpha = .2f)),
                         shape = pill,
                     ),
                 focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = pill),
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         glow = noButtonGlow(),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        modifier = modifier.height(40.dp),
+        contentPadding = PaddingValues(horizontal = px(16)),
+        modifier = modifier.height(px(40)),
     ) {
         Row(
             horizontalArrangement = Arrangement.Center,
@@ -479,11 +499,11 @@ fun AioIconButton(
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         glow = noButtonGlow(),
-        contentPadding = PaddingValues(0.dp),
-        modifier = modifier.size(40.dp),
+        contentPadding = PaddingValues(px(0)),
+        modifier = modifier.size(px(40)),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(22.dp))
+            Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(px(22)))
         }
     }
 }
@@ -506,7 +526,7 @@ fun AioActions(
 ) {
     val focusMod = Modifier.onFocusChanged { if (it.isFocused) onButtonFocused() }
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(px(8)),
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier,
     ) {
@@ -516,11 +536,11 @@ fun AioActions(
             onClick = { onPlay(resumePosition) },
             modifier = focusMod.focusRequester(playFocusRequester),
         ) {
-            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(px(20)))
+            Spacer(Modifier.width(px(8)))
             Text(
                 text = stringResource(if (resuming) R.string.resume else R.string.play),
-                fontSize = 14.sp,
+                fontSize = pxSp(14),
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -535,9 +555,9 @@ fun AioActions(
         if (hasTrailer) {
             AioPillButton(white = false, onClick = onTrailer, modifier = focusMod) {
                 // BiMoviePlay: the FontAwesome film glyph bundled with the app
-                Text(text = stringResource(R.string.fa_film), fontFamily = FontAwesome, fontSize = 15.sp)
-                Spacer(Modifier.width(8.dp))
-                Text(text = "Trailer", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(text = stringResource(R.string.fa_film), fontFamily = FontAwesome, fontSize = pxSp(15))
+                Spacer(Modifier.width(px(8)))
+                Text(text = "Trailer", fontSize = pxSp(14), fontWeight = FontWeight.Medium)
             }
         }
         AioIconButton(
@@ -573,7 +593,7 @@ fun AioSectionTitle(
 ) {
     Text(
         text = text,
-        fontSize = 20.sp,
+        fontSize = pxSp(20),
         fontWeight = FontWeight.SemiBold,
         color = Color.White,
         modifier = modifier,
@@ -606,11 +626,11 @@ fun AioPeopleRow(
     contentStart: Dp,
     modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = modifier) {
+    Column(verticalArrangement = Arrangement.spacedBy(px(16)), modifier = modifier) {
         AioSectionTitle(title, Modifier.padding(start = contentStart))
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-            contentPadding = PaddingValues(start = contentStart - 12.dp, end = 32.dp),
+            horizontalArrangement = Arrangement.spacedBy(px(0)),
+            contentPadding = PaddingValues(start = contentStart, end = px(32)),
         ) {
             itemsIndexed(people.take(40), key = { i, e -> "${e.person.id}_$i" }) { index, entry ->
                 AioPersonCard(entry, onClick = { onClick(entry.person) }, onLongClick = { onLongClick(index, entry.person) })
@@ -639,22 +659,22 @@ private fun AioPersonCard(
                 focusedContentColor = Color.White,
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        modifier = Modifier.width(120.dp),
+        modifier = Modifier.width(px(120)),
     ) {
         val focused by interaction.collectIsFocusedAsState()
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = px(6), vertical = px(4)),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .size(96.dp)
+                        .size(px(96))
                         .clip(CircleShape)
                         .background(AioTokens.Gray900)
                         .border(
-                            if (focused) 3.dp else 1.dp,
+                            if (focused) px(3) else px(1),
                             if (focused) AioTokens.Ring else Color.White.copy(alpha = .1f),
                             CircleShape,
                         ),
@@ -672,17 +692,17 @@ private fun AioPersonCard(
                 } else {
                     Text(
                         text = initials(entry.person.name.orEmpty()),
-                        fontSize = 18.sp,
+                        fontSize = pxSp(18),
                         fontWeight = FontWeight.SemiBold,
                         color = AioTokens.Muted,
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(px(8)))
             Text(
                 text = entry.person.name.orEmpty(),
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
+                fontSize = pxSp(12),
+                lineHeight = pxSp(16),
                 fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -691,8 +711,8 @@ private fun AioPersonCard(
             entry.detail?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
+                    fontSize = pxSp(12),
+                    lineHeight = pxSp(16),
                     color = AioTokens.Muted,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

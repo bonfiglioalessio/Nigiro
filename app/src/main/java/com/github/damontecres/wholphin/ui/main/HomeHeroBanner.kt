@@ -2,6 +2,8 @@
 
 package com.github.damontecres.wholphin.ui.main
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -182,14 +184,14 @@ fun HomeHeroBanner(
 
         // hero-content: bottom-left, space-y-4, pb-8 (14 on large screens), max-w-3xl
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Bottom),
+            verticalArrangement = Arrangement.spacedBy(px(16), Alignment.Bottom),
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(
                         start = NigiroDimens.ContentStart + NigiroDimens.HeroBleedStart,
                         end = NigiroDimens.ContentEnd + NigiroDimens.HeroBleedEnd,
-                        bottom = 32.dp,
+                        bottom = px(56),
                     ),
         ) {
             var logoFailed by remember(slide.logoUrl) { mutableStateOf(false) }
@@ -210,19 +212,19 @@ fun HomeHeroBanner(
                     contentScale = ContentScale.Fit,
                     alignment = Alignment.BottomStart,
                     onError = { logoFailed = true },
-                    modifier = Modifier.size(width = 384.dp, height = 80.dp),
+                    modifier = Modifier.size(width = px(384), height = px(112)),
                 )
             } else {
                 // hero-title: text-3xl font-bold leading-tight, 2 lines
                 Text(
                     text = slide.title,
-                    fontSize = 30.sp,
-                    lineHeight = 36.sp,
+                    fontSize = pxSp(30),
+                    lineHeight = pxSp(36),
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(560.dp),
+                    modifier = Modifier.width(px(560)),
                 )
             }
             HeroMeta(slide)
@@ -230,17 +232,17 @@ fun HomeHeroBanner(
                 // hero-overview: max-w-2xl text-gray-300, 2 lines (text-base from sm up)
                 Text(
                     text = slide.overview,
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp,
+                    fontSize = pxSp(16),
+                    lineHeight = pxSp(22),
                     color = AioTokens.Gray300,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(560.dp),
+                    modifier = Modifier.width(px(560)),
                 )
             }
             // hero-actions: flex gap-2
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(px(8)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 HeroButton(
@@ -251,10 +253,10 @@ fun HomeHeroBanner(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(px(20)),
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(text = stringResource(R.string.play), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Spacer(Modifier.width(px(8)))
+                    Text(text = stringResource(R.string.play), fontWeight = FontWeight.SemiBold, fontSize = pxSp(14))
                 }
                 HeroButton(
                     primary = false,
@@ -276,10 +278,10 @@ fun HomeHeroBanner(
                     Icon(
                         imageVector = Icons.Outlined.Info,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(px(20)),
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(text = stringResource(R.string.hero_more_info), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Spacer(Modifier.width(px(8)))
+                    Text(text = stringResource(R.string.hero_more_info), fontWeight = FontWeight.SemiBold, fontSize = pxSp(14))
                 }
             }
         }
@@ -287,19 +289,19 @@ fun HomeHeroBanner(
         // hero-dots: absolute bottom-6 right-4, gap-1.5; h-1.5 rounded-full, current w-6 white, others w-1.5 white/40
         if (slides.size > 1) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(px(6)),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =
                     Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(bottom = 24.dp, end = 16.dp + NigiroDimens.HeroBleedEnd),
+                        .padding(bottom = px(56), end = px(16) + NigiroDimens.HeroBleedEnd),
             ) {
                 repeat(slides.size) { idx ->
                     val active = idx == safeIndex
                     Box(
                         modifier =
                             Modifier
-                                .size(width = if (active) 24.dp else 6.dp, height = 6.dp)
+                                .size(width = if (active) px(24) else px(6), height = px(6))
                                 .clip(RoundedCornerShape(50))
                                 .background(if (active) Color.White else Color.White.copy(alpha = 0.4f)),
                     )
@@ -311,11 +313,11 @@ fun HomeHeroBanner(
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 14.dp, end = 140.dp)
+                    .padding(top = px(14), end = px(140))
                     // Readable over bright backdrops
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(px(18)))
                     .background(Color.Black.copy(alpha = 0.45f))
-                    .padding(3.dp),
+                    .padding(px(3)),
         ) {
             topEndContent()
         }
@@ -339,12 +341,12 @@ private fun HeroMeta(slide: HeroSlide) {
         }
     if (parts.isEmpty()) return
     Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(px(10)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         parts.forEachIndexed { index, part ->
             if (index > 0) {
-                Text(text = "•", fontSize = 14.sp, color = Color(0xFF5A5A5A))
+                Text(text = "•", fontSize = pxSp(14), color = Color(0xFF5A5A5A))
             }
             if (part.startsWith("★ ")) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -352,13 +354,13 @@ private fun HeroMeta(slide: HeroSlide) {
                         imageVector = Icons.Filled.Star,
                         contentDescription = null,
                         tint = Color(0xFFFACC15),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(px(16)),
                     )
-                    Spacer(Modifier.width(4.dp))
-                    Text(text = part.removePrefix("★ "), fontSize = 14.sp, color = AioTokens.Foreground)
+                    Spacer(Modifier.width(px(4)))
+                    Text(text = part.removePrefix("★ "), fontSize = pxSp(14), color = AioTokens.Foreground)
                 }
             } else {
-                Text(text = part, fontSize = 14.sp, color = AioTokens.Foreground, maxLines = 1)
+                Text(text = part, fontSize = pxSp(14), color = AioTokens.Foreground, maxLines = 1)
             }
         }
     }
@@ -395,15 +397,15 @@ private fun HeroButton(
             ButtonDefaults.border(
                 border =
                     Border(
-                        BorderStroke(1.dp, if (primary) Color.Transparent else Color.White.copy(alpha = 0.3f)),
+                        BorderStroke(px(1), if (primary) Color.Transparent else Color.White.copy(alpha = 0.3f)),
                         shape = pill,
                     ),
                 focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = pill),
             ),
         scale = ButtonDefaults.scale(focusedScale = 1f),
         glow = noButtonGlow(),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        modifier = modifier.height(40.dp),
+        contentPadding = PaddingValues(horizontal = px(16)),
+        modifier = modifier.height(px(40)),
     ) {
         // The button has a fixed height, so the content has to fill it to be centered
         Row(

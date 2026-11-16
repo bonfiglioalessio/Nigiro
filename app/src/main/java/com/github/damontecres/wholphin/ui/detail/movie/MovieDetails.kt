@@ -2,6 +2,8 @@ package com.github.damontecres.wholphin.ui.detail.movie
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
@@ -12,6 +14,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.tv.material3.MaterialTheme
 import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
 import com.github.damontecres.wholphin.ui.main.NigiroDimens
+import com.github.damontecres.wholphin.ui.theme.px
 import org.jellyfin.sdk.model.api.PersonKind
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -337,37 +340,61 @@ fun MovieDetailsContent(
     val crew = remember(castAndCrew) { crewEntries(castAndCrew.second, ::crewJobName) }
     val background = MaterialTheme.colorScheme.background
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    // item-body pt-[38vh] minus the top bar: with the column taller than the poster (items-end), the poster's top
-    // lands at ~1/3 of the screen and the actions stay on screen, as in AIOStreams
-    val headerTop = screenHeight * .19f
-    val contentStart = DetailContentInset + HeaderUtils.startPadding
+    // item-body (lg): pt-[26vh], pl-0 (right after the sidebar), pr-10, space-y-12
+    val headerTop = screenHeight * .27f
+    val contentStart = 0.dp
 
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(48.dp),
-        contentPadding = PaddingValues(bottom = 64.dp),
+    val listState = rememberLazyListState()
+    Box(
         modifier =
             modifier
                 .fillMaxSize()
                 .background(background),
     ) {
+    // item-backdrop is absolute: it scrolls with the page but takes no room, so the sections start right below
+    // the header and run over its faded bottom. Full screen width, under the sidebar like AIOStreams.
+    AioDetailBackdrop(
+        movie = movie,
+        background = background,
+        modifier =
+            Modifier
+                .bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd)
+                .graphicsLayer {
+                    translationY =
+                        if (listState.firstVisibleItemIndex == 0) {
+                            -listState.firstVisibleItemScrollOffset.toFloat()
+                        } else {
+                            -size.height
+                        }
+                },
+    )
+    LazyColumn(
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(px(48)),
+        contentPadding = PaddingValues(bottom = px(64)),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                // lg:pl-0: content right after the 60 dp sidebar, where Nigiro pages start 12 dp further
+                .bleedHorizontally(PageToSidebarGap, 0.dp),
+    ) {
         item(key = "header") {
             Box(modifier = Modifier.fillMaxWidth()) {
-                AioDetailBackdrop(movie = movie, background = background)
                 // item-header: flex-row items-end gap-8
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(px(32)),
                     verticalAlignment = Alignment.Bottom,
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .bringIntoViewRequester(bringIntoViewRequester)
-                            .padding(start = contentStart, end = 40.dp, top = headerTop),
+                            .padding(start = contentStart, end = px(40), top = headerTop),
                 ) {
                     AioPoster(movie)
                     // max-w-3xl space-y-4
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.widthIn(max = 768.dp),
+                        verticalArrangement = Arrangement.spacedBy(px(16)),
+                        modifier = Modifier.widthIn(max = px(768)),
                     ) {
                         AioTitle(movie, preferences.appPreferences.interfacePreferences.showLogos)
                         dto.taglines?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { AioTagline(it) }
@@ -448,15 +475,15 @@ fun MovieDetailsContent(
             }
         }
         item(key = "details") {
-            MovieFacts(movie = movie, modifier = Modifier.padding(start = contentStart, end = 40.dp))
+            MovieFacts(movie = movie, modifier = Modifier.padding(start = contentStart, end = px(40)))
         }
         state.similar.letNotEmpty { similar ->
             item(key = "similar") {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(px(16))) {
                     AioSectionTitle(stringResource(R.string.more_like_this), Modifier.padding(start = contentStart))
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
-                        contentPadding = PaddingValues(start = contentStart, end = 32.dp),
+                        contentPadding = PaddingValues(start = contentStart, end = px(32)),
                         modifier = Modifier.focusRequester(focusRequesters[SIMILAR_ROW]),
                     ) {
                         itemsIndexed(similar, key = { _, item -> item.id }) { index, item ->
@@ -533,7 +560,26 @@ fun MovieDetailsContent(
             }
         }
     }
+    }
 }
+
+/** Nigiro pages start 12 dp right of the 60 dp sidebar; AIOStreams content starts right after it */
+private val PageToSidebarGap = 12.dp
+
+/** Lets content extend past the page's horizontal padding (like the home hero) */
+private fun Modifier.bleedHorizontally(
+    start: androidx.compose.ui.unit.Dp,
+    end: androidx.compose.ui.unit.Dp,
+): Modifier =
+    layout { measurable, constraints ->
+        val startPx = start.roundToPx()
+        val endPx = end.roundToPx()
+        val width = constraints.maxWidth + startPx + endPx
+        val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+        layout(constraints.maxWidth, placeable.height) {
+            placeable.place(-startPx, 0)
+        }
+    }
 
 /** Crew jobs in Italian, as the AIOStreams app shows them ("Regista Scrittore") */
 private fun crewJobName(kind: PersonKind): String =

@@ -1,7 +1,21 @@
 package com.github.damontecres.wholphin.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+/**
+ * One CSS pixel of the AIOStreams app on the TV. Its WebView lays pages out 1280 px wide on the 960x540 dp screen
+ * (so the `lg` Tailwind variants apply): measured on the emulator, a 40 px button is 30 dp and the 224 px movie
+ * poster 168 dp. Write sizes as the CSS values and convert them with [px] / [pxSp].
+ */
+const val AIO_PX = 0.75f
+
+fun px(cssPx: Number): Dp = (cssPx.toFloat() * AIO_PX).dp
+
+fun pxSp(cssPx: Number): TextUnit = (cssPx.toFloat() * AIO_PX).sp
 
 /**
  * Design values of the AIOStreams app (dark mode), from its sources: packages/ui/theme.css (CSS variables),
@@ -46,12 +60,13 @@ object AioTokens {
     const val OverlayAlpha = .8f
 
     /** --radius / rounded-xl / rounded-2xl */
-    val Radius = 8.dp
-    val RadiusXl = 12.dp
-    val Radius2xl = 16.dp
+    val Radius = px(8)
+    val RadiusXl = px(12)
+    val Radius2xl = px(16)
 
-    /** focus-visible:ring-2 */
-    val RingWidth = 2.dp
+    /** focus-visible:ring-2, and the TV ring ([data-tv] ring-[3px]) */
+    val RingWidth = px(2)
+    val TvRingWidth = px(3)
 
     /** group-focus-visible:scale-[1.04] (posters) and scale-[1.03] (wide cards) */
     const val PosterFocusScale = 1.04f

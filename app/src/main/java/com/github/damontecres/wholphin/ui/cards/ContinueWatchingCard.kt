@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -110,7 +112,7 @@ fun ContinueWatchingCard(
     val currentOnLongClick by rememberUpdatedState(onLongClick)
     val interactionSource = remember { MutableInteractionSource() }
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(px(4)),
         modifier = modifier.width(width),
     ) {
         // wide-card-image: rounded-xl bg-gray-900 ring-1 ring-white/5
@@ -142,21 +144,21 @@ fun ContinueWatchingCard(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = .9f),
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(px(48)),
                     )
                 }
                 AioProgressBar(data?.userData?.playedPercentage ?: 0.0)
             }
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(px(8)),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
             // wide-card-title: font-semibold; wide-card-meta: text-xs muted
             Text(
                 text = title.orEmpty(),
-                fontSize = 16.sp,
+                fontSize = pxSp(16),
                 fontWeight = FontWeight.SemiBold,
                 color = AioTokens.Foreground,
                 maxLines = 1,
@@ -166,7 +168,7 @@ fun ContinueWatchingCard(
             remaining?.let {
                 Text(
                     text = it,
-                    fontSize = 12.sp,
+                    fontSize = pxSp(12),
                     color = AioTokens.Muted,
                     maxLines = 1,
                 )
@@ -176,11 +178,11 @@ fun ContinueWatchingCard(
             // wide-card-subtitle: text-sm muted
             Text(
                 text = it,
-                fontSize = 14.sp,
+                fontSize = pxSp(14),
                 color = AioTokens.Muted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(end = 4.dp),
+                modifier = Modifier.padding(end = px(4)),
             )
         }
     }

@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -83,20 +85,20 @@ fun VersionPickerDialog(
         Column(
             modifier =
                 Modifier
-                    .width(680.dp)
+                    .width(px(896))
                     .heightIn(max = maxHeight)
                     .clip(RoundedCornerShape(AioTokens.Radius2xl))
                     .background(AioTokens.Paper)
-                    .border(1.dp, AioTokens.BorderFaint, RoundedCornerShape(AioTokens.Radius2xl)),
+                    .border(px(1), AioTokens.BorderFaint, RoundedCornerShape(AioTokens.Radius2xl)),
         ) {
             PickerHeader(movie, (picker as? PickerState.Options)?.options?.size)
             when (picker) {
                 is PickerState.Loading -> {
                     Text(
                         text = stringResource(R.string.searching_sources),
-                        fontSize = 14.sp,
+                        fontSize = pxSp(14),
                         color = AioTokens.Muted,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp),
+                        modifier = Modifier.padding(horizontal = px(20), vertical = px(28)),
                     )
                 }
 
@@ -128,7 +130,7 @@ private fun PickerHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(104.dp),
+                .height(px(104)),
     ) {
         if (backdrop != null) {
             AsyncImage(
@@ -148,16 +150,16 @@ private fun PickerHeader(
             )
         }
         Column(
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(px(2)),
             modifier =
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = px(20), vertical = px(12)),
         ) {
             // text-lg font-semibold, then text-sm muted
             Text(
                 text = movie.title ?: movie.name.orEmpty(),
-                fontSize = 18.sp,
+                fontSize = pxSp(18),
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
                 maxLines = 1,
@@ -169,7 +171,7 @@ private fun PickerHeader(
                     count?.let { stringResource(R.string.versions_count_label, it) },
                 ).joinToString(" · ")
             if (sub.isNotEmpty()) {
-                Text(text = sub, fontSize = 14.sp, color = AioTokens.Muted)
+                Text(text = sub, fontSize = pxSp(14), color = AioTokens.Muted)
             }
         }
     }
@@ -188,8 +190,8 @@ private fun VersionList(
     LaunchedEffect(picker) { focusRequester.tryRequestFocus() }
     // space-y-2 px-5 pb-3
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 12.dp, top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(px(8)),
+        contentPadding = PaddingValues(start = px(20), end = px(20), bottom = px(12), top = px(4)),
     ) {
         itemsIndexed(picker.options, key = { _, option -> option.source.id.orEmpty() }) { index, option ->
             VersionRow(
@@ -243,23 +245,23 @@ private fun VersionRow(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                border = Border(BorderStroke(1.dp, AioTokens.BorderFaint), shape = shape),
+                border = Border(BorderStroke(px(1), AioTokens.BorderFaint), shape = shape),
                 focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = shape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(px(12)),
             verticalAlignment = Alignment.Top,
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(px(12)),
         ) {
             // size-9 rounded-full bg-white/10, white with a black icon when focused
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
                     Modifier
-                        .size(36.dp)
+                        .size(px(36))
                         .clip(CircleShape)
                         .background(if (focused) Color.White else Color.White.copy(alpha = .1f)),
             ) {
@@ -267,28 +269,28 @@ private fun VersionRow(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = null,
                     tint = if (focused) Color.Black else Color.White,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(px(22)),
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+            Column(verticalArrangement = Arrangement.spacedBy(px(4)), modifier = Modifier.weight(1f)) {
                 if (chosen) {
                     Text(
                         text = stringResource(R.string.last_choice),
-                        fontSize = 12.sp,
+                        fontSize = pxSp(12),
                         fontWeight = FontWeight.SemiBold,
                         color = Color.Black,
                         modifier =
                             Modifier
                                 .clip(RoundedCornerShape(50))
                                 .background(Color.White)
-                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                                .padding(horizontal = px(8), vertical = px(2)),
                     )
                 }
                 // text-base font-medium, line breaks kept
                 Text(
                     text = option.title,
-                    fontSize = 16.sp,
-                    lineHeight = 22.sp,
+                    fontSize = pxSp(16),
+                    lineHeight = pxSp(22),
                     fontWeight = FontWeight.Medium,
                     color = Color.White,
                     maxLines = 3,
@@ -298,8 +300,8 @@ private fun VersionRow(
                 description?.let {
                     Text(
                         text = it,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
+                        fontSize = pxSp(14),
+                        lineHeight = pxSp(20),
                         color = AioTokens.Gray300,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,

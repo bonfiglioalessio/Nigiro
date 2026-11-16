@@ -1,5 +1,7 @@
 package com.github.damontecres.wholphin.ui.cards
 
+import com.github.damontecres.wholphin.ui.theme.px
+import com.github.damontecres.wholphin.ui.theme.pxSp
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -105,7 +107,7 @@ fun ExpandingPosterCard(
     val currentOnLongClick by rememberUpdatedState(onLongClick)
     val data = item?.data
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(px(4)),
         modifier =
             modifier
                 .width(width)
@@ -137,20 +139,20 @@ fun ExpandingPosterCard(
         // poster-card-text: text-sm font-medium, then text-xs muted
         Text(
             text = item?.title ?: item?.name.orEmpty(),
-            fontSize = 14.sp,
+            fontSize = pxSp(14),
             fontWeight = FontWeight.Medium,
             color = AioTokens.Foreground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 2.dp),
+            modifier = Modifier.padding(horizontal = px(2)),
         )
         data?.productionYear?.let { year ->
             Text(
                 text = year.toString(),
-                fontSize = 12.sp,
+                fontSize = pxSp(12),
                 color = AioTokens.Muted,
                 maxLines = 1,
-                modifier = Modifier.padding(horizontal = 2.dp),
+                modifier = Modifier.padding(horizontal = px(2)),
             )
         }
     }
@@ -220,7 +222,7 @@ private fun PosterContent(
             OnDiskCardBadge(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(6.dp),
+                    .padding(px(6)),
             )
         }
         AioProgressBar(playPercent)
@@ -287,11 +289,11 @@ private fun ExpandedContent(
                     .background(scrim),
         )
         Column(
-            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.Bottom),
+            verticalArrangement = Arrangement.spacedBy(px(3), Alignment.Bottom),
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                    .padding(horizontal = px(14), vertical = px(12)),
         ) {
             var logoFailed by remember(logoUrl) { mutableStateOf(false) }
             if (logoUrl != null && !logoFailed) {
@@ -309,7 +311,7 @@ private fun ExpandedContent(
             } else {
                 Text(
                     text = item.title ?: item.name.orEmpty(),
-                    fontSize = 20.sp,
+                    fontSize = pxSp(20),
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White,
                     maxLines = 1,
@@ -317,16 +319,16 @@ private fun ExpandedContent(
                 )
             }
             if (meta.isNotEmpty()) {
-                Text(text = meta, fontSize = 12.sp, color = Color.White.copy(alpha = .9f), maxLines = 1)
+                Text(text = meta, fontSize = pxSp(12), color = Color.White.copy(alpha = .9f), maxLines = 1)
             }
             genres?.takeIf { it.isNotEmpty() }?.let {
-                Text(text = it, fontSize = 12.sp, color = Color.White.copy(alpha = .7f), maxLines = 1)
+                Text(text = it, fontSize = pxSp(12), color = Color.White.copy(alpha = .7f), maxLines = 1)
             }
             data.overview?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
+                    fontSize = pxSp(12),
+                    lineHeight = pxSp(16),
                     color = Color.White.copy(alpha = .9f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -348,6 +350,6 @@ private fun BoxScope.NameFallback(name: String?) {
         modifier =
             Modifier
                 .align(Alignment.Center)
-                .padding(12.dp),
+                .padding(px(12)),
     )
 }
