@@ -1035,4 +1035,6 @@
     <string name="resume_from">Resume from %1$s</string>
     <string name="from_start">From the start</string>
     <string name="close">Close</string>
+    <string name="playback_no_italian_source_left">No other Italian source works for this title. Try again later, or choose a version from the long-press menu.</string>
+    <string name="playback_no_italian_source">No Italian source for this title: playing in the original language</string>
 </resources>

@@ -830,4 +830,6 @@
     <string name="resume_from">Riprendi da %1$s</string>
     <string name="from_start">Dall\'inizio</string>
     <string name="close">Chiudi</string>
+    <string name="playback_no_italian_source_left">Nessun\'altra sorgente in italiano funziona per questo titolo. Riprova più tardi o scegli una versione dal menu a pressione lunga.</string>
+    <string name="playback_no_italian_source">Nessuna sorgente in italiano per questo titolo: parte in lingua originale</string>
 </resources>

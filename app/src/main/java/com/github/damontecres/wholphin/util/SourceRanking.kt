@@ -55,11 +55,14 @@ data class DecodeCapabilities(
  */
 fun MediaSourceInfo.isStreamed(): Boolean {
     val path = path
-    return isRemote || protocol != MediaProtocol.FILE || path == null || path == GELATO_STUB_PATH ||
-        path.startsWith("gelato://")
+    return isRemote || protocol != MediaProtocol.FILE || path == GELATO_STUB_PATH ||
+        path?.startsWith("gelato://") == true
 }
 
 private const val GELATO_STUB_PATH = "/stub"
+
+/** A Gelato (AIOStreams) stream: its name always says its language, 🇮🇹 ITA or 🇬🇧 ORIG */
+fun MediaSourceInfo.isGelatoStream(): Boolean = path == GELATO_STUB_PATH || path?.startsWith("gelato://") == true
 
 /**
  * Orders media sources from the most to the least likely to play well on this device.

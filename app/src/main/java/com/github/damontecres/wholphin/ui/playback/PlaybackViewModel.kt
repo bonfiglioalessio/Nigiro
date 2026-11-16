@@ -77,6 +77,9 @@ import com.github.damontecres.wholphin.util.PlaybackErrorClassifier
 import com.github.damontecres.wholphin.util.PlaybackErrorKind
 import com.github.damontecres.wholphin.util.PlaybackItemState
 import com.github.damontecres.wholphin.util.StreamMimeTypes
+import com.github.damontecres.wholphin.util.isGelatoStream
+import com.github.damontecres.wholphin.util.isStreamed
+import com.github.damontecres.wholphin.util.StreamSourceParser
 import com.github.damontecres.wholphin.util.TrackActivityPlaybackListener
 import com.github.damontecres.wholphin.util.WholphinDispatchers
 import com.github.damontecres.wholphin.util.checkForSupport
@@ -204,6 +207,8 @@ class PlaybackViewModel
 
         // Media sources of the current item that failed to play, reset when a new item starts
         private val failedSourceIds: MutableSet<String?> = Collections.synchronizedSet(mutableSetOf())
+        /** Why the sources ran out, shown on the error page instead of the generic message */
+        private var sourceErrorMessage: String? = null
 
         // Media sources of the current item where direct play failed so transcoding is used instead
         private val transcodeOnlySourceIds: MutableSet<String?> = Collections.synchronizedSet(mutableSetOf())
@@ -526,6 +531,7 @@ class PlaybackViewModel
                 resetSegmentState()
                 failedSourceIds.clear()
                 transcodeOnlySourceIds.clear()
+                sourceErrorMessage = null
                 lastPositionMs = positionMs.coerceAtLeast(0L)
                 _state.update { it.copy(subtitleCues = emptyList()) }
 
@@ -581,6 +587,13 @@ class PlaybackViewModel
                 // Resuming later takes the same source, unless a version gets chosen in the picker
                 if (itemPlayback == null && mediaSource != null) {
                     streamChoiceService.rememberPlayedSource(base.id, mediaSource.id)
+                }
+                // Nothing in Italian to stream: it plays, but says so before the original language starts. Only
+                // AIOStreams streams are sure to name their language, so others never raise a false alarm
+                if (mediaSource != null && mediaSource.isGelatoStream() &&
+                    base.mediaSources.orEmpty().none { StreamSourceParser.parse(it).italian }
+                ) {
+                    showToast(context, context.getString(R.string.playback_no_italian_source), Toast.LENGTH_LONG)
                 }
 
                 if (mediaSource == null && !isLiveTv) {
@@ -765,11 +778,18 @@ class PlaybackViewModel
                 return false
             }
             val item = currentItem.item
-            val remaining =
-                item.data.mediaSources
-                    .orEmpty()
-                    .filter { it.id.isNotNullOrBlank() && it.id !in failedSourceIds }
-            val next = streamChoiceService.chooseSource(remaining, item.data.runTimeTicks) ?: return false
+            val sources = item.data.mediaSources.orEmpty()
+            val remaining = sources.filter { it.id.isNotNullOrBlank() && it.id !in failedSourceIds }
+            // Italian only: when the item has Italian sources and none of them is left, playback stops and says
+            // so rather than carrying on in another language
+            val hasItalian = sources.any { StreamSourceParser.parse(it).italian }
+            val candidates = if (hasItalian) remaining.filter { StreamSourceParser.parse(it).italian } else remaining
+            if (hasItalian && candidates.isEmpty()) {
+                Timber.w("No Italian source left for %s after %s failed", item.id, failedSourceId)
+                sourceErrorMessage = context.getString(R.string.playback_no_italian_source_left)
+                return false
+            }
+            val next = streamChoiceService.chooseSource(candidates, item.data.runTimeTicks) ?: return false
             Timber.w("Media source %s failed, trying %s", failedSourceId, next.id)
             // The failed one would come back on resume: remember the one that is tried now
             streamChoiceService.rememberPlayedSource(item.id, next.id)
@@ -820,7 +840,7 @@ class PlaybackViewModel
                 it.copy(
                     loading =
                         LoadingState.Error(
-                            message ?: context.getString(R.string.playback_error_generic),
+                            message ?: sourceErrorMessage ?: context.getString(R.string.playback_error_generic),
                             exception,
                         ),
                 )
@@ -1809,7 +1829,7 @@ class PlaybackViewModel
                     // A dead link won't work when transcoded either, and for remote (debrid/web) sources
                     // another version is a better bet than a CPU-only transcode on the server
                     val preferAnotherSource =
-                        kind == PlaybackErrorKind.SOURCE_UNAVAILABLE || source.isRemote || !canTranscode
+                        kind == PlaybackErrorKind.SOURCE_UNAVAILABLE || source.isStreamed() || !canTranscode
                     Timber.i(
                         "Playback error kind=%s, playMethod=%s, remote=%s",
                         kind,
