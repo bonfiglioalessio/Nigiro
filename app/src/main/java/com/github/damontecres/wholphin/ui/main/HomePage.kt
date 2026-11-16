@@ -1258,7 +1258,8 @@ fun HomePageContent(
                 ) {
                     itemsIndexed(
                         homeRows,
-                        key = { index, row -> (row as? HomeRowLoadingState.Success)?.title ?: index },
+                        // Lazy keys must be Bundle-able: a StringProvider title is stored by its string form.
+                        key = { index, row -> (row as? HomeRowLoadingState.Success)?.title?.toString() ?: index },
                         contentType = { _, _ -> "home_row" },
                     ) { rowIndex, row ->
                         val rowModifier =
