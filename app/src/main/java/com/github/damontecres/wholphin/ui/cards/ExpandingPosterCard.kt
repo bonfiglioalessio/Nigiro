@@ -74,12 +74,14 @@ fun ExpandingPosterCard(
     modifier: Modifier = Modifier,
     cornerText: String? = null,
     onDisk: Boolean = false,
+    // false: a plain poster card (AIOStreams PosterCard), eg for "More like this"
+    expandable: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
     var expanded by remember { mutableStateOf(false) }
     LaunchedEffect(focused, item?.id) {
-        if (!focused) {
+        if (!focused || !expandable) {
             expanded = false
         } else {
             delay(EXPAND_DELAY_MS)

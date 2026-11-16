@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.github.damontecres.wholphin.ui.theme.AioTokens
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.wholphin.R
@@ -51,11 +53,7 @@ fun MovieFacts(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
-        Text(
-            text = stringResource(R.string.details_title),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        AioSectionTitle(stringResource(R.string.details_title))
         Row(
             horizontalArrangement = Arrangement.spacedBy(32.dp),
             modifier = Modifier.fillMaxWidth(),
@@ -65,15 +63,17 @@ fun MovieFacts(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.weight(1f),
                 ) {
+                    // dt: text-xs uppercase tracking-wide muted; dd: mt-1 text-sm
                     Text(
                         text = label.uppercase(Locale.getDefault()),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        letterSpacing = .6.sp,
+                        color = AioTokens.Muted,
                     )
                     Text(
                         text = value,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        color = AioTokens.Foreground,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )

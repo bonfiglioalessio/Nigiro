@@ -1,6 +1,18 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.tv.material3.MaterialTheme
+import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
+import com.github.damontecres.wholphin.ui.main.NigiroDimens
+import org.jellyfin.sdk.model.api.PersonKind
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -311,236 +323,225 @@ fun MovieDetailsContent(
     onChooseVersion: (MediaSourceInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var position by rememberInt(0)
     val focusRequesters = remember { List(DISCOVER_ROW + 1) { FocusRequester() } }
     val dto = movie.data
     val resumePosition = dto.userData?.playbackPositionTicks?.ticks ?: Duration.ZERO
-
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
 
     RequestOrRestoreFocus(focusRequesters.getOrNull(position))
 
     val castAndCrew = remember(state.people) { splitCastAndCrew(state.people) { it.type } }
+    val cast = remember(castAndCrew) { castAndCrew.first.map { AioPersonEntry(it, it.role) } }
+    val crew = remember(castAndCrew) { crewEntries(castAndCrew.second, ::crewJobName) }
+    val background = MaterialTheme.colorScheme.background
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    // item-body pt-[38vh] minus the top bar: with the column taller than the poster (items-end), the poster's top
+    // lands at ~1/3 of the screen and the actions stay on screen, as in AIOStreams
+    val headerTop = screenHeight * .19f
+    val contentStart = DetailContentInset + HeaderUtils.startPadding
 
-    val listState = rememberLazyListState()
-    DetailPageFrame(item = movie, modifier = modifier, backdropAlpha = { listState.headerBackdropAlpha() }) {
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 8.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            item {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(48.dp),
+        contentPadding = PaddingValues(bottom = 64.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(background),
+    ) {
+        item(key = "header") {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                AioDetailBackdrop(movie = movie, background = background)
+                // item-header: flex-row items-end gap-8
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    verticalAlignment = Alignment.Bottom,
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .bringIntoViewRequester(bringIntoViewRequester)
-                            .padding(start = DetailContentInset + HeaderUtils.startPadding, top = HeaderUtils.topPadding),
+                            .padding(start = contentStart, end = 40.dp, top = headerTop),
                 ) {
-                    MoviePoster(movie = movie, modifier = Modifier.padding(top = 8.dp))
+                    AioPoster(movie)
+                    // max-w-3xl space-y-4
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
-                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.widthIn(max = 768.dp),
                     ) {
-                        MovieDetailsHeader(
-                            preferences = preferences,
-                            movie = movie,
-                            bringIntoViewRequester = bringIntoViewRequester,
-                            overviewOnClick = overviewOnClick,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                        )
-                        ExpandablePlayButtons(
-                            title = movie.title ?: "",
+                        AioTitle(movie, preferences.appPreferences.interfacePreferences.showLogos)
+                        dto.taglines?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { AioTagline(it) }
+                        AioMetaRow(movie)
+                        dto.genres?.takeIf { it.isNotEmpty() }?.let { AioGenres(it) }
+                        dto.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                            AioOverview(
+                                overview = overview,
+                                onMore = overviewOnClick,
+                                modifier =
+                                    Modifier.onFocusChanged {
+                                        if (it.isFocused) {
+                                            scope.launch(ExceptionHandler()) { bringIntoViewRequester.bringIntoView() }
+                                        }
+                                    },
+                            )
+                        }
+                        AioActions(
                             resumePosition = resumePosition,
                             watched = dto.userData?.played ?: false,
                             favorite = dto.userData?.isFavorite ?: false,
-                            playOnClick = {
+                            hasTrailer = state.trailers.isNotEmpty(),
+                            onPlay = {
                                 position = HEADER_ROW
                                 playOnClick.invoke(it)
                             },
-                            moreOnClick = moreOnClick,
-                            watchOnClick = watchOnClick,
-                            favoriteOnClick = favoriteOnClick,
-                            buttonOnFocusChanged = {
-                                if (it.isFocused) {
-                                    position = HEADER_ROW
-                                    scope.launch(ExceptionHandler()) {
-                                        bringIntoViewRequester.bringIntoView()
-                                    }
-                                }
+                            onTrailer = {
+                                position = HEADER_ROW
+                                state.trailers.firstOrNull()?.let(trailerOnClick)
                             },
-                            trailers = state.trailers,
-                            trailerOnClick = {
-                                position = TRAILER_ROW
-                                trailerOnClick.invoke(it)
+                            onWatched = watchOnClick,
+                            onFavorite = favoriteOnClick,
+                            onMore = moreOnClick,
+                            playFocusRequester = focusRequesters[HEADER_ROW],
+                            onButtonFocused = {
+                                position = HEADER_ROW
+                                scope.launch(ExceptionHandler()) { bringIntoViewRequester.bringIntoView() }
                             },
-                            canDelete = canDelete,
-                            onConfirmDelete = onConfirmDelete,
-                            chooseVersionParams =
-                                remember(state.chosenStreams, movie, state.localCopy, onChooseVersion) {
-                                    ChooseVersionParams(
-                                        chosenStreams = state.chosenStreams,
-                                        // The downloaded copy (if any) first, then the streamed versions
-                                        mediaSources =
-                                            state.localCopy
-                                                ?.data
-                                                ?.mediaSources
-                                                .orEmpty() + movie.data.mediaSources.orEmpty(),
-                                        onChooseVersion = onChooseVersion,
-                                    )
-                                },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp)
-                                    .focusRequester(focusRequesters[HEADER_ROW]),
                         )
                     }
                 }
             }
-            castAndCrew.first.letNotEmpty { people ->
-                item {
-                    PersonRow(
-                        people = people,
-                        title = R.string.cast_title,
-                        onClick = {
-                            position = PEOPLE_ROW
-                            onClickPerson.invoke(it)
-                        },
-                        onLongClick = { index, person ->
-                            position = PEOPLE_ROW
-                            onLongClickPerson.invoke(index, person)
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[PEOPLE_ROW]),
-                    )
-                }
-            }
-            castAndCrew.second.letNotEmpty { people ->
-                item {
-                    PersonRow(
-                        people = people,
-                        title = R.string.crew_title,
-                        onClick = {
-                            position = CREW_ROW
-                            onClickPerson.invoke(it)
-                        },
-                        onLongClick = { index, person ->
-                            position = CREW_ROW
-                            onLongClickPerson.invoke(index, person)
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[CREW_ROW]),
-                    )
-                }
-            }
-            item {
-                MovieFacts(
-                    movie = movie,
-                    modifier = Modifier.padding(start = DetailContentInset + HeaderUtils.startPadding, end = 48.dp),
+        }
+        if (cast.isNotEmpty()) {
+            item(key = "cast") {
+                AioPeopleRow(
+                    title = stringResource(R.string.cast_title),
+                    people = cast,
+                    onClick = {
+                        position = PEOPLE_ROW
+                        onClickPerson.invoke(it)
+                    },
+                    onLongClick = { index, person ->
+                        position = PEOPLE_ROW
+                        onLongClickPerson.invoke(index, person)
+                    },
+                    contentStart = contentStart,
+                    modifier = Modifier.focusRequester(focusRequesters[PEOPLE_ROW]),
                 )
             }
-            state.chapters.letNotEmpty { chapters ->
-                item {
-                    ChapterRow(
-                        chapters = chapters,
-                        onClick = {
-                            position = CHAPTER_ROW
-                            playOnClick.invoke(it.position)
-                        },
-                        onLongClick = {},
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[CHAPTER_ROW]),
-                    )
-                }
+        }
+        if (crew.isNotEmpty()) {
+            item(key = "crew") {
+                AioPeopleRow(
+                    title = stringResource(R.string.crew_title),
+                    people = crew,
+                    onClick = {
+                        position = CREW_ROW
+                        onClickPerson.invoke(it)
+                    },
+                    onLongClick = { index, person ->
+                        position = CREW_ROW
+                        onLongClickPerson.invoke(index, person)
+                    },
+                    contentStart = contentStart,
+                    modifier = Modifier.focusRequester(focusRequesters[CREW_ROW]),
+                )
             }
-            state.extras.letNotEmpty { extras ->
-                item {
-                    ExtrasRow(
-                        extras = extras,
-                        onClickItem = { index, item ->
-                            position = EXTRAS_ROW
-                            onClickExtra.invoke(index, item)
-                        },
-                        onLongClickItem = { _, _ -> },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[EXTRAS_ROW]),
-                    )
-                }
-            }
-            state.similar.letNotEmpty { similar ->
-                item {
-                    val imageHeight =
-                        remember(movie.type) {
-                            if (movie.type == BaseItemKind.MOVIE) {
-                                Cards.height2x3
-                            } else {
-                                Cards.heightEpisode
-                            }
-                        }
-                    ItemRow(
-                        title = stringResource(R.string.more_like_this),
-                        items = similar,
-                        onClickItem = { index, item ->
-                            position = SIMILAR_ROW
-                            onClickItem.invoke(index, item)
-                        },
-                        onLongClickItem = { index, similar ->
-                            position = SIMILAR_ROW
-                            onLongClickSimilar.invoke(index, similar)
-                        },
-                        cardContent = { index, item, mod, onClick, onLongClick ->
-                            SeasonCard(
+        }
+        item(key = "details") {
+            MovieFacts(movie = movie, modifier = Modifier.padding(start = contentStart, end = 40.dp))
+        }
+        state.similar.letNotEmpty { similar ->
+            item(key = "similar") {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    AioSectionTitle(stringResource(R.string.more_like_this), Modifier.padding(start = contentStart))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
+                        contentPadding = PaddingValues(start = contentStart, end = 32.dp),
+                        modifier = Modifier.focusRequester(focusRequesters[SIMILAR_ROW]),
+                    ) {
+                        itemsIndexed(similar, key = { _, item -> item.id }) { index, item ->
+                            ExpandingPosterCard(
                                 item = item,
-                                onClick = onClick,
-                                onLongClick = onLongClick,
-                                modifier = mod,
-                                showImageOverlay = true,
-                                imageHeight = imageHeight,
-                                imageWidth = Dp.Unspecified,
+                                onClick = {
+                                    position = SIMILAR_ROW
+                                    onClickItem.invoke(index, item)
+                                },
+                                onLongClick = {
+                                    position = SIMILAR_ROW
+                                    onLongClickSimilar.invoke(index, item)
+                                },
+                                cardHeight = NigiroDimens.PosterHeight,
+                                cornerText = item.ui.episodeUnplayedCornerText,
+                                expandable = false,
                             )
-                        },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequesters[SIMILAR_ROW]),
-                    )
+                        }
+                    }
                 }
             }
-            state.discovered.letNotEmpty { discovered ->
-                item {
-                    DiscoverRow(
-                        row =
-                            DiscoverRowData(
-                                ResStringProvider(R.string.discover),
-                                DataLoadingState.Success(discovered),
-                                type = DiscoverRequestType.UNKNOWN,
-                            ),
-                        onClickItem = { index: Int, item: DiscoverItem ->
-                            position = DISCOVER_ROW
-                            onClickDiscover.invoke(index, item)
-                        },
-                        onLongClickItem = { _, _ -> },
-                        onCardFocus = {},
-                        focusRequester = focusRequesters[DISCOVER_ROW],
-                    )
-                }
+        }
+        state.chapters.letNotEmpty { chapters ->
+            item(key = "chapters") {
+                ChapterRow(
+                    chapters = chapters,
+                    onClick = {
+                        position = CHAPTER_ROW
+                        playOnClick.invoke(it.position)
+                    },
+                    onLongClick = {},
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = DetailContentInset)
+                            .focusRequester(focusRequesters[CHAPTER_ROW]),
+                )
+            }
+        }
+        state.extras.letNotEmpty { extras ->
+            item(key = "extras") {
+                ExtrasRow(
+                    extras = extras,
+                    onClickItem = { index, item ->
+                        position = EXTRAS_ROW
+                        onClickExtra.invoke(index, item)
+                    },
+                    onLongClickItem = { _, _ -> },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = DetailContentInset)
+                            .focusRequester(focusRequesters[EXTRAS_ROW]),
+                )
+            }
+        }
+        state.discovered.letNotEmpty { discovered ->
+            item(key = "discover") {
+                DiscoverRow(
+                    row =
+                        DiscoverRowData(
+                            ResStringProvider(R.string.discover),
+                            DataLoadingState.Success(discovered),
+                            type = DiscoverRequestType.UNKNOWN,
+                        ),
+                    onClickItem = { index: Int, item: DiscoverItem ->
+                        position = DISCOVER_ROW
+                        onClickDiscover.invoke(index, item)
+                    },
+                    onLongClickItem = { _, _ -> },
+                    onCardFocus = {},
+                    focusRequester = focusRequesters[DISCOVER_ROW],
+                )
             }
         }
     }
 }
+
+/** Crew jobs in Italian, as the AIOStreams app shows them ("Regista Scrittore") */
+private fun crewJobName(kind: PersonKind): String =
+    when (kind) {
+        PersonKind.DIRECTOR -> "Regista"
+        PersonKind.WRITER -> "Scrittore"
+        PersonKind.PRODUCER -> "Produttore"
+        PersonKind.COMPOSER -> "Compositore"
+        PersonKind.EDITOR -> "Montaggio"
+        else -> kind.serialName
+    }

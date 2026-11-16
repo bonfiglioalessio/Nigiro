@@ -11,8 +11,8 @@ import com.github.damontecres.wholphin.ui.theme.ThemeColors
  * The accent keeps its historical name "Pink" so the rest of the code needs no change: it is now brand violet.
  */
 object NigiroPalette {
-    /** Top of the page gradient (the AIOStreams sign-in glow is a dark navy) */
-    val BackgroundTop = Color(0xFF0F0F1A)
+    /** Top of the page gradient: the same as the background, AIOStreams pages are a flat #070707 */
+    val BackgroundTop = Color(0xFF070707)
 
     /** --background (dark) */
     val Background = Color(0xFF070707)
