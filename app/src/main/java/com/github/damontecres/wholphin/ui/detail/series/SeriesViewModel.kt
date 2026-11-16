@@ -84,6 +84,7 @@ import org.jellyfin.sdk.model.api.request.GetSimilarItemsRequest
 import timber.log.Timber
 import com.github.damontecres.wholphin.ui.detail.movie.PlayVersionPicker
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 @HiltViewModel(assistedFactory = SeriesViewModel.Factory::class)
 class SeriesViewModel
@@ -123,6 +124,12 @@ class SeriesViewModel
         val state: StateFlow<SeriesState> = _state
 
         val position = MutableStateFlow(SeriesOverviewPosition(0, 0))
+
+        /** The episodes of each season already loaded on this page, by season id */
+        private val seasonEpisodes = ConcurrentHashMap<UUID, EpisodeList.Success>()
+        private val seasonExtras = ConcurrentHashMap<UUID, List<ExtrasItem>>()
+        private var prefetchJob: Job? = null
+        private var resumedOnce = false
 
         /** Play for an episode: straight away with one version, the AIOStreams version picker with several */
         val versionPicker =
@@ -258,23 +265,7 @@ class SeriesViewModel
                 if (seriesPageType == SeriesPageType.DETAILS) {
                     // AIOStreams-style page: the episodes of the opening season are shown on the page itself
                     viewModelScope.launchIO {
-                        val next =
-                            try {
-                                api.tvShowsApi
-                                    .getNextUp(
-                                        userId = serverRepository.currentUser?.id,
-                                        seriesId = seriesId,
-                                        limit = 1,
-                                        fields = listOf(ItemFields.PRIMARY_IMAGE_ASPECT_RATIO),
-                                    ).content.items
-                                    .firstOrNull()
-                                    ?.let { BaseItem(it) }
-                            } catch (ex: CancellationException) {
-                                throw ex
-                            } catch (ex: Exception) {
-                                Timber.w(ex, "No next up for %s", seriesId)
-                                null
-                            }
+                        val next = fetchNextUp()
                         _state.update { it.copy(nextUp = next) }
                         val seasonList = seasons.filterNotNull()
                         val opening =
@@ -283,6 +274,7 @@ class SeriesViewModel
                                 ?: seasonList.firstOrNull { it.data.userData?.played != true }
                                 ?: seasonList.firstOrNull()
                         opening?.let { loadEpisodes(it.id, it.data.indexNumber) }
+                        prefetchSeasons()
                     }
                     viewModelScope.launchIO {
                         val upcoming =
@@ -372,6 +364,10 @@ class SeriesViewModel
         }
 
         fun onResumePage() {
+            if (resumedOnce && seriesPageType == SeriesPageType.DETAILS) {
+                refreshAfterReturn()
+            }
+            resumedOnce = true
             state.value.series.successValue?.let { item ->
                 viewModelScope.launchDefault { backdropService.submit(item) }
                 viewModelScope.launchDefault {
@@ -483,6 +479,18 @@ class SeriesViewModel
             seasonId: UUID,
             seasonNum: Int?,
         ) {
+            // A season already loaded (opened before, or fetched in the background) shows at once
+            seasonEpisodes[seasonId]?.let { cached ->
+                _state.update {
+                    it.copy(
+                        peopleInEpisode = PeopleInItem(),
+                        episodes = cached,
+                        extras = seasonExtras[seasonId].orEmpty(),
+                    )
+                }
+                if (!seasonExtras.containsKey(seasonId)) loadSeasonExtras(seasonId)
+                return
+            }
             val currentEpisodes = (state.value.episodes as? EpisodeList.Success)
             if (currentEpisodes == null || currentEpisodes.seasonId != seasonId) {
                 _state.update {
@@ -494,18 +502,98 @@ class SeriesViewModel
                 }
             }
             viewModelScope.launchIO(ExceptionHandler(true)) {
-                val episodes =
-                    try {
-                        loadEpisodesInternal(seasonId, seasonNum, null, null)
-                    } catch (e: Exception) {
-                        Timber.e(e, "Error loading episodes for $seriesId for season $seasonId")
-                        EpisodeList.Error(e)
-                    }
-                _state.update { it.copy(episodes = episodes) }
+                val episodes = fetchSeason(seasonId, seasonNum)
+                // Only if that season is still the one asked for: another may have been picked meanwhile
+                _state.update {
+                    val shown = it.episodes
+                    if (shown is EpisodeList.Success && shown.seasonId != seasonId) it else it.copy(episodes = episodes)
+                }
             }
+            loadSeasonExtras(seasonId)
+        }
+
+        private fun loadSeasonExtras(seasonId: UUID) {
             viewModelScope.launchIO {
                 val extras = extrasService.getExtras(seasonId)
-                _state.update { it.copy(extras = extras) }
+                seasonExtras[seasonId] = extras
+                _state.update {
+                    val shown = it.episodes
+                    if (shown is EpisodeList.Success && shown.seasonId != seasonId) it else it.copy(extras = extras)
+                }
+            }
+        }
+
+        /** Loads a season's episodes and keeps them for the next time it is picked */
+        private suspend fun fetchSeason(
+            seasonId: UUID,
+            seasonNum: Int?,
+        ): EpisodeList =
+            try {
+                loadEpisodesInternal(seasonId, seasonNum, null, null).also { if (it is EpisodeList.Success) seasonEpisodes[seasonId] = it }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (e: Exception) {
+                Timber.e(e, "Error loading episodes for $seriesId for season $seasonId")
+                EpisodeList.Error(e)
+            }
+
+        /**
+         * The other seasons' episodes, one at a time in the background once the page is shown, so switching
+         * season is instant. Seasons already loaded are skipped.
+         */
+        private fun prefetchSeasons() {
+            prefetchJob?.cancel()
+            prefetchJob =
+                viewModelScope.launchIO {
+                    delay(SEASON_PREFETCH_DELAY_MS)
+                    val seasons = state.value.seasons.filterNotNull().take(MAX_PREFETCHED_SEASONS)
+                    for (season in seasons) {
+                        if (!seasonEpisodes.containsKey(season.id)) fetchSeason(season.id, season.data.indexNumber)
+                    }
+                }
+        }
+
+        private suspend fun fetchNextUp(): BaseItem? =
+            try {
+                api.tvShowsApi
+                    .getNextUp(
+                        userId = serverRepository.currentUser?.id,
+                        seriesId = seriesId,
+                        limit = 1,
+                        fields = listOf(ItemFields.PRIMARY_IMAGE_ASPECT_RATIO),
+                    ).content.items
+                    .firstOrNull()
+                    ?.let { BaseItem(it) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "No next up for %s", seriesId)
+                null
+            }
+
+        /**
+         * Back on the page (eg after watching): progress and watched marks changed, so the next episode and the
+         * season shown are fetched again, and the other seasons refetched in the background
+         */
+        private fun refreshAfterReturn() {
+            viewModelScope.launchIO {
+                val next = fetchNextUp()
+                _state.update { it.copy(nextUp = next) }
+                val shown = state.value.episodes as? EpisodeList.Success
+                seasonEpisodes.clear()
+                if (shown != null) {
+                    val season = state.value.seasons.filterNotNull().firstOrNull { it.id == shown.seasonId }
+                    val episodes = fetchSeason(shown.seasonId, season?.data?.indexNumber)
+                    _state.update {
+                        val current = it.episodes
+                        if (current is EpisodeList.Success && current.seasonId != shown.seasonId) {
+                            it
+                        } else {
+                            it.copy(episodes = episodes)
+                        }
+                    }
+                }
+                prefetchSeasons()
             }
         }
 
@@ -986,3 +1074,6 @@ data class LocalEpisodes(
     val seasonId: UUID,
     val numbers: Set<Int>,
 )
+
+private const val SEASON_PREFETCH_DELAY_MS = 1_500L
+private const val MAX_PREFETCHED_SEASONS = 8
