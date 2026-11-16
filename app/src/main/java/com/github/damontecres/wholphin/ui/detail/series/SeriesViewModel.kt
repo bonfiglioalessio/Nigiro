@@ -603,9 +603,23 @@ class SeriesViewModel
             listIndex: Int?,
         ) = viewModelScope.launch(WholphinDispatchers.IO + ExceptionHandler()) {
             favoriteWatchManager.setWatched(itemId, played)
-            listIndex?.let {
-                refreshEpisode(itemId, listIndex)
+            // The item menu passes no index: find the episode in the season shown, so its mark updates
+            val shown = state.value.episodes as? EpisodeList.Success
+            val index = listIndex ?: shown?.episodes?.indexOfFirst { it?.id == itemId }?.takeIf { it >= 0 }
+            if (index != null) {
+                refreshEpisode(itemId, index)
+            } else {
+                // A whole season (or an episode of another season): refetch it rather than show stale marks
+                seasonEpisodes.remove(itemId)
+                if (shown != null && shown.seasonId == itemId) {
+                    val season = state.value.seasons.filterNotNull().firstOrNull { it.id == itemId }
+                    val episodes = fetchSeason(itemId, season?.data?.indexNumber)
+                    _state.update { it.copy(episodes = episodes) }
+                }
             }
+            // "Riprendi SxEy" follows the watched marks
+            val next = fetchNextUp()
+            _state.update { it.copy(nextUp = next) }
         }
 
         private fun updateSeries() {
