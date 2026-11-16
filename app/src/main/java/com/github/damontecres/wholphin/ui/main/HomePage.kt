@@ -592,13 +592,6 @@ fun StremioHomeContent(
                                 onPlay = onHeroPlay,
                                 onDetails = onHeroWatchNow,
                                 onToggleFavorite = onHeroToggleFavorite,
-                                topEndContent = {
-                                    HomeMediaFilterBar(
-                                        selectedFilter = selectedFilter,
-                                        onSelectFilter = onSelectFilter,
-                                        firstButtonFocusRequester = filterFocusRequester,
-                                    )
-                                },
                                 modifier = Modifier.onFocusChanged { isHeroFocused = it.hasFocus },
                             )
                         }
@@ -732,7 +725,7 @@ fun StremioHomeContent(
 }
 
 @Composable
-private fun HomeMediaFilterBar(
+internal fun HomeMediaFilterBar(
     selectedFilter: HomeMediaFilter,
     onSelectFilter: (HomeMediaFilter) -> Unit,
     firstButtonFocusRequester: FocusRequester,
@@ -847,12 +840,14 @@ private fun PlatformsRow(
 private val PlatformTileShape = RoundedCornerShape(10.dp)
 
 @Composable
-private fun PlatformTileCard(
+internal fun PlatformTileCard(
     tile: PlatformTile,
     activeFilter: HomeMediaFilter,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     active: Boolean = false,
+    width: Dp = NigiroDimens.PlatformTileWidth,
+    height: Dp = NigiroDimens.PlatformTileHeight,
 ) {
     // Neutral tile in the theme's gray (the cover image, when present, carries the platform's look)
     val accent = NigiroPalette.SurfaceRaised
@@ -866,10 +861,8 @@ private fun PlatformTileCard(
     val context = LocalContext.current
     val density = LocalDensity.current
     val (tileWidthPx, tileHeightPx) =
-        remember(density) {
-            with(density) {
-                NigiroDimens.PlatformTileWidth.roundToPx() to NigiroDimens.PlatformTileHeight.roundToPx()
-            }
+        remember(density, width, height) {
+            with(density) { width.roundToPx() to height.roundToPx() }
         }
     var imageFailed by remember(tile.coverUrl) { mutableStateOf(false) }
     val coverRequest =
@@ -900,7 +893,7 @@ private fun PlatformTileCard(
             ),
         scale = cardScale(),
         glow = noCardGlow(),
-        modifier = modifier.size(width = NigiroDimens.PlatformTileWidth, height = NigiroDimens.PlatformTileHeight),
+        modifier = modifier.size(width = width, height = height),
     ) {
         if (showCoverImage) {
             AsyncImage(

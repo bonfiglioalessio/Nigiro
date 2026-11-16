@@ -133,6 +133,10 @@ sealed class Destination(
     @Serializable
     data object Discover : Destination(false)
 
+    /** Nuvio-style hub: platforms and genres, for movies and series together */
+    @Serializable
+    data object Explore : Destination(false)
+
     @Serializable
     data class DiscoveredItem(
         val item: DiscoverItem,

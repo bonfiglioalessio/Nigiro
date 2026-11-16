@@ -140,11 +140,14 @@ class NavDrawerService
             val builtins =
                 buildList {
                     add(NavDrawerItem.Favorites)
+                    add(NavDrawerItem.Explore)
                     if (isDiscoverAllowed(discoverActive, modules)) add(NavDrawerItem.Discover)
                 }
             val allLibraries = getAllUserLibraries(user.id, userDto.tvAccess)
             val libraries =
                 allLibraries
+                    // Movies, TV shows and collections are browsed from Explore
+                    .filterNot { it.collectionType in exploreCollectionTypes }
                     .map {
                         val destination =
                             Destination.MediaItem(
@@ -200,6 +203,9 @@ data class NavDrawerItemState(
     val nowPlayingTitle: String? = null,
     val allLibraries: List<Library> = emptyList(),
 )
+
+private val exploreCollectionTypes =
+    setOf(CollectionType.MOVIES, CollectionType.TVSHOWS, CollectionType.BOXSETS)
 
 val UserDto.tvAccess: Boolean get() = policy?.enableLiveTvAccess == true
 

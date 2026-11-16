@@ -141,6 +141,11 @@ class NavDrawerViewModel
                     )
                 }
 
+                NavDrawerItem.Explore -> {
+                    setIndex(index)
+                    navigationManager.navigateToFromDrawer(Destination.Explore)
+                }
+
                 is ServerNavDrawerItem -> {
                     setIndex(index)
                     navigationManager.navigateToFromDrawer(item.destination)
@@ -172,6 +177,7 @@ class NavDrawerViewModel
                             is ServerNavDrawerItem -> it.destination
                             is NavDrawerItem.Favorites -> Destination.Favorites
                             is NavDrawerItem.Discover -> Destination.Discover
+                            is NavDrawerItem.Explore -> Destination.Explore
                             else -> null
                         }
                     }
@@ -243,6 +249,13 @@ sealed interface NavDrawerItem {
             get() = "a_discover"
 
         override fun name(context: Context): String = context.getString(R.string.discover)
+    }
+
+    object Explore : NavDrawerItem {
+        override val id: String
+            get() = "a_explore"
+
+        override fun name(context: Context): String = context.getString(R.string.explore)
     }
 }
 
@@ -602,6 +615,8 @@ fun NavigationDrawerScope.ProfileIcon(
         modifier = modifier,
         selected = false,
         onClick = onClick,
+        // Same subtle pill as the other entries, not the default light one that hid the server name
+        colors = aioDrawerItemColors(),
         leadingContent = {
             UserIconCardImage(
                 id = user.id,
@@ -615,6 +630,7 @@ fun NavigationDrawerScope.ProfileIcon(
             Text(
                 text = serverName,
                 maxLines = 1,
+                color = if (focused) Color.White.copy(alpha = .7f) else AioGray400,
             )
         },
         interactionSource = interactionSource,
@@ -698,6 +714,10 @@ fun NavigationDrawerScope.NavItem(
 
                 NavDrawerItem.Discover -> {
                     R.string.fa_magnifying_glass_plus
+                }
+
+                NavDrawerItem.Explore -> {
+                    R.string.fa_compass
                 }
 
                 is ServerNavDrawerItem -> {

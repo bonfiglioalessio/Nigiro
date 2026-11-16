@@ -438,5 +438,6 @@ val requestSerializersModule =
             subclass(GetLiveTvChannelsRequest::class)
             subclass(GetArtistsRequest::class)
             subclass(GetAlbumArtistsRequest::class)
+            subclass(PlatformItemsRequest::class)
         }
     }

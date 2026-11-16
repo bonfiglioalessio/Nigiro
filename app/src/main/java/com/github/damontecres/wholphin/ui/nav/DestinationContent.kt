@@ -20,6 +20,7 @@ import com.github.damontecres.wholphin.ui.detail.CollectionFolderPlaylist
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderTv
 import com.github.damontecres.wholphin.ui.detail.DebugPage
 import com.github.damontecres.wholphin.ui.detail.FavoritesPage
+import com.github.damontecres.wholphin.ui.explore.ExplorePage
 import com.github.damontecres.wholphin.ui.detail.HomeRowGrid
 import com.github.damontecres.wholphin.ui.detail.PersonPage
 import com.github.damontecres.wholphin.ui.detail.PlaylistDetails
@@ -307,6 +308,11 @@ fun DestinationContent(
 
         Destination.Debug -> {
             DebugPage(preferences, modifier)
+        }
+
+        Destination.Explore -> {
+            LaunchedEffect(Unit) { onClearBackdrop.invoke() }
+            ExplorePage(modifier = modifier)
         }
 
         Destination.Discover -> {
