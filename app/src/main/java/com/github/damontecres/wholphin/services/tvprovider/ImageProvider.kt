@@ -9,14 +9,29 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
-import coil3.SingletonImageLoader
+import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
+import coil3.network.ConnectivityChecker
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.asDrawable
 import coil3.request.ImageRequest
 import com.github.damontecres.wholphin.BuildConfig
 import java.io.IOException
 
 class ImageProvider : ContentProvider() {
-    private val imageLoader by lazy { context?.let { SingletonImageLoader.get(it) } }
+    // Its own loader, not the app's singleton: the TV launcher queries this provider at boot, before the app's UI
+    // configures the singleton, and a singleton already created then makes that configuration crash the app
+    @OptIn(ExperimentalCoilApi::class)
+    private val imageLoader by lazy {
+        context?.let {
+            ImageLoader
+                .Builder(it)
+                .components {
+                    // As the app's loader: the connectivity check is unreliable behind a VPN
+                    add(OkHttpNetworkFetcherFactory(connectivityChecker = { ConnectivityChecker { true } }))
+                }.build()
+        }
+    }
 
     override fun onCreate() = true
 
