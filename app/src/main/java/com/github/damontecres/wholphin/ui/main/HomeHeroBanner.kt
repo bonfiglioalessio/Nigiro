@@ -42,6 +42,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -143,44 +145,53 @@ fun HomeHeroBanner(
                     isHeroFocused = focusState.hasFocus
                 },
     ) {
-        if (!slide.backdropUrl.isNullOrBlank()) {
-            val context = LocalContext.current
-            val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
-            // Remembered so that recompositions (eg focus entering the hero) don't restart the load & fade
-            val request =
-                remember(context, slide.backdropUrl, config.crossfadeMs, enableAnimations) {
-                    ImageRequest
-                        .Builder(context)
-                        .data(slide.backdropUrl)
-                        // Full 1080p and full colour: at 960x540 RGB_565 the hero looked soft and banded on the TV
-                        .size(1920, 1080)
-                        .useExistingImageAsPlaceholder(true)
-                        .apply {
-                            if (enableAnimations) {
-                                transitionFactory(
-                                    CrossFadeFactory(config.crossfadeMs.coerceIn(100, 700).milliseconds),
-                                )
-                            }
-                        }.build()
-                }
-            AsyncImage(
-                model = request,
-                contentDescription = slide.title,
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopEnd,
-                modifier = Modifier.fillMaxSize(),
+        // Backdrop and both shades in one offscreen layer: the TV GPU blends these three full-width fills once per
+        // slide (and during its crossfade), then draws a single cached texture on every other frame
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
+        ) {
+            if (!slide.backdropUrl.isNullOrBlank()) {
+                val context = LocalContext.current
+                val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+                // Remembered so that recompositions (eg focus entering the hero) don't restart the load & fade
+                val request =
+                    remember(context, slide.backdropUrl, config.crossfadeMs, enableAnimations) {
+                        ImageRequest
+                            .Builder(context)
+                            .data(slide.backdropUrl)
+                            // Full 1080p and full colour: at 960x540 RGB_565 the hero looked soft and banded on the TV
+                            .size(1920, 1080)
+                            .useExistingImageAsPlaceholder(true)
+                            .apply {
+                                if (enableAnimations) {
+                                    transitionFactory(
+                                        CrossFadeFactory(config.crossfadeMs.coerceIn(100, 700).milliseconds),
+                                    )
+                                }
+                            }.build()
+                    }
+                AsyncImage(
+                    model = request,
+                    contentDescription = slide.title,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopEnd,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(sideShade),
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(bottomShade),
             )
         }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(sideShade),
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(bottomShade),
-        )
 
         // hero-content: bottom-left, space-y-4, pb-8 (14 on large screens), max-w-3xl
         Column(

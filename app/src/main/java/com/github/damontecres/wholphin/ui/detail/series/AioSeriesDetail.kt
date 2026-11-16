@@ -78,6 +78,7 @@ import com.github.damontecres.wholphin.ui.main.episodeCode
 import com.github.damontecres.wholphin.ui.theme.AioTokens
 import com.github.damontecres.wholphin.ui.theme.px
 import com.github.damontecres.wholphin.ui.theme.pxSp
+import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ImageType
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -120,6 +121,15 @@ fun seriesStatus(series: BaseItem): String? =
         null, "" -> null
         else -> series.data.status
     }
+
+/**
+ * The first of Jellyfin's upcoming episodes that has not aired yet. The server's "upcoming" list also includes
+ * yesterday's episodes, which would otherwise read "esce oggi" with yesterday's date.
+ */
+fun firstStillToAir(
+    upcoming: List<BaseItemDto>,
+    today: LocalDate = LocalDate.now(),
+): BaseItemDto? = upcoming.firstOrNull { it.premiereDate?.toLocalDate()?.isBefore(today) == false }
 
 /** "tra 3 settimane", "domani", "oggi" */
 fun airsIn(

@@ -24,11 +24,9 @@ import coil3.compose.AsyncImage
 import coil3.compose.useExistingImageAsPlaceholder
 import coil3.request.ImageRequest
 import coil3.request.transitionFactory
-import com.github.damontecres.wholphin.preferences.AppThemeColors
 import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.services.BackdropResult
 import com.github.damontecres.wholphin.ui.CrossFadeFactory
-import com.github.damontecres.wholphin.ui.theme.LocalTheme
 import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
 import com.github.damontecres.wholphin.ui.util.LocalInterfaceCustomization
 import kotlin.time.Duration
@@ -75,21 +73,8 @@ fun Backdrop(
     val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
     val baseBackgroundColor = MaterialTheme.colorScheme.background
 
-    // Flat Litefin background: skip multi-layer animated radial gradients and Offscreen/BlendMode passes.
-    // The Nigiro theme adds a single static vertical gradient (one draw, no animation)
-    val isNigiroTheme = LocalTheme.current == AppThemeColors.NIGIRO
-    Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .then(
-                    if (isNigiroTheme) {
-                        Modifier.background(NigiroBackgroundBrush)
-                    } else {
-                        Modifier.background(baseBackgroundColor)
-                    },
-                ),
-    )
+    // No base fill here: MainContent paints the theme background (the Nigiro gradient) once under every page.
+    // Repainting it here cost a full-screen GPU pass on every frame.
 
     if (shouldDrawBackdropImage(backdropStyle, backdrop.imageUrl, enableAnimations)) {
         Box(

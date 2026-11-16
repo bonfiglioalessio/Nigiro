@@ -30,7 +30,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.PlayerBackend
@@ -230,7 +229,8 @@ class MainActivity : AppCompatActivity() {
         viewModel.appStart(intent)
         setContent {
             MaterialTheme(colorScheme = PurpleThemeColors.darkScheme) {
-                Surface(Modifier.fillMaxSize()) {
+                // No fill: MainContent's Surface is the opaque base, the window background covers until then
+                Box(Modifier.fillMaxSize()) {
                     val userPreferences by userPreferencesService.flow.collectAsState(null)
                     if (userPreferences == null) {
                         // Show loading page if it is taking a while to get app preferences

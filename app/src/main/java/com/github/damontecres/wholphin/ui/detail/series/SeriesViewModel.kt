@@ -283,9 +283,10 @@ class SeriesViewModel
                                     .getUpcomingEpisodes(
                                         userId = serverRepository.currentUser?.id,
                                         parentId = seriesId,
-                                        limit = 1,
+                                        // Yesterday's episodes come first in the list: a few more to skip them
+                                        limit = 5,
                                     ).content.items
-                                    .firstOrNull()
+                                    .let { firstStillToAir(it) }
                                     ?.let { BaseItem(it) }
                             } catch (ex: CancellationException) {
                                 throw ex
