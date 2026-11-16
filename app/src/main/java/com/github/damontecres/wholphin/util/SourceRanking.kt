@@ -103,10 +103,26 @@ object SourceRanking {
     }
 
     /**
-     * The TV's Wi-Fi downloads at about 20 Mbps: a stream averaging more than three quarters of it risks
-     * buffering, as video bitrate peaks well above its average
+     * The TV's Wi-Fi downloads at about 20 Mbps. Video bitrate peaks at two or three times its average for
+     * whole scenes, and the player's buffer is capped in bytes (32-96 MB), so a stream averaging half the
+     * link keeps enough headroom and enough seconds buffered never to stall
      */
-    const val WIFI_BUDGET = 15_000_000L
+    const val WIFI_BUDGET = 10_000_000L
+
+    /**
+     * How good the sound is on the soundbar: Dolby passes through the TV's HDMI ARC (DD+ with Atmos best),
+     * anything else is decoded by the TV, and lossless formats are heavy for it to decode
+     */
+    fun audioScore(traits: SourceTraits): Int {
+        val stereo = traits.audioChannels?.let { it <= 2 } == true
+        return when (traits.audio) {
+            SourceAudio.DDP_ATMOS -> 5
+            SourceAudio.DDP -> if (stereo) 1 else 4
+            SourceAudio.DD -> if (stereo) 1 else 3
+            SourceAudio.DTS, SourceAudio.BASIC, null -> 1
+            SourceAudio.LOSSLESS -> 0
+        }
+    }
 
     /** Below this a bitrate the server reports for a stream is a probing artifact, not the video's */
     private const val MIN_PLAUSIBLE_BITRATE = 200_000L
@@ -114,9 +130,10 @@ object SourceRanking {
     /**
      * The source Play takes when nothing was chosen: a file on the server first, then the Italian streams
      * (any stream when none is Italian), and among those the highest resolution whose size fits the Wi-Fi:
-     * 4K when it is light enough, else 1080p and so on. Within a resolution the [rank] order decides, which
-     * puts cached debrid streams first. Undecodable, CAM and uncached streams are only taken if nothing else
-     * is left; if nothing fits the Wi-Fi the lightest Italian stream is taken.
+     * 4K when it is light enough, else 1080p and so on. Within a resolution the best sound for the soundbar
+     * ([audioScore]) wins, then the [rank] order, which puts cached debrid streams first. Undecodable, CAM
+     * and uncached streams are only taken if no other Italian one is left; if nothing fits the Wi-Fi the
+     * lightest Italian stream is taken.
      */
     fun best(
         sources: List<MediaSourceInfo>,
@@ -129,13 +146,14 @@ object SourceRanking {
         ranked.firstOrNull { !it.isStreamed() }?.let { return it }
         val traits = ranked.associateWith { StreamSourceParser.parse(it) }
         fun traitsOf(source: MediaSourceInfo) = traits.getValue(source)
-        val playable =
-            ranked
+        // Italian always comes first: a stream in another language only plays when there is no Italian one
+        val language = ranked.filter { traitsOf(it).italian }.ifEmpty { ranked }
+        val pool =
+            language
                 .filter { source ->
                     val t = traitsOf(source)
                     (capabilities?.canDecode(t) ?: true) && t.quality != SourceQuality.CAM && !t.uncached
-                }.ifEmpty { ranked }
-        val pool = playable.filter { traitsOf(it).italian }.ifEmpty { playable }
+                }.ifEmpty { language }
         // The size in the addon's name over the movie's length; the server's own figures for a stream come from
         // probing a few seconds of it (bitrates of 2 b/s, runtimes of 30 s), so they are a last resort
         fun bitrateOf(source: MediaSourceInfo): Long? {
@@ -152,7 +170,10 @@ object SourceRanking {
             }
         if (fitting.isNotEmpty()) {
             val top = fitting.maxOf { traitsOf(it).height ?: 0 }
-            return fitting.first { (traitsOf(it).height ?: 0) == top }
+            val atTop = fitting.filter { (traitsOf(it).height ?: 0) == top }
+            // Then the best sound for the soundbar; it already fits the Wi-Fi, so a heavier file is fine
+            val bestAudio = atTop.maxOf { audioScore(traitsOf(it)) }
+            return atTop.first { audioScore(traitsOf(it)) == bestAudio }
         }
         return pool.minByOrNull { bitrateOf(it) ?: Long.MAX_VALUE }
     }

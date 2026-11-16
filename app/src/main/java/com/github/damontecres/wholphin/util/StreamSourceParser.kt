@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.util
 
 import org.jellyfin.sdk.model.api.MediaSourceInfo
+import org.jellyfin.sdk.model.api.MediaStream
 import org.jellyfin.sdk.model.api.MediaStreamType
 import org.jellyfin.sdk.model.api.VideoRangeType
 
@@ -9,6 +10,12 @@ enum class SourceVideoCodec { H264, HEVC, AV1, VP9 }
 enum class SourceHdr { DOLBY_VISION, HDR10_PLUS, HDR10, HLG }
 
 enum class SourceQuality { REMUX, BLURAY, WEB, HDTV, CAM }
+
+/**
+ * The audio format, as far as a soundbar on the TV's HDMI ARC is concerned: Dolby (DD+, DD) passes through,
+ * lossless formats (TrueHD, DTS-HD MA, DTS:X, FLAC, PCM) don't and get decoded by the TV
+ */
+enum class SourceAudio { DDP_ATMOS, DDP, DD, DTS, LOSSLESS, BASIC }
 
 /**
  * What can be inferred about a media source, either from server metadata (probed local files)
@@ -26,6 +33,9 @@ data class SourceTraits(
     val multiAudio: Boolean = false,
     val quality: SourceQuality? = null,
     val isRemote: Boolean = false,
+    val audio: SourceAudio? = null,
+    /** 2 for stereo, 6 for 5.1, 8 for 7.1 */
+    val audioChannels: Int? = null,
 ) {
     /**
      * Known bitrate, or else estimated from the size and runtime
@@ -83,6 +93,23 @@ object StreamSourceParser {
             Regex("$OPTS${B}hdtv$E") to SourceQuality.HDTV,
         )
 
+    // Lossless first: "TrueHD Atmos" is TrueHD, "DTS-HD MA" is not plain DTS
+    private val audioPatterns =
+        listOf(
+            Regex("$OPTS$B(true-?hd|dts-?hd|dts[: -]?x|flac|l?pcm)$E") to SourceAudio.LOSSLESS,
+            Regex("$OPTS${B}atmos$E") to SourceAudio.DDP_ATMOS,
+            Regex("$OPTS(${B}dd\\+|${B}ddp|${B}e-?ac-?3$E|dolby digital plus)") to SourceAudio.DDP,
+            Regex("$OPTS(${B}dd(?![\\p{L}\\p{N}+])|${B}ac-?3$E|dolby digital)") to SourceAudio.DD,
+            Regex("$OPTS${B}dts$E") to SourceAudio.DTS,
+            Regex("$OPTS$B(aac|opus|mp3|vorbis)$E") to SourceAudio.BASIC,
+        )
+    private val channelPatterns =
+        listOf(
+            Regex("$OPTS$B(7\\.1|8ch)$E") to 8,
+            Regex("$OPTS$B(5\\.1|6ch)$E") to 6,
+            Regex("$OPTS$B(2\\.0|2\\.1|stereo)$E") to 2,
+        )
+
     private val sizePattern = Regex("$OPTS(\\d+(?:[.,]\\d+)?)\\s*(tib|tb|gib|gb|mib|mb)$E")
 
     // ⚡ is how AIOStreams marks a stream cached on the debrid service, "RD+" is the Torrentio style
@@ -110,6 +137,8 @@ object StreamSourceParser {
             italian = italianPattern.containsMatchIn(text),
             multiAudio = multiPattern.containsMatchIn(text),
             quality = qualityPatterns.firstOrNull { it.first.containsMatchIn(text) }?.second,
+            audio = audioPatterns.firstOrNull { it.first.containsMatchIn(text) }?.second,
+            audioChannels = channelPatterns.firstOrNull { it.first.containsMatchIn(text) }?.second,
         )
     }
 
@@ -130,7 +159,13 @@ object StreamSourceParser {
                 ?.filter { it.type == MediaStreamType.AUDIO }
                 ?.mapNotNull { it.language?.lowercase() }
                 .orEmpty()
+        // The track that will play: the Italian one when there is one
+        val audioTracks = source.mediaStreams?.filter { it.type == MediaStreamType.AUDIO }.orEmpty()
+        val audioTrack =
+            audioTracks.firstOrNull { it.language?.lowercase() in italianLanguageCodes } ?: audioTracks.firstOrNull()
         return fromText.copy(
+            audio = audioTrack?.let(::audioFromServer) ?: fromText.audio,
+            audioChannels = audioTrack?.channels?.takeIf { it > 0 } ?: fromText.audioChannels,
             height = video?.height?.takeIf { it > 0 }?.let(::normalizeHeight) ?: fromText.height,
             videoCodec = video?.codec?.let(::codecFromServer) ?: fromText.videoCodec,
             hdr = video?.videoRangeType?.let(::hdrFromServer) ?: fromText.hdr,
@@ -163,6 +198,19 @@ object StreamSourceParser {
             height > 480 -> 720
             else -> 480
         }
+
+    private fun audioFromServer(track: MediaStream): SourceAudio? {
+        val profile = track.profile.orEmpty().lowercase()
+        return when (track.codec?.lowercase()) {
+            "eac3" -> if ("atmos" in profile || "joc" in profile) SourceAudio.DDP_ATMOS else SourceAudio.DDP
+            "ac3" -> SourceAudio.DD
+            "dts" -> if ("ma" in profile || "hd" in profile || ":x" in profile) SourceAudio.LOSSLESS else SourceAudio.DTS
+            "truehd", "mlp", "flac", "alac" -> SourceAudio.LOSSLESS
+            "aac", "opus", "mp3", "vorbis", "mp2" -> SourceAudio.BASIC
+            null -> null
+            else -> if (track.codec!!.lowercase().startsWith("pcm")) SourceAudio.LOSSLESS else null
+        }
+    }
 
     private fun codecFromServer(codec: String): SourceVideoCodec? =
         when (codec.lowercase()) {

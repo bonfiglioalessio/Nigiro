@@ -220,18 +220,18 @@ class SourceRankingTest {
         )
     }
 
-    // Play's own choice (SourceRanking.best): 2 hours at the 15 Mbps Wi-Fi budget is about 12.5 GB
+    // Play's own choice (SourceRanking.best): 2 hours at the 10 Mbps Wi-Fi budget is about 8.4 GB
 
     @Test
     fun bestTakesItalian4kWhenItFitsTheWifi() {
         val hd = source("hd", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
-        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p (HEVC)", size = 10 * gb)
+        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p (HEVC)", size = 7 * gb)
         assertEquals("uhd", SourceRanking.best(listOf(hd, uhd), null, runtimeTicks)?.id)
     }
 
     @Test
     fun bestFallsBackTo1080pWhen4kIsTooHeavy() {
-        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p WEB-DL (HEVC)", size = 20 * gb)
+        val uhd = source("uhd", "⚡ RD · 🇮🇹 ITA · 2160p WEB-DL (HEVC)", size = 12 * gb)
         val hd = source("hd", "⚡ RD · 🇮🇹 ITA · 1080p (HEVC)", size = 2 * gb)
         assertEquals("hd", SourceRanking.best(listOf(uhd, hd), null, runtimeTicks)?.id)
     }
@@ -316,5 +316,61 @@ class SourceRankingTest {
     fun bestAfterAFailureKeepsTheResolutionOverAnUnsizedStream() {
         val remaining = christmas.filter { it.id != "hevc" }
         assertEquals("avc", SourceRanking.best(remaining, null, christmasRuntime)?.id)
+    }
+
+    @Test
+    fun parsesAudioFormats() {
+        fun audio(text: String) = StreamSourceParser.parse(text).let { it.audio to it.audioChannels }
+        assertEquals(SourceAudio.DDP_ATMOS to 6, audio("🗣️ Italian · 🔊 DD+ Atmos 5.1"))
+        assertEquals(SourceAudio.LOSSLESS to 8, audio("TrueHD Atmos 7.1"))
+        assertEquals(SourceAudio.DD to 6, audio("🔊 DD 5.1"))
+        assertEquals(SourceAudio.DDP to null, audio("1080p WEB-DL EAC3"))
+        assertEquals(SourceAudio.LOSSLESS to null, audio("DTS-HD MA"))
+        assertEquals(SourceAudio.DTS to 6, audio("DTS 5.1"))
+        assertEquals(SourceAudio.BASIC to 2, audio("AAC 2.0"))
+        assertEquals(null to null, audio("⚡ RD · 🇮🇹 ITA · 1080p (HEVC) · 1.48 GB"))
+    }
+
+    @Test
+    fun probedItalianTrackDecidesTheAudio() {
+        val probed =
+            source(
+                "p",
+                "⚡ RD · 🇮🇹 ITA · 1080p",
+                streams =
+                    listOf(
+                        stream(0, MediaStreamType.AUDIO, codec = "truehd", language = "eng"),
+                        stream(1, MediaStreamType.AUDIO, codec = "eac3", language = "ita"),
+                    ),
+            )
+        assertEquals(SourceAudio.DDP, StreamSourceParser.parse(probed).audio)
+    }
+
+    @Test
+    fun bestTakesTheBetterSoundAtTheSameResolution() {
+        val stereo = source("stereo", "⚡ RD · 🇮🇹 ITA · 1080p · AAC 2.0", size = 2 * gb)
+        val atmos = source("atmos", "⚡ RD · 🇮🇹 ITA · 1080p · DD+ Atmos 5.1", size = 5 * gb)
+        assertEquals("atmos", SourceRanking.best(listOf(stereo, atmos), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestPrefersDolbyOverLosslessTheTvMustDecode() {
+        val truehd = source("truehd", "⚡ RD · 🇮🇹 ITA · 1080p · TrueHD 7.1", size = 6 * gb)
+        val dd = source("dd", "⚡ RD · 🇮🇹 ITA · 1080p · DD 5.1", size = 3 * gb)
+        assertEquals("dd", SourceRanking.best(listOf(truehd, dd), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestSoundNeverTakesAFileTooHeavyForTheWifi() {
+        val atmos = source("atmos", "⚡ RD · 🇮🇹 ITA · 1080p Remux · DD+ Atmos 5.1", size = 25 * gb)
+        val dd = source("dd", "⚡ RD · 🇮🇹 ITA · 1080p · DD 5.1", size = 3 * gb)
+        assertEquals("dd", SourceRanking.best(listOf(atmos, dd), null, runtimeTicks)?.id)
+    }
+
+    @Test
+    fun bestKeepsItalianEvenWhenOnlyAnotherLanguageIsCached() {
+        val english = source("en", "⚡ RD · 🇬🇧 ORIG · 1080p", size = 2 * gb)
+        val italian = source("it", "⏳ RD · 🇮🇹 ITA · 1080p", size = 2 * gb)
+        assertEquals("it", SourceRanking.best(listOf(english, italian), null, runtimeTicks)?.id)
     }
 }

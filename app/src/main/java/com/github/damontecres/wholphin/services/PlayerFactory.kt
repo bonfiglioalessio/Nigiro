@@ -185,11 +185,14 @@ class PlayerFactory
                         val loadControl =
                             DefaultLoadControl
                                 .Builder()
+                                // Long buffers so a Wi-Fi dip or a heavy scene never stalls playback; the byte cap
+                                // below still bounds the memory, and after a stall it waits for 5 s, not 3, so it
+                                // doesn't stall again right away
                                 .setBufferDurationsMs(
-                                    15_000,
-                                    35_000,
+                                    30_000,
+                                    60_000,
                                     1_500,
-                                    3_000,
+                                    5_000,
                                 )
                                 // Cap the buffer in bytes: a high bitrate stream would otherwise buffer
                                 // 15s regardless of size (150+ MB), too much for a TV with ~200 MB free
