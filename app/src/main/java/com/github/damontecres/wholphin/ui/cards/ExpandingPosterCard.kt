@@ -29,6 +29,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -83,6 +85,9 @@ fun ExpandingPosterCard(
     expandable: Boolean = true,
     // The heart is left out where every card is a favourite
     showFavorite: Boolean = true,
+    // In a grid: the cell keeps the poster width and the expanded card spreads over its neighbours on this side
+    // (Start grows right, End grows left) instead of reflowing the grid
+    overflowAlign: Alignment.Horizontal? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -115,8 +120,19 @@ fun ExpandingPosterCard(
         verticalArrangement = Arrangement.spacedBy(px(4)),
         modifier =
             modifier
-                .width(width)
-                .bringIntoViewRequester(bringIntoView),
+                .then(
+                    if (overflowAlign != null) {
+                        Modifier
+                            .width(posterWidth)
+                            .zIndex(if (expanded) 1f else 0f)
+                            .wrapContentWidth(overflowAlign, unbounded = true)
+                            .width(width)
+                            // Covers the neighbours' titles it is drawn over
+                            .background(if (expanded) AioTokens.Background else Color.Transparent)
+                    } else {
+                        Modifier.width(width)
+                    },
+                ).bringIntoViewRequester(bringIntoView),
     ) {
         // poster-card-image: rounded-lg bg-gray-900 ring-1 ring-white/5
         val shape = RoundedCornerShape(AioTokens.Radius)

@@ -613,8 +613,8 @@ fun SearchCombinedResults(
 private val ResultPosterHeight = 160.dp
 
 /**
- * Results split by kind: a "Film" row and a "Serie TV" row (others after), each with its count, under the details
- * of the focused title. Clicks keep the index in the full result list, which the context menu refreshes by.
+ * Results split by kind: a "Film" row and a "Serie TV" row (others after), each with its count; the focused poster
+ * expands with its details as on Home. Clicks keep the index in the full result list, which the context menu refreshes by.
  */
 @Composable
 private fun SearchSplitResults(
@@ -634,9 +634,8 @@ private fun SearchSplitResults(
                     all.filter { it.type != BaseItemKind.MOVIE && it.type != BaseItemKind.SERIES },
             ).filter { it.second.isNotEmpty() }
         }
-    var focused by remember(items) { mutableStateOf(sections.firstOrNull()?.second?.firstOrNull()) }
-    Column(modifier = modifier) {
-        SearchFocusedHeader(itemProvider = { focused })
+    // No details header: the focused poster expands with them, as on Home
+    Column(modifier = modifier.padding(top = 12.dp)) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
             contentPadding = PaddingValues(bottom = 48.dp),
@@ -662,17 +661,12 @@ private fun SearchSplitResults(
                                     onLongClick = { onLongClickItem(fullIndex, item) },
                                     cardHeight = ResultPosterHeight,
                                     onDisk = item.isOnDisk(),
-                                    expandable = false,
                                     modifier =
-                                        Modifier
-                                            .onFocusChanged { if (it.hasFocus) focused = item }
-                                            .then(
-                                                if (sectionIndex == 0 && index == 0) {
-                                                    Modifier.focusRequester(focusRequester)
-                                                } else {
-                                                    Modifier
-                                                },
-                                            ),
+                                        if (sectionIndex == 0 && index == 0) {
+                                            Modifier.focusRequester(focusRequester)
+                                        } else {
+                                            Modifier
+                                        },
                                 )
                             }
                         }
@@ -967,7 +961,6 @@ private fun SearchIdleContent(
                     onLongClick = onLongClick,
                     cardHeight = NigiroDimens.PosterHeight,
                     onDisk = item?.isOnDisk() == true,
-                    expandable = false,
                     showFavorite = showFavorite,
                     modifier = cardModifier,
                 )

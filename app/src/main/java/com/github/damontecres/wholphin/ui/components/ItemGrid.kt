@@ -478,7 +478,11 @@ fun ItemGrid(
                             onLongClick = onLongClick,
                             cardHeight = cardHeight,
                             onDisk = item?.isOnDisk() == true,
-                            expandable = false,
+                            // Expands like on Home, over the neighbours; the last two columns grow to the left
+                            overflowAlign =
+                                destination.viewOptions.columns.let { columns ->
+                                    if (index % columns >= columns - 2) Alignment.End else Alignment.Start
+                                },
                             showFavorite = destination.explore?.favorites != true,
                             modifier = mod,
                         )
