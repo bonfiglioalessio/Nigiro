@@ -1095,7 +1095,6 @@ private fun HomeRowItemContent(
                                     onClick = onClick,
                                     onLongClick = onLongClick,
                                     cardHeight = NigiroDimens.PosterHeight,
-                                    cornerText = item.ui.episodeUnplayedCornerText,
                                     onDisk = item.isOnDisk(),
                                     modifier = cardMod,
                                 )
@@ -1456,7 +1455,6 @@ fun HomePageCardContent(
                     aspectRatio = ratio,
                     imageType = imageType,
                     imageContentScale = scale,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
                     played = item?.data?.userData?.played ?: false,
                     favorite = showFavorite && item?.favorite == true,
                     playPercent =
@@ -1477,7 +1475,6 @@ fun HomePageCardContent(
                     aspectRatio = ratio,
                     imageType = imageType,
                     imageContentScale = scale,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
                     played = item?.data?.userData?.played ?: false,
                     favorite = showFavorite && item?.favorite == true,
                     playPercent =

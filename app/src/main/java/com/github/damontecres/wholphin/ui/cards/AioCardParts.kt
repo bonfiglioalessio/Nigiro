@@ -86,24 +86,6 @@ private fun BoxScope.CardMark(
     }
 }
 
-/** unwatched-count: rounded-full bg-brand-500 px-2 py-0.5 text-xs font-semibold, top right */
-@Composable
-internal fun BoxScope.AioUnwatchedCount(text: String) {
-    Text(
-        text = text,
-        fontSize = pxSp(12),
-        fontWeight = FontWeight.SemiBold,
-        color = Color.White,
-        modifier =
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(px(8))
-                .clip(RoundedCornerShape(50))
-                .background(AioTokens.Brand)
-                .padding(horizontal = px(8), vertical = px(2)),
-    )
-}
-
 /** ProgressBar: h-1 bg-black/60 across the bottom, filled bg-brand-500 (at least 2%) */
 @Composable
 internal fun BoxScope.AioProgressBar(percent: Double) {

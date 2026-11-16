@@ -475,7 +475,6 @@ fun ItemGrid(
                             onClick = onClick,
                             onLongClick = onLongClick,
                             cardHeight = cardHeight,
-                            cornerText = item?.ui?.episodeUnplayedCornerText,
                             onDisk = item?.isOnDisk() == true,
                             expandable = false,
                             showFavorite = destination.explore?.favorites != true,

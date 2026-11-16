@@ -515,7 +515,6 @@ fun MovieDetailsContent(
                                     onLongClickSimilar.invoke(index, item)
                                 },
                                 cardHeight = NigiroDimens.PosterHeight,
-                                cornerText = item.ui.episodeUnplayedCornerText,
                                 expandable = false,
                             )
                         }

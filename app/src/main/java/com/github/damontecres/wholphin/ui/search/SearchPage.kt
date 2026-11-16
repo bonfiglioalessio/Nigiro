@@ -660,7 +660,6 @@ private fun SearchSplitResults(
                                     onClick = { onClickItem(fullIndex, item) },
                                     onLongClick = { onLongClickItem(fullIndex, item) },
                                     cardHeight = ResultPosterHeight,
-                                    cornerText = item.ui.episodeUnplayedCornerText,
                                     onDisk = item.isOnDisk(),
                                     expandable = false,
                                     modifier =
@@ -966,7 +965,6 @@ private fun SearchIdleContent(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     cardHeight = NigiroDimens.PosterHeight,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
                     onDisk = item?.isOnDisk() == true,
                     expandable = false,
                     showFavorite = showFavorite,

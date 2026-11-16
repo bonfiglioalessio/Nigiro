@@ -78,7 +78,6 @@ fun ExpandingPosterCard(
     onLongClick: () -> Unit,
     cardHeight: Dp,
     modifier: Modifier = Modifier,
-    cornerText: String? = null,
     onDisk: Boolean = false,
     // false: a plain poster card (AIOStreams PosterCard), eg for "More like this"
     expandable: Boolean = true,
@@ -136,7 +135,7 @@ fun ExpandingPosterCard(
                 ExpandedContent(item, wideWidth, cardHeight)
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    PosterContent(item, posterWidth, cardHeight, cornerText, onDisk, showFavorite)
+                    PosterContent(item, posterWidth, cardHeight, onDisk, showFavorite)
                     // poster-card-shade: bg-black/20 while focused
                     AioFocusShade(visible = focused, alpha = .2f)
                 }
@@ -191,7 +190,6 @@ private fun PosterContent(
     item: BaseItem?,
     width: Dp,
     height: Dp,
-    cornerText: String?,
     onDisk: Boolean,
     showFavorite: Boolean,
 ) {
@@ -220,10 +218,9 @@ private fun PosterContent(
         } else {
             NameFallback(item?.name)
         }
+        // No unwatched-episodes count: the details page shows the episodes
         if (played && (playPercent <= 0 || playPercent >= 100)) {
             AioWatchedMark()
-        } else if (cornerText != null) {
-            AioUnwatchedCount(cornerText)
         }
         if (showFavorite && item?.data?.userData?.isFavorite == true) {
             AioFavoriteMark()

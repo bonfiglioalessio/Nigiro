@@ -248,7 +248,6 @@ fun AioSeriesDetailsContent(
                                     onClick = { onClickSimilar(index, item) },
                                     onLongClick = { onLongClickSimilar(index, item) },
                                     cardHeight = NigiroDimens.PosterHeight,
-                                    cornerText = item.ui.episodeUnplayedCornerText,
                                     expandable = false,
                                 )
                             }
