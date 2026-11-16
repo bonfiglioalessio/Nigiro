@@ -610,14 +610,7 @@ private fun buildContextMenuItems(
             )
         }
         add(
-            DialogItem(
-                text = if (favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
-                iconColor = if (favorite) Color.Red else Color.Unspecified,
-                dismissOnClick = true,
-            ) {
-                actions.onClickFavorite.invoke(item.id, !favorite)
-            },
+            favoriteMenuItem(favorite) { actions.onClickFavorite.invoke(item.id, !favorite) },
         )
         section()
         if (item.data.mediaSources?.isNotEmpty() == true) {
@@ -716,13 +709,7 @@ fun ContextMenu(
                 },
             )
             add(
-                DialogItem(
-                    text = if (person.favorite) R.string.remove_favorite else R.string.add_favorite,
-                    iconStringRes = R.string.fa_heart,
-                    iconColor = if (person.favorite) Color.Red else Color.Unspecified,
-                ) {
-                    actions.onClickFavorite.invoke(itemId, !person.favorite)
-                },
+                favoriteMenuItem(person.favorite) { actions.onClickFavorite.invoke(itemId, !person.favorite) },
             )
         }
     val anchor = rememberFocusAnchor()
@@ -863,14 +850,7 @@ fun buildContextForMusic(
             )
         }
         add(
-            DialogItem(
-                text = if (item.favorite) R.string.remove_favorite else R.string.add_favorite,
-                iconStringRes = R.string.fa_heart,
-                iconColor = if (item.favorite) Color.Red else Color.Unspecified,
-                dismissOnClick = true,
-            ) {
-                actions.onClickFavorite.invoke(item.id, !item.favorite)
-            },
+            favoriteMenuItem(item.favorite) { actions.onClickFavorite.invoke(item.id, !item.favorite) },
         )
         if (item.type == BaseItemKind.AUDIO && item.data.albumId != null) {
             add(
@@ -983,3 +963,20 @@ fun buildContextForMusicQueue(
             )
         }
     }
+
+// Says the action, not the state: "Aggiungi ai preferiti" with an empty heart, "Rimuovi dai preferiti" with a red one
+private fun favoriteMenuItem(
+    favorite: Boolean,
+    onClick: () -> Unit,
+) = DialogItem(
+    headlineContent = { Text(stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite)) },
+    leadingContent = {
+        Icon(
+            imageVector = if (favorite) AioIcons.HeartFilled else AioIcons.Heart,
+            contentDescription = null,
+            tint = if (favorite) Color(0xFFFF4D6D) else LocalContentColor.current,
+        )
+    },
+    onClick = onClick,
+    dismissOnClick = true,
+)

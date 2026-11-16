@@ -4,7 +4,7 @@
 
     <string name="about">About</string>
     <string name="active_recordings">Active Recordings</string>
-    <string name="add_favorite">Favorite</string>
+    <string name="add_favorite">Add to favorites</string>
     <string name="add_server">Add Server</string>
     <string name="add_user">Add User</string>
     <string name="audio">Audio</string>
@@ -106,7 +106,7 @@
     <string name="recommended">Recommended</string>
     <string name="record_program">Record Program</string>
     <string name="record_series">Record Series</string>
-    <string name="remove_favorite">Unfavorite</string>
+    <string name="remove_favorite">Remove from favorites</string>
     <string name="restart">Restart</string>
     <string name="resume">Resume</string>
     <string name="save">Save</string>
