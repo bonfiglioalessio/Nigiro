@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
@@ -52,7 +54,10 @@ fun <T> ItemRow(
     titleStyle: TextStyle? = null,
     titleGap: Dp = 8.dp,
 ) {
-    val state = rememberLazyListState()
+    // Compose a whole screenful of a row's cards ahead while the row above is shown, not only the first two:
+    // otherwise moving down composes most of the next row in one frame, the stutter seen on the TV
+    @OptIn(ExperimentalFoundationApi::class)
+    val state = rememberLazyListState(prefetchStrategy = remember { LazyListPrefetchStrategy(NESTED_PREFETCH_CARDS) })
     // Stable keys keep focus & card state on the same item when the list changes (eg a refresh reorders it).
     // Duplicates fall back to the index since keys must be unique.
     val keys =
@@ -180,3 +185,6 @@ fun ItemRowTitle(
         modifier = modifier.padding(start = startPadding + rowStyle.startInset),
     )
 }
+
+/** About as many cards as fit across the screen */
+private const val NESTED_PREFETCH_CARDS = 8

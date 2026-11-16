@@ -59,8 +59,12 @@ import kotlinx.coroutines.delay
 import org.jellyfin.sdk.model.api.ImageType
 import kotlin.math.roundToInt
 
-/** How long focus has to rest on a poster before it opens up: scrolling through a row doesn't relayout it */
-private const val EXPAND_DELAY_MS = 280L
+/**
+ * How long focus has to rest on a poster before it opens up. Scrolling through a row with the remote moves about
+ * every 300-400 ms: below that every card passed over would widen, relayout the row, decode its backdrop and
+ * scroll, which is what made the TV's home stutter. Only the card stopped on opens.
+ */
+private const val EXPAND_DELAY_MS = 650L
 
 /**
  * A poster with its title and year below. When focus rests on it, it widens to 16:9 and shows the backdrop,
