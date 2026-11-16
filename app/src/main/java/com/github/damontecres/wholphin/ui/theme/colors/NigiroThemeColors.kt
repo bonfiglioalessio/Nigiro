@@ -5,22 +5,41 @@ import androidx.tv.material3.darkColorScheme
 import com.github.damontecres.wholphin.ui.theme.ThemeColors
 
 /**
- * Warm grays of the Nigiro logo with its pink accent. Dark only: the app is always used on a TV.
+ * The AIOStreams app's dark palette (packages/ui/theme.css): near-black background, gray-950/900/800 surfaces,
+ * brand (violet) accent and lavender focus. Dark only: the app is always used on a TV.
+ *
+ * The accent keeps its historical name "Pink" so the rest of the code needs no change: it is now brand violet.
  */
 object NigiroPalette {
-    val BackgroundTop = Color(0xFF2E2B29)
-    val Background = Color(0xFF151413)
-    val Surface = Color(0xFF1C1A19)
-    val SurfaceRaised = Color(0xFF2A2826)
-    val Card = Color(0xFF363331)
-    val Text = Color(0xFFF4F1ED)
-    val TextSecondary = Color(0xFFC9C2BA)
-    val TextMuted = Color(0xFFB3ACA5)
-    val Pink = Color(0xFFF2A0AE)
-    val PinkSoft = Color(0xFFF7C3CC)
-    val OnPink = Color(0xFF3A1820)
+    /** Top of the page gradient (the AIOStreams sign-in glow is a dark navy) */
+    val BackgroundTop = Color(0xFF0F0F1A)
+
+    /** --background (dark) */
+    val Background = Color(0xFF070707)
+
+    /** --paper (dark) = gray-950 */
+    val Surface = Color(0xFF0B0B0B)
+
+    /** gray-900 */
+    val SurfaceRaised = Color(0xFF101010)
+
+    /** gray-800 */
+    val Card = Color(0xFF1C1C1C)
+
+    /** gray-100 for titles, gray-300 for secondary text, --muted-highlight for muted */
+    val Text = Color(0xFFE1E1E1)
+    val TextSecondary = Color(0xFFCACACA)
+    val TextMuted = Color(0xFF9C9C9C)
+
+    /** brand-500, brand-300 and the text on top of them */
+    val Pink = Color(0xFF6152DF)
+    val PinkSoft = Color(0xFFC7C2FF)
+    val OnPink = Color(0xFFFFFFFF)
+
     val Disk = Color(0xFF9FEBC4)
-    val Focus = Color(0xFFFFFFFF)
+
+    /** --ring (dark) = brand-200 */
+    val Focus = Color(0xFFD4D0FF)
 }
 
 val NigiroThemeColors =

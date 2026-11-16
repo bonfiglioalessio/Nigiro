@@ -37,8 +37,8 @@ object NigiroDimens {
     val HeroBleedStart = 72.dp
     val HeroBleedEnd = 16.dp
 
-    val RowTitle = TextStyle(fontSize = 19.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold)
-    val Meta = TextStyle(fontSize = 15.sp, lineHeight = 20.sp)
-    val Body = TextStyle(fontSize = 15.sp, lineHeight = 22.sp)
-    val Badge = TextStyle(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+    val RowTitle = TextStyle(fontFamily = com.github.damontecres.wholphin.ui.theme.InterFontFamily, fontSize = 19.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold)
+    val Meta = TextStyle(fontFamily = com.github.damontecres.wholphin.ui.theme.InterFontFamily, fontSize = 15.sp, lineHeight = 20.sp)
+    val Body = TextStyle(fontFamily = com.github.damontecres.wholphin.ui.theme.InterFontFamily, fontSize = 15.sp, lineHeight = 22.sp)
+    val Badge = TextStyle(fontFamily = com.github.damontecres.wholphin.ui.theme.InterFontFamily, fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
 }
