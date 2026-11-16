@@ -17,7 +17,10 @@ import com.github.damontecres.wholphin.util.RequestHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
+import com.github.damontecres.wholphin.data.model.BaseItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -77,6 +80,33 @@ class ExploreViewModel
             loadGenres(filter)
         }
 
+        /** A random title of the whole catalog, with the current filter */
+        fun openRandom() {
+            viewModelScope.launchIO {
+                try {
+                    val item =
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = serverRepository.currentUser?.id,
+                                    recursive = true,
+                                    includeItemTypes = _state.value.filter.itemKinds(),
+                                    sortBy = listOf(ItemSortBy.RANDOM),
+                                    limit = 1,
+                                    enableTotalRecordCount = false,
+                                ),
+                            ).content.items
+                            .firstOrNull() ?: return@launchIO
+                    val destination = BaseItem.from(item, api).destination()
+                    withContext(Dispatchers.Main) { navigationManager.navigateTo(destination) }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    Timber.e(ex, "Error picking a random title")
+                }
+            }
+        }
+
         fun openPlatform(tile: PlatformTile) {
             val source =
                 ExploreGridSource(
@@ -89,7 +119,7 @@ class ExploreViewModel
         }
 
         fun openGenre(tile: ExploreGenreTile) {
-            val name = "${tile.genre.emoji} ${context.getString(tile.genre.label)}"
+            val name = context.getString(tile.genre.label)
             openGrid(name, ExploreGridSource(genreIds = tile.genreIds, filter = _state.value.filter))
         }
 

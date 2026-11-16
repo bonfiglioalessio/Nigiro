@@ -1038,8 +1038,8 @@
     <string name="playback_no_italian_source_left">No other Italian source works for this title. Try again later, or choose a version from the long-press menu.</string>
     <string name="playback_no_italian_source">No Italian source for this title: playing in the original language</string>
     <string name="explore">Explore</string>
-    <string name="explore_platforms">🎬 Platforms</string>
-    <string name="explore_genres">🎭 Genres</string>
+    <string name="explore_platforms">Platforms</string>
+    <string name="explore_genres">Genres</string>
     <string name="explore_empty">Nothing to explore yet</string>
     <string name="genre_action">Action</string>
     <string name="genre_adventure">Adventure</string>
@@ -1064,4 +1064,12 @@
         <item quantity="one">%d title</item>
         <item quantity="other">%d titles</item>
     </plurals>
+    <string name="explore_sort_title">Sort by</string>
+    <string name="explore_sort_catalog">Ranking</string>
+    <string name="explore_sort_date_added">Date added</string>
+    <string name="explore_sort_name">Name</string>
+    <string name="explore_sort_release">Release date</string>
+    <string name="explore_sort_rating">Rating</string>
+    <string name="explore_random">Random pick</string>
+    <string name="explore_sort_prefix">"Sort: "</string>
 </resources>

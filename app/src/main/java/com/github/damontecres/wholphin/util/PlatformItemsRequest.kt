@@ -3,6 +3,7 @@
 package com.github.damontecres.wholphin.util
 
 import com.github.damontecres.wholphin.ui.SlimItemFields
+import com.github.damontecres.wholphin.ui.explore.ExploreSort
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
@@ -28,7 +29,8 @@ data class PlatformItemsRequest(
     val seriesCollectionId: UUID?,
     val startIndex: Int = 0,
     val limit: Int? = null,
-    val fields: List<ItemFields> = SlimItemFields,
+    val fields: List<ItemFields> = SlimItemFields + ItemFields.DATE_CREATED,
+    val sort: ExploreSort = ExploreSort.CATALOG,
 )
 
 @Serializable
@@ -61,7 +63,7 @@ object PlatformItemsRequestHandler : RequestHandler<PlatformItemsRequest> {
 
             val movies = async { children(request.movieCollectionId) }
             val series = async { children(request.seriesCollectionId) }
-            val all = interleaveDistinct(movies.await(), series.await())
+            val all = sortPlatformItems(interleaveDistinct(movies.await(), series.await()), request.sort)
             val page =
                 all
                     .drop(request.startIndex)
@@ -73,6 +75,20 @@ object PlatformItemsRequestHandler : RequestHandler<PlatformItemsRequest> {
             )
         }
 }
+
+/** The collections have no server-side sort across both, so the grid's choice is applied here */
+internal fun sortPlatformItems(
+    items: List<BaseItemDto>,
+    sort: ExploreSort,
+): List<BaseItemDto> =
+    when (sort) {
+        ExploreSort.CATALOG -> items
+        // Missing dates and ratings go last: descending order puts nulls at the end
+        ExploreSort.DATE_ADDED -> items.sortedByDescending { it.dateCreated }
+        ExploreSort.RELEASE -> items.sortedByDescending { it.premiereDate }
+        ExploreSort.RATING -> items.sortedByDescending { it.communityRating }
+        ExploreSort.NAME -> items.sortedBy { (it.sortName ?: it.name).orEmpty().lowercase() }
+    }
 
 /** Alternates the two lists (first, second, first, …), skipping titles already taken. */
 internal fun interleaveDistinct(

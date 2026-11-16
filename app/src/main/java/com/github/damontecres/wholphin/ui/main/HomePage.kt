@@ -43,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -737,14 +739,22 @@ internal fun HomeMediaFilterBar(
             HomeMediaFilter.MOVIE to stringResource(R.string.home_filter_movies),
             HomeMediaFilter.SERIES to stringResource(R.string.home_filter_series),
         )
+    // Segmented control: the three choices in one 36 dp pill, so they read as a single choice
+    val trackShape = RoundedCornerShape(50)
     Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.focusGroup(),
+        modifier =
+            modifier
+                .height(36.dp)
+                .background(Color.White.copy(alpha = 0.06f), trackShape)
+                .border(1.dp, Color.White.copy(alpha = 0.10f), trackShape)
+                .padding(3.dp)
+                .focusGroup(),
     ) {
         filters.forEachIndexed { idx, (filter, label) ->
             val selected = filter == selectedFilter
-            val shape = RoundedCornerShape(15.dp)
+            val shape = RoundedCornerShape(50)
             Button(
                 onClick = { onSelectFilter(filter) },
                 shape = ButtonDefaults.shape(shape),

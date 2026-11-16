@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +58,7 @@ import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.cards.cardScale
 import com.github.damontecres.wholphin.ui.cards.noCardGlow
 import com.github.damontecres.wholphin.ui.components.CircularProgress
+import com.github.damontecres.wholphin.ui.components.HeaderIconButton
 import com.github.damontecres.wholphin.ui.main.HomeMediaFilterBar
 import com.github.damontecres.wholphin.ui.main.NigiroDimens
 import com.github.damontecres.wholphin.ui.main.PlatformTileCard
@@ -113,11 +115,21 @@ fun ExplorePage(
                     color = NigiroPalette.Text,
                 )
                 Spacer(Modifier.weight(1f))
-                HomeMediaFilterBar(
-                    selectedFilter = state.filter,
-                    onSelectFilter = viewModel::setFilter,
-                    firstButtonFocusRequester = filterFocusRequester,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HomeMediaFilterBar(
+                        selectedFilter = state.filter,
+                        onSelectFilter = viewModel::setFilter,
+                        firstButtonFocusRequester = filterFocusRequester,
+                    )
+                    HeaderIconButton(
+                        glyph = stringResource(R.string.fa_dice),
+                        contentDescription = stringResource(R.string.explore_random),
+                        onClick = viewModel::openRandom,
+                    )
+                }
             }
         }
 
@@ -164,18 +176,15 @@ fun ExplorePage(
             }
         }
 
-        item(key = "genres_title") {
-            ItemRowTitle(
-                stringResource(R.string.explore_genres),
-                startPadding = NigiroDimens.ContentStart,
-                style = NigiroDimens.RowTitle,
-            )
-        }
         if (state.genres.isEmpty()) {
             item(key = "genres_status") {
+                GenresTitle()
                 Box(
                     contentAlignment = Alignment.CenterStart,
-                    modifier = Modifier.padding(start = NigiroDimens.ContentStart).size(TileWidth, TileHeight),
+                    modifier =
+                        Modifier
+                            .padding(start = NigiroDimens.ContentStart, top = NigiroDimens.TitleGap)
+                            .size(TileWidth, TileHeight),
                 ) {
                     if (state.genresLoading) {
                         CircularProgress(Modifier.size(32.dp))
@@ -185,10 +194,14 @@ fun ExplorePage(
                 }
             }
         }
-        items(
+        itemsIndexed(
             items = state.genres.chunked(GENRE_COLUMNS),
-            key = { row -> "genres_" + row.first().genre.key },
-        ) { row ->
+            key = { _, row -> "genres_" + row.first().genre.key },
+        ) { index, row ->
+            // The title rides with the first row, so it sits as close to its tiles as "Piattaforme" does
+            if (index == 0) {
+                GenresTitle(Modifier.padding(bottom = NigiroDimens.TitleGap))
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
                 modifier = Modifier.padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd),
@@ -207,6 +220,16 @@ fun ExplorePage(
             }
         }
     }
+}
+
+@Composable
+private fun GenresTitle(modifier: Modifier = Modifier) {
+    ItemRowTitle(
+        stringResource(R.string.explore_genres),
+        startPadding = NigiroDimens.ContentStart,
+        style = NigiroDimens.RowTitle,
+        modifier = modifier,
+    )
 }
 
 private fun platformKey(key: String) = "platform_$key"
@@ -274,7 +297,7 @@ private fun GenreTileCard(
                 modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 Text(
-                    text = "${tile.genre.emoji} ${stringResource(tile.genre.label)}",
+                    text = stringResource(tile.genre.label),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,

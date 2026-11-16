@@ -833,8 +833,8 @@
     <string name="playback_no_italian_source_left">Nessun\'altra sorgente in italiano funziona per questo titolo. Riprova più tardi o scegli una versione dal menu a pressione lunga.</string>
     <string name="playback_no_italian_source">Nessuna sorgente in italiano per questo titolo: parte in lingua originale</string>
     <string name="explore">Esplora</string>
-    <string name="explore_platforms">🎬 Piattaforme</string>
-    <string name="explore_genres">🎭 Generi</string>
+    <string name="explore_platforms">Piattaforme</string>
+    <string name="explore_genres">Generi</string>
     <string name="explore_empty">Ancora niente da esplorare</string>
     <string name="genre_action">Azione</string>
     <string name="genre_adventure">Avventura</string>
@@ -860,4 +860,12 @@
         <item quantity="many">%d titoli</item>
         <item quantity="other">%d titoli</item>
     </plurals>
+    <string name="explore_sort_title">Ordina per</string>
+    <string name="explore_sort_catalog">Classifica</string>
+    <string name="explore_sort_date_added">Data aggiunta</string>
+    <string name="explore_sort_name">Nome</string>
+    <string name="explore_sort_release">Data uscita</string>
+    <string name="explore_sort_rating">Valutazione</string>
+    <string name="explore_random">Scelta casuale</string>
+    <string name="explore_sort_prefix">"Ordina: "</string>
 </resources>
