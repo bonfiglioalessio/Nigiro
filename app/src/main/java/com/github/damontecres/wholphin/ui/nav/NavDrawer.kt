@@ -354,6 +354,8 @@ fun NavDrawer(
                             .fillMaxHeight()
                             // Centred in the rail like the AIOStreams sidebar, whatever the collapsed pill width
                             .widthIn(min = CollapsedDrawerItemWidth)
+                            // Open: the pills start 12 px from the edge like the AIOStreams tv-rail
+                            .padding(start = if (isOpen) px(12) else 0.dp)
                             .padding(vertical = 8.dp),
                 ) {
                     // Even though some must be clicked, focusing on it should clear other focused items
@@ -767,13 +769,21 @@ fun NavigationDrawerScope.NavItem(
  */
 @Composable
 fun aioDrawerItemColors(containerColor: Color = Color.Unspecified) =
+    // tv-rail items: gray-400 text, the current page white on bg-white/10, focus lighter
     NavigationDrawerItemDefaults.colors(
         containerColor = if (containerColor == Color.Unspecified) Color.Transparent else containerColor,
-        focusedContainerColor = Color.White.copy(alpha = .06f),
-        pressedContainerColor = Color.White.copy(alpha = .08f),
-        selectedContainerColor = Color.White.copy(alpha = .06f),
-        focusedSelectedContainerColor = Color.White.copy(alpha = .08f),
+        contentColor = AioGray400,
+        inactiveContentColor = AioGray400,
+        focusedContainerColor = Color.White.copy(alpha = .2f),
+        focusedContentColor = Color.White,
+        pressedContainerColor = Color.White.copy(alpha = .2f),
+        pressedContentColor = Color.White,
+        selectedContainerColor = Color.White.copy(alpha = .1f),
+        selectedContentColor = Color.White,
+        focusedSelectedContainerColor = Color.White.copy(alpha = .2f),
     )
+
+private val AioGray400 = Color(0xFF8F8F8F)
 
 @Composable
 @ReadOnlyComposable
@@ -784,11 +794,11 @@ fun navItemColor(
 ): Color {
     val theme = LocalTheme.current
     if (theme == AppThemeColors.NIGIRO) {
-        // AIOStreams: icons --muted (white 40%), the current page --foreground, focus white
+        // AIOStreams: gray-400 icons, the current page and the focused entry white
         return when {
             focused -> Color.White
-            selected -> Color(0xFFD1D1D1)
-            drawerOpen -> Color.White.copy(alpha = .6f)
+            selected -> Color.White
+            drawerOpen -> AioGray400
             else -> Color.White.copy(alpha = .4f)
         }
     }

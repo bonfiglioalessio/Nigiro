@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -94,6 +95,35 @@ fun ModalNavigationDrawer(
     Box(modifier = modifier) {
         // Content first: with the Nigiro theme the sidebar is transparent and drawn over the hero and backdrops
         content()
+
+        // AIOStreams tv-rail: no panel behind the open sidebar, the page darkens from the left edge instead
+        // (w-[36rem] bg-gradient-to-r from-black via-black/85 to-transparent, faded in over 200 ms)
+        if (LocalTheme.current == AppThemeColors.NIGIRO) {
+            val open = drawerState.currentValue == DrawerValue.Open
+            val enableAnimations = LocalInterfaceCustomization.current.enableAnimations
+            val scrimAlpha =
+                if (enableAnimations) {
+                    androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (open) 1f else 0f,
+                        animationSpec = androidx.compose.animation.core.tween(200),
+                        label = "drawer scrim",
+                    ).value
+                } else if (open) {
+                    1f
+                } else {
+                    0f
+                }
+            if (scrimAlpha > 0f) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxHeight()
+                            .width(px(576))
+                            .graphicsLayer { alpha = scrimAlpha }
+                            .background(AioDrawerScrim),
+                )
+            }
+        }
 
         DrawerSheet(
             modifier =
@@ -148,12 +178,8 @@ private fun DrawerSheet(
             .fillMaxHeight()
             .then(
                 if (isNigiroTheme) {
-                    // Transparent when collapsed; a dark scrim when open so the labels stay readable over images
-                    if (drawerState.currentValue == DrawerValue.Open) {
-                        Modifier.background(NigiroOpenDrawerBrush)
-                    } else {
-                        Modifier
-                    }
+                    // Always transparent: the page scrim behind it keeps the labels readable
+                    Modifier
                 } else {
                     Modifier.background(flatContainerColor)
                 },
@@ -191,7 +217,8 @@ internal class NavigationDrawerScopeImpl(
 ) : NavigationDrawerScope
 
 internal val CollapsedDrawerItemWidth = 60.dp
-internal val ExpandedDrawerItemWidth = 220.dp
+// AIOStreams tv-rail open width: w-56
+internal val ExpandedDrawerItemWidth = px(224)
 
 // AIOStreams sidebar (ui vertical-menu, size lg on the TV; 1 css px = 0.75 dp): 48 px items, 24 px icons,
 // collapsed entries a 56 px wide pill
@@ -254,7 +281,12 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = if (selected) colors.selectedContainerColor else colors.containerColor,
-                contentColor = if (hasFocus) colors.contentColor else colors.inactiveContentColor,
+                contentColor =
+                    when {
+                        selected -> colors.selectedContentColor
+                        hasFocus -> colors.contentColor
+                        else -> colors.inactiveContentColor
+                    },
                 focusedContainerColor = if (selected) colors.focusedSelectedContainerColor else colors.focusedContainerColor,
                 focusedContentColor = colors.focusedContentColor,
                 pressedContainerColor = colors.pressedContainerColor,
@@ -280,7 +312,8 @@ internal fun NavigationDrawerScope.NavigationDrawerItem(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(horizontal = (CollapsedDrawerPillWidth - DrawerIconSize) / 2),
+                    // px-3.5 when open (icon lines up with the collapsed one), centred in the collapsed pill
+                    .padding(horizontal = if (hasFocus) px(14) else (CollapsedDrawerPillWidth - DrawerIconSize) / 2),
         ) {
             Box(Modifier.requiredSize(DrawerIconSize), contentAlignment = Alignment.Center) { leadingContent() }
             if (hasFocus) {
@@ -331,6 +364,13 @@ private fun NavigationDrawerItemColors.toToggleableListItemColors(doesNavigation
         focusedSelectedContentColor = focusedSelectedContentColor,
         pressedSelectedContainerColor = pressedSelectedContainerColor,
         pressedSelectedContentColor = pressedSelectedContentColor,
+    )
+
+private val AioDrawerScrim =
+    Brush.horizontalGradient(
+        0f to androidx.compose.ui.graphics.Color.Black,
+        0.5f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.85f),
+        1f to androidx.compose.ui.graphics.Color.Transparent,
     )
 
 private val NigiroOpenDrawerBrush =
