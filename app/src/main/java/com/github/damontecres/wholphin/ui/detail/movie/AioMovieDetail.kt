@@ -422,7 +422,10 @@ fun AioOverview(
     }
 }
 
-/** Button size md (h-10 px-4 text-sm font-medium) rounded-full: "white" or "gray-outline"; focus adds the ring */
+/**
+ * Button size md (h-10 px-4 text-sm font-medium) rounded-full. Only the focused button is white with black text (and a
+ * little larger), so focus is clear on the TV; unfocused, the "white" one is a frosted pill and the rest are outlined.
+ */
 @Composable
 fun AioPillButton(
     white: Boolean,
@@ -431,9 +434,8 @@ fun AioPillButton(
     content: @Composable RowScope.() -> Unit,
 ) {
     val pill = RoundedCornerShape(50)
-    val container = if (white) Color.White else Color.Transparent
-    val focusedContainer = if (white) Color.White else Color(0xFF5A5A5A).copy(alpha = .15f)
-    val contentColor = if (white) Color.Black else AioTokens.Gray300
+    val container = if (white) Color.White.copy(alpha = .18f) else Color.Transparent
+    val contentColor = if (white) Color.White else AioTokens.Gray300
     Button(
         onClick = onClick,
         shape = ButtonDefaults.shape(pill),
@@ -441,21 +443,21 @@ fun AioPillButton(
             ButtonDefaults.colors(
                 containerColor = container,
                 contentColor = contentColor,
-                focusedContainerColor = focusedContainer,
-                focusedContentColor = if (white) Color.Black else Color.White,
-                pressedContainerColor = focusedContainer,
-                pressedContentColor = contentColor,
+                focusedContainerColor = Color.White,
+                focusedContentColor = Color.Black,
+                pressedContainerColor = Color.White,
+                pressedContentColor = Color.Black,
             ),
         border =
             ButtonDefaults.border(
                 border =
                     Border(
-                        BorderStroke(px(1), if (white) Color.Transparent else Color(0xFF8F8F8F).copy(alpha = .2f)),
+                        BorderStroke(px(1), if (white) Color.Transparent else Color(0xFF8F8F8F).copy(alpha = .35f)),
                         shape = pill,
                     ),
-                focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = pill),
+                focusedBorder = Border(BorderStroke(px(1), Color.Transparent), shape = pill),
             ),
-        scale = ButtonDefaults.scale(focusedScale = 1f),
+        scale = ButtonDefaults.scale(focusedScale = 1.06f),
         glow = noButtonGlow(),
         contentPadding = PaddingValues(horizontal = px(16)),
         modifier = modifier.height(px(40)),

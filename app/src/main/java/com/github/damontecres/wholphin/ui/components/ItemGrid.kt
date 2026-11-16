@@ -10,6 +10,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.github.damontecres.wholphin.ui.theme.colors.NigiroPalette
+import com.github.damontecres.wholphin.ui.main.NigiroDimens
+import com.github.damontecres.wholphin.ui.main.isOnDisk
+import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
+import com.github.damontecres.wholphin.ui.AspectRatios
+import androidx.tv.material3.Text
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -215,8 +226,19 @@ fun ItemGrid(
                 focusRequester.tryRequestFocus()
             }
 
-            Column(modifier = modifier) {
-                GridTitle(destination.title.getString())
+            val density = LocalDensity.current
+            Column(
+                verticalArrangement = Arrangement.spacedBy(NigiroDimens.TitleGap),
+                modifier = modifier.padding(start = NigiroDimens.ContentStart, end = NigiroDimens.ContentEnd, top = 20.dp),
+            ) {
+                // AIOStreams page title: left, like the Explore header
+                Text(
+                    text = destination.title.getString(),
+                    style = NigiroDimens.RowTitle.copy(fontSize = 26.sp, lineHeight = 30.sp),
+                    color = NigiroPalette.Text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
                 CardGrid(
                     pager = st.data,
@@ -234,15 +256,26 @@ fun ItemGrid(
                     showJumpButtons = false,
                     showLetterButtons = false,
                     initialPosition = destination.initialPosition,
-                    spacing = destination.viewOptions.spacing.dp,
+                    spacing = NigiroDimens.CardGap,
+                    // The "1 / 183" counter covered the titles of the last row
+                    showPositionFooter = false,
                     cardContent = @Composable { (item, index, onClick, onLongClick, widthPx, mod) ->
-                        GridCard(
+                        // The same poster card as the Home rows, sized to the grid cell
+                        val cardHeight =
+                            if (widthPx > 0) {
+                                with(density) { widthPx.toDp() } / AspectRatios.TALL
+                            } else {
+                                NigiroDimens.PosterHeight
+                            }
+                        ExpandingPosterCard(
                             item = item,
                             onClick = onClick,
                             onLongClick = onLongClick,
-                            fillWidth = widthPx,
+                            cardHeight = cardHeight,
+                            cornerText = item?.ui?.episodeUnplayedCornerText,
+                            onDisk = item?.isOnDisk() == true,
+                            expandable = false,
                             modifier = mod,
-                            imageAspectRatio = destination.viewOptions.aspectRatio.ratio,
                         )
                     },
                     columns = destination.viewOptions.columns,
