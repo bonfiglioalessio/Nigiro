@@ -73,6 +73,26 @@ adb install -r Nigiro-release-armeabi-v7a.apk
 
 Per altre architetture: `-PabiFilters=arm64-v8a,armeabi-v7a`. La `versionCode` è il numero di commit e la `versionName` viene da `git describe`.
 
+### Emulatore
+
+Le immagini Android TV per i Mac Apple Silicon sono solo `arm64-v8a`, senza supporto a 32 bit: l'APK predefinito (`armeabi-v7a`) non si installa (`INSTALL_FAILED_NO_MATCHING_ABIS`), quindi va compilato per arm64.
+
+1. In Android Studio → Device Manager crea un AVD **Television (1080p)** con un'immagine `android-tv` arm64 (API 31 o 34) e, per avvicinarsi alla TV vera, 2 GB di RAM.
+2. Avvia l'emulatore, compila e installa:
+
+```bash
+~/Library/Android/sdk/emulator/emulator -avd <NOME_AVD> &
+
+ANDROID_SERIAL=emulator-5554 ./gradlew :app:installDefaultDebug -PabiFilters=arm64-v8a
+
+adb -s emulator-5554 shell monkey -p com.github.bonfiglioalessio.nigiro.debug \
+  -c android.intent.category.LEANBACK_LAUNCHER 1
+```
+
+- `ANDROID_SERIAL` evita che Gradle installi anche sulla TV, se è collegata via adb.
+- Nella finestra dell'emulatore le frecce fanno da D-pad, Invio è OK (tenuto premuto: pressione lunga), Esc è Indietro.
+- L'emulatore raggiunge la rete di casa attraverso il Mac; se il nome del server non si risolve, usa l'IP.
+
 GitHub Actions compila e testa ogni push su `main` (`Nigiro CI`), le PR (`Nigiro PR Check`) e pubblica le release (`Nigiro Release`).
 
 Architettura, librerie, estensioni native (ffmpeg, libmpv) e preferenze sono descritte in [DEVELOPMENT.md](DEVELOPMENT.md).
