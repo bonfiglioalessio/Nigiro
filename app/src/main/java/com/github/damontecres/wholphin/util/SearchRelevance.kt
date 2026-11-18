@@ -12,6 +12,16 @@ object SearchRelevance {
     private val APOSTROPHE_REGEX = Regex("['’`ʼʻ]")
     private val NON_ALNUM_REGEX = Regex("[^\\p{L}\\p{N}]+")
     private val WHITESPACE_REGEX = Regex("\\s+")
+    private val SPECIAL_TITLE_REGEX =
+        Regex(
+            "\\b(making\\s+(?:of|the)|behind\\s+the\\s+scenes|dietro\\s+le\\s+quinte|featurette|deleted\\s+scenes|scene\\s+tagliate|blooper(?:s)?|gag\\s+reel|photographic\\s+journey|tv\\s+special|fan\\s*film|parody|parodia|spoof)\\b|\\(\\s*but\\s+better\\s*\\)",
+            RegexOption.IGNORE_CASE,
+        )
+    private val SPECIAL_QUERY_REGEX =
+        Regex(
+            "\\b(making|behind|dietro|featurette|documentar|special|blooper|parod|fan\\s*film)\\b",
+            RegexOption.IGNORE_CASE,
+        )
 
     /**
      * Normalizes titles and queries for TV search by removing diacritics, stripping apostrophes
@@ -57,6 +67,7 @@ object SearchRelevance {
         query: String,
     ): List<BaseItem> {
         if (query.isBlank() || items.isEmpty()) return items
+        val queryWantsSpecials = SPECIAL_QUERY_REGEX.containsMatchIn(normalize(query))
         // The original title counts too, eg searching the English title of an Italian-titled item
         val titleMatches =
             items.filter { isTitleMatch(it.name, query) || isTitleMatch(it.data.originalTitle, query) }
@@ -67,12 +78,39 @@ object SearchRelevance {
                 val originalScore = item.data.originalTitle?.let { score(it, item.type, query) } ?: Int.MAX_VALUE
                 item to minOf(score(item, query), originalScore)
             }.sortedWith(
-                compareBy<Pair<BaseItem, Int>> { matchBand(it.second) }
+                compareBy<Pair<BaseItem, Int>> { isSpecialItem(it.first, queryWantsSpecials) }
+                    .thenBy { matchBand(it.second) }
                     .thenByDescending { metadataCompleteness(it.first) }
                     .thenByDescending { it.first.data.communityRating ?: -1f }
                     .thenByDescending { it.first.data.productionYear ?: 0 }
                     .thenBy { it.second },
             ).map { it.first }
+    }
+
+    fun isSpecialTitle(title: String?): Boolean =
+        !title.isNullOrBlank() && SPECIAL_TITLE_REGEX.containsMatchIn(title)
+
+    fun <T> pushSpecialsToEnd(
+        items: List<T>,
+        query: String,
+        titleSelector: (T) -> String?,
+    ): List<T> {
+        if (items.size < 2 || SPECIAL_QUERY_REGEX.containsMatchIn(normalize(query))) return items
+        val (specials, normal) = items.partition { isSpecialTitle(titleSelector(it)) }
+        if (normal.isEmpty() || specials.isEmpty()) return items
+        return normal + specials
+    }
+
+    private fun isSpecialItem(
+        item: BaseItem,
+        queryWantsSpecials: Boolean,
+    ): Boolean {
+        if (queryWantsSpecials) return false
+        val data = item.data
+        if (data.genres?.any { it.equals("Documentary", ignoreCase = true) || it.equals("Documentario", ignoreCase = true) } == true) {
+            return true
+        }
+        return isSpecialTitle(item.name) || isSpecialTitle(data.originalTitle)
     }
 
     private fun metadataCompleteness(item: BaseItem): Int {

@@ -372,7 +372,7 @@ class SearchViewModel
                                         searchTerm = query,
                                         recursive = true,
                                         includeItemTypes = listOf(type),
-                                        fields = SlimItemFields,
+                                        fields = SlimItemFields + listOf(ItemFields.GENRES, ItemFields.ORIGINAL_TITLE),
                                         limit = SEARCH_LIMIT,
                                         enableTotalRecordCount = false,
                                     )
@@ -399,7 +399,14 @@ class SearchViewModel
                             searchTerm = query,
                             recursive = true,
                             includeItemTypes = state.value.includedSearchableTypes,
-                            fields = SlimItemFields + listOf(ItemFields.PROVIDER_IDS, ItemFields.PATH, ItemFields.GENRES),
+                            fields =
+                                SlimItemFields +
+                                    listOf(
+                                        ItemFields.PROVIDER_IDS,
+                                        ItemFields.PATH,
+                                        ItemFields.GENRES,
+                                        ItemFields.ORIGINAL_TITLE,
+                                    ),
                             limit = SEARCH_LIMIT,
                             enableTotalRecordCount = false,
                         )
@@ -447,10 +454,13 @@ class SearchViewModel
                     _state.update { it.copy(seerrResults = SearchResult.Searching) }
                     try {
                         val results =
-                            seerrService
-                                .search(query)
-                                .map { seerrService.createDiscoverItem(it) }
-                                .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                            SearchRelevance.pushSpecialsToEnd(
+                                seerrService
+                                    .search(query)
+                                    .map { seerrService.createDiscoverItem(it) }
+                                    .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV },
+                                query,
+                            ) { it.title }
                         _state.update { it.copy(seerrResults = SearchResult.SuccessSeerr(results)) }
                     } catch (ex: CancellationException) {
                         throw ex

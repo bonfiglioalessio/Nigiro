@@ -57,6 +57,7 @@ import com.github.damontecres.wholphin.ui.search.SearchPendingBanner
 import com.github.damontecres.wholphin.ui.search.SearchResult
 import com.github.damontecres.wholphin.ui.search.SearchSubmitButton
 import com.github.damontecres.wholphin.ui.tryRequestFocus
+import com.github.damontecres.wholphin.util.SearchRelevance
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -95,10 +96,13 @@ class DiscoverSearchViewModel
                 seerrResults.value = SearchResult.Searching
                 try {
                     val results =
-                        seerrService
-                            .search(query)
-                            .map { seerrService.createDiscoverItem(it) }
-                            .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV }
+                        SearchRelevance.pushSpecialsToEnd(
+                            seerrService
+                                .search(query)
+                                .map { seerrService.createDiscoverItem(it) }
+                                .filter { it.type == SeerrItemType.MOVIE || it.type == SeerrItemType.TV },
+                            query,
+                        ) { it.title }
                     Timber.v("Seerr search complete: %s results", results.size)
                     seerrResults.value = SearchResult.SuccessSeerr(results)
                 } catch (ex: CancellationException) {

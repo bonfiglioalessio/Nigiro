@@ -102,4 +102,58 @@ class SearchRelevanceTest {
 
         assertEquals(listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES), activeByDefault)
     }
+
+    @Test
+    fun filterAndSortPushesMakingOfsAndDocumentariesToBottom() {
+        fun item(
+            title: String,
+            originalTitle: String? = null,
+            genres: List<String> = emptyList(),
+            rating: Float = 7.0f,
+            year: Int = 2012,
+        ): BaseItem =
+            mockk(relaxed = true) {
+                every { name } returns title
+                every { type } returns BaseItemKind.MOVIE
+                every { data.originalTitle } returns originalTitle
+                every { data.genres } returns genres
+                every { data.communityRating } returns rating
+                every { data.productionYear } returns year
+            }
+
+        val mainMovie = item("Hunger Games", originalTitle = "The Hunger Games", genres = listOf("Fantascienza"), rating = 7.2f, year = 2012)
+        val sequel = item("Hunger Games: La ragazza di fuoco", originalTitle = "The Hunger Games: Catching Fire", genres = listOf("Azione"), rating = 7.5f, year = 2013)
+        val makingOf = item("Pawns No More: The Making of The Hunger Games: Mockingjay Part 2", genres = listOf("Documentario"), rating = 9.0f, year = 2016)
+        val parody = item("The Hunger Games (but better)", genres = emptyList(), rating = 9.5f, year = 2025)
+
+        assertEquals(
+            listOf(mainMovie, sequel, parody, makingOf),
+            SearchRelevance.filterAndSort(listOf(parody, makingOf, sequel, mainMovie), "the hunger games"),
+        )
+
+        // Explicit making-of search keeps documentary order
+        val explicit = SearchRelevance.filterAndSort(listOf(mainMovie, makingOf), "making of hunger games")
+        assertEquals(listOf(makingOf), explicit)
+    }
+
+    @Test
+    fun pushSpecialsToEndMovesSpecialsToBottomPreservingOrder() {
+        val items =
+            listOf(
+                "The World Is Watching: Making the Hunger Games",
+                "Hunger Games",
+                "Surviving the Game: Making The Hunger Games: Catching Fire",
+                "Hunger Games: La ragazza di fuoco",
+            )
+        assertEquals(
+            listOf(
+                "Hunger Games",
+                "Hunger Games: La ragazza di fuoco",
+                "The World Is Watching: Making the Hunger Games",
+                "Surviving the Game: Making The Hunger Games: Catching Fire",
+            ),
+            SearchRelevance.pushSpecialsToEnd(items, "hunger games") { it },
+        )
+        assertEquals(items, SearchRelevance.pushSpecialsToEnd(items, "making of") { it })
+    }
 }
