@@ -32,6 +32,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -70,6 +71,15 @@ private val TileHeight = 107.dp
 private const val GENRE_COLUMNS = 4
 private val TileShape = RoundedCornerShape(10.dp)
 
+/** Dark from the bottom left, where the label sits, so it reads on any backdrop */
+private val GenreTileScrim =
+    Brush.linearGradient(
+        0f to Color.Black.copy(alpha = 0.15f),
+        1f to Color.Black.copy(alpha = 0.85f),
+        start = Offset(Float.POSITIVE_INFINITY, 0f),
+        end = Offset(0f, Float.POSITIVE_INFINITY),
+    )
+
 /**
  * Explore hub in the style of Nuvio's collections: a row of streaming platforms and a grid of genres, each tile
  * opening its titles. The filter on top limits everything to movies or series.
@@ -96,6 +106,7 @@ fun ExplorePage(
         }
     }
 
+    val genreRows = remember(state.genres) { state.genres.chunked(GENRE_COLUMNS) }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(NigiroDimens.SectionGap),
         contentPadding = PaddingValues(top = 20.dp, bottom = 48.dp),
@@ -195,7 +206,7 @@ fun ExplorePage(
             }
         }
         itemsIndexed(
-            items = state.genres.chunked(GENRE_COLUMNS),
+            items = genreRows,
             key = { _, row -> "genres_" + row.first().genre.key },
         ) { index, row ->
             // The title rides with the first row, so it sits as close to its tiles as "Piattaforme" does
@@ -282,14 +293,7 @@ private fun GenreTileCard(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                0f to Color.Black.copy(alpha = 0.15f),
-                                1f to Color.Black.copy(alpha = 0.85f),
-                                start = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, 0f),
-                                end = androidx.compose.ui.geometry.Offset(0f, Float.POSITIVE_INFINITY),
-                            ),
-                        ),
+                        .background(GenreTileScrim),
             )
             Column(
                 verticalArrangement = Arrangement.spacedBy(2.dp),

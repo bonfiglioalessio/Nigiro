@@ -70,6 +70,7 @@ import androidx.tv.material3.Text
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.AsyncImage
 import coil3.compose.useExistingImageAsPlaceholder
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.bitmapConfig
 import coil3.request.transitionFactory
@@ -164,6 +165,9 @@ fun HomeHeroBanner(
                             .data(slide.backdropUrl)
                             // Full 1080p and full colour: at 960x540 RGB_565 the hero looked soft and banded on the TV
                             .size(1920, 1080)
+                            // ~8 MB per slide: ten slides would push every Home poster out of Coil's memory cache.
+                            // The slide on screen stays in the hero's layer, the others come back from the disk cache
+                            .memoryCachePolicy(CachePolicy.DISABLED)
                             .useExistingImageAsPlaceholder(true)
                             .apply {
                                 if (enableAnimations) {

@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui.playback
 
 import androidx.compose.ui.text.intl.Locale
 import androidx.media3.common.Player
-import androidx.media3.common.text.Cue
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.Playlist
@@ -19,8 +18,6 @@ data class PlaybackState(
     val currentPlayback: CurrentPlayback? = null,
     val currentItemPlayback: ItemPlayback? = null,
     val currentSegment: MediaSegmentState? = null,
-    val analyticsState: AnalyticsState = AnalyticsState(),
-    val subtitleCues: List<Cue> = emptyList(),
     val nextUp: BaseItem? = null,
     val playlistIndex: Int = 0,
     val playlist: Playlist = Playlist(emptyList()),

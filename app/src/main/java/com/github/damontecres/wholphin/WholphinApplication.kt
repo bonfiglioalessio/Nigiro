@@ -8,6 +8,9 @@ import androidx.compose.runtime.Composer
 import androidx.compose.runtime.ExperimentalComposeRuntimeApi
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import coil3.imageLoader
+import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.ui.coilImageLoaderCreated
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.ACRA
 import org.acra.ReportField
@@ -109,6 +112,34 @@ class WholphinApplication :
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    // Lazy: building it at startup would also build the ApiClient before the UI needs it
+    @Inject
+    lateinit var backdropService: dagger.Lazy<BackdropService>
+
+    /**
+     * Gives back the image caches when the system runs low on memory or the UI is hidden:
+     * on a 2 GB TV the bitmaps would otherwise stay around until the process is killed.
+     */
+    @Suppress("DEPRECATION") // TRIM_MEMORY_RUNNING_* are still sent on the TV's Android 11
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        Timber.i("onTrimMemory level=%s", level)
+        val memoryCache = if (coilImageLoaderCreated) imageLoader.memoryCache else null
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            memoryCache?.clear()
+            if (::backdropService.isInitialized) backdropService.get().clearColorCache()
+        } else if (level >= TRIM_MEMORY_RUNNING_MODERATE) {
+            memoryCache?.let { it.trimToSize(it.maxSize / 2) }
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (coilImageLoaderCreated) imageLoader.memoryCache?.clear()
+        if (::backdropService.isInitialized) backdropService.get().clearColorCache()
+    }
 
     override val workManagerConfiguration: Configuration
         get() =

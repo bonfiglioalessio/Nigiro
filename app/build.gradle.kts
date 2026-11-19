@@ -61,6 +61,11 @@ val gitDescribe =
         .standardOutput.asText
         .getOrElse("v0.0.0")
 
+composeCompiler {
+    // Immutable classes from other modules that Compose may compare by equals() (see the file)
+    stabilityConfigurationFiles.add(project.layout.projectDirectory.file("compose_compiler_config.conf"))
+}
+
 kotlin {
     compilerOptions {
         languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_3

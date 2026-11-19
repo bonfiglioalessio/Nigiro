@@ -6,6 +6,10 @@ import com.github.damontecres.wholphin.ui.FaGlyph
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -599,6 +603,8 @@ private fun ExpandingPosterGrid(
         }
         return
     }
+    val onClick by rememberUpdatedState(onClickItem)
+    val onLongClick by rememberUpdatedState(onLongClickItem)
     BoxWithConstraints(modifier = modifier) {
         val cardWidth = (maxWidth - NigiroDimens.CardGap * (columns - 1)) / columns
         val cardHeight = cardWidth / AspectRatios.TALL
@@ -608,23 +614,29 @@ private fun ExpandingPosterGrid(
             contentPadding = PaddingValues(top = 8.dp, bottom = 48.dp),
             modifier = Modifier.fillMaxSize().focusRestorer(),
         ) {
-            items(rows, key = { it }) { row ->
+            items(rows, key = { it }, contentType = { "grid_row" }) { row ->
                 val first = row * columns
                 val count = minOf(columns, items.size - first)
+                // Compose the whole next row ahead while scrolling, not only its first two posters
+                // (same as the Home rows), so moving down doesn't build 6-7 cards in one frame
+                @OptIn(ExperimentalFoundationApi::class)
+                val rowState =
+                    rememberLazyListState(prefetchStrategy = remember(columns) { LazyListPrefetchStrategy(columns) })
                 LazyRow(
+                    state = rowState,
                     horizontalArrangement = Arrangement.spacedBy(NigiroDimens.CardGap),
                     // Room after the last poster, so an expanded one at the end can scroll fully into view
                     contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp, end = NigiroDimens.ContentEnd),
                     modifier = Modifier.fillMaxWidth().focusRestorer(),
                 ) {
-                    items(count, key = { first + it }) { column ->
+                    items(count, key = { first + it }, contentType = { "grid_card" }) { column ->
                         val index = first + column
                         // Reading the pager position loads its page
                         val item = items[index]
                         ExpandingPosterCard(
                             item = item,
-                            onClick = { item?.let { onClickItem(index, it) } },
-                            onLongClick = { item?.let { onLongClickItem(index, it) } },
+                            onClick = { item?.let { onClick(index, it) } },
+                            onLongClick = { item?.let { onLongClick(index, it) } },
                             cardHeight = cardHeight,
                             onDisk = item?.isOnDisk() == true,
                             showFavorite = showFavorite,

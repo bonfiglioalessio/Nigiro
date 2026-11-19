@@ -270,7 +270,9 @@ class MovieViewModel
                         chapters = Chapter.fromDto(movie.data),
                     )
                 }
-                backdropService.submit(movie)
+                // The detail page draws its own full-size backdrop: the app-wide one would only download
+                // a second copy and extract its colours for a layer that stays covered
+                backdropService.clearBackdrop()
                 // Sources in the background, once the page is drawn: by the time play is pressed they are usually ready
                 viewModelScope.launch {
                     delay(SOURCES_PREFETCH_DELAY_MS)

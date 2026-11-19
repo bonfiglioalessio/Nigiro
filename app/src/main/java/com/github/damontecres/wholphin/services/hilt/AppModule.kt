@@ -18,6 +18,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import org.jellyfin.sdk.Jellyfin
 import org.jellyfin.sdk.android.androidDevice
@@ -96,6 +97,14 @@ object AppModule {
             .Builder()
             .apply {
                 // TODO user agent, timeouts, logging, etc
+                // Everything goes to the one Jellyfin server: allow more parallel API calls than OkHttp's
+                // default 5 per host. Coil images use their own dispatcher (see CoilConfig)
+                dispatcher(
+                    Dispatcher().apply {
+                        maxRequests = 24
+                        maxRequestsPerHost = 8
+                    },
+                )
             }.build()
 
     @AuthOkHttpClient

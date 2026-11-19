@@ -7,11 +7,11 @@ import androidx.compose.runtime.setValue
 import com.github.damontecres.wholphin.ui.DEFAULT_PAGE_SIZE
 import com.google.common.cache.CacheBuilder
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Predicate
 
 /**
@@ -83,10 +83,20 @@ abstract class RequestPager<T>(
     override val size: Int
         get() = totalCount
 
-    private fun fetchPage(position: Int): Job =
+    /** Pages being fetched by [fetchPage]: a row of empty cards asks for the same page once, not once per card */
+    private val inFlightPages: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+    private fun fetchPage(position: Int) {
+        val pageNumber = position / pageSize
+        if (!inFlightPages.add(pageNumber)) return
         scope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
-            fetchPageBlocking(position, false)
+            try {
+                fetchPageBlocking(position, false)
+            } finally {
+                inFlightPages.remove(pageNumber)
+            }
         }
+    }
 
     protected suspend fun fetchPageBlocking(
         position: Int,

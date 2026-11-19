@@ -21,6 +21,7 @@ import coil3.request.crossfade
 import coil3.util.DebugLogger
 import com.github.damontecres.wholphin.preferences.AppPreference
 import com.github.damontecres.wholphin.preferences.AppPreferences
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import timber.log.Timber
 import kotlin.time.ExperimentalTime
@@ -58,8 +59,20 @@ fun CoilConfig(
 ) {
     val client =
         remember(okHttpClient, debugLogging) {
-            if (debugLogging) {
+            // Images get their own request queue (connections are still shared): OkHttp allows 5
+            // requests per host per dispatcher, and scrolling a grid queues 10-15 posters on the
+            // Jellyfin server, which would leave opening a title or starting playback waiting behind them
+            val imageClient =
                 okHttpClient
+                    .newBuilder()
+                    .dispatcher(
+                        Dispatcher().apply {
+                            maxRequests = 16
+                            maxRequestsPerHost = 6
+                        },
+                    ).build()
+            if (debugLogging) {
+                imageClient
                     .newBuilder()
                     .addInterceptor {
                         val start = System.currentTimeMillis()
@@ -70,11 +83,12 @@ fun CoilConfig(
                         res
                     }.build()
             } else {
-                okHttpClient
+                imageClient
             }
         }
     setSingletonImageLoaderFactory { ctx ->
         Timber.i("Image diskCacheSizeBytes=$diskCacheSizeBytes")
+        coilImageLoaderCreated = true
         ImageLoader
             .Builder(ctx)
             .apply {
@@ -141,3 +155,11 @@ private class WholphinCacheStrategy(
         options: Options,
     ): CacheStrategy.WriteResult = delegate.write(cacheResponse, networkRequest, networkResponse, options)
 }
+
+/**
+ * True once the configured singleton ImageLoader exists. Code outside composition (e.g.
+ * [com.github.damontecres.wholphin.WholphinApplication.onTrimMemory]) must check it before
+ * touching `context.imageLoader`, otherwise Coil would create a default, unconfigured loader.
+ */
+@Volatile
+var coilImageLoaderCreated: Boolean = false
