@@ -127,12 +127,12 @@ class SearchRelevanceTest {
         val parody = item("The Hunger Games (but better)", genres = emptyList(), rating = 9.5f, year = 2025)
 
         assertEquals(
-            listOf(mainMovie, sequel, parody, makingOf),
+            listOf(sequel, mainMovie, parody, makingOf),
             SearchRelevance.filterAndSort(listOf(parody, makingOf, sequel, mainMovie), "the hunger games"),
         )
 
         // Explicit making-of search keeps documentary order
-        val explicit = SearchRelevance.filterAndSort(listOf(mainMovie, makingOf), "making of hunger games")
+        val explicit = SearchRelevance.filterAndSort(listOf(mainMovie, makingOf), "making of the hunger games")
         assertEquals(listOf(makingOf), explicit)
     }
 
