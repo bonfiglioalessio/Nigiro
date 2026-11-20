@@ -46,11 +46,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -136,42 +139,35 @@ fun AioDetailBackdrop(
                 1f to background,
             )
         }
+    // Image and shades composed once into an offscreen layer: scrolling the page only moves
+    // (translationY) one cached texture instead of redrawing the image and three gradients
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(height),
+                .height(height)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(sideShade)
+                    drawRect(bottomShade)
+                },
     ) {
-        Box(
+        AsyncImage(
+            model = request,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
                     .fillMaxHeight()
                     .widthIn(max = height * 2.6f)
-                    .fillMaxWidth(),
-        ) {
-            AsyncImage(
-                model = request,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(leftFade),
-            )
-        }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(sideShade),
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(bottomShade),
+                    .fillMaxWidth()
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(leftFade)
+                    },
         )
     }
 }

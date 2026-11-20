@@ -52,7 +52,7 @@ class SuggestionsSchedulerServiceTest {
     @After
     fun tearDown() = WholphinDispatchers.reset()
 
-    private fun createService() =
+    private fun createService(schedulingEnabled: Boolean = true) =
         SuggestionsSchedulerService(
             context = mockActivity,
             serverRepository = mockServerRepository,
@@ -60,6 +60,7 @@ class SuggestionsSchedulerServiceTest {
             dispatcher = testDispatcher,
         ).also {
             it.initialDelaySecondsProvider = { 60L }
+            it.schedulingEnabled = schedulingEnabled
         }
 
     private fun mockWorkInfos(infos: List<androidx.work.WorkInfo>) {
@@ -68,6 +69,21 @@ class SuggestionsSchedulerServiceTest {
         every { future.get() } returns infos
         every { mockWorkManager.getWorkInfosForUniqueWork(SuggestionsWorker.WORK_NAME) } returns future
     }
+
+    @Test
+    fun nigiro_cancels_and_never_schedules_when_disabled() =
+        runTest {
+            mockWorkInfos(emptyList())
+            createService(schedulingEnabled = false)
+            currentUser.value =
+                CurrentUser(
+                    user = JellyfinUser(id = UUID.randomUUID(), name = "User", serverId = UUID.randomUUID(), accessToken = "token"),
+                    server = JellyfinServer(id = UUID.randomUUID(), name = "Server", url = "http://localhost", version = null),
+                )
+            advanceUntilIdle()
+            verify { mockWorkManager.cancelUniqueWork(SuggestionsWorker.WORK_NAME) }
+            verify(exactly = 0) { mockWorkManager.enqueueUniquePeriodicWork(any(), any(), any()) }
+        }
 
     @Test
     fun schedules_periodic_work_when_user_present() =

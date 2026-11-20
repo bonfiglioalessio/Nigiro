@@ -1,6 +1,5 @@
 package com.github.damontecres.wholphin.ui.detail.series
 
-import androidx.compose.foundation.background
 import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -128,8 +127,8 @@ fun AioSeriesDetailsContent(
     Box(
         modifier =
             modifier
-                .fillMaxSize()
-                .background(background),
+                // No background here: MainContent already paints the theme background under every page
+                .fillMaxSize(),
     ) {
         AioDetailBackdrop(
             movie = series,

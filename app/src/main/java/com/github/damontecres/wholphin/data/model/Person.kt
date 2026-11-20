@@ -35,7 +35,7 @@ data class Person(
                 name = dto.name,
                 role = personRole(context, dto.role, dto.type),
                 type = dto.type,
-                imageUrl = api.imageApi.getItemImageUrl(dto.id, ImageType.PRIMARY, tag = dto.primaryImageTag),
+                imageUrl = personImageUrl(dto, api),
                 favorite = false,
             )
 
@@ -50,7 +50,7 @@ data class Person(
                 name = dto.name,
                 role = personRole(context, dto.role, dto.type),
                 type = dto.type,
-                imageUrl = api.imageApi.getItemImageUrl(dto.id, ImageType.PRIMARY, tag = dto.primaryImageTag),
+                imageUrl = personImageUrl(dto, api),
                 favorite = favorite,
             )
     }
@@ -94,3 +94,24 @@ private val PersonKind.stringRes: Int?
             PersonKind.ALBUM_ARTIST -> R.string.artist
             else -> null
         }
+
+/**
+ * Small photo for the round cast & crew avatars. Null when the person has no photo, so the card shows
+ * its placeholder instead of requesting an image the server doesn't have; sized by the server so it
+ * doesn't send the full-size original for an avatar under 200 px.
+ */
+private fun personImageUrl(
+    dto: BaseItemPerson,
+    api: ApiClient,
+): String? =
+    dto.primaryImageTag?.let { tag ->
+        api.imageApi.getItemImageUrl(
+            itemId = dto.id,
+            imageType = ImageType.PRIMARY,
+            tag = tag,
+            fillWidth = PERSON_IMAGE_SIZE,
+            fillHeight = PERSON_IMAGE_SIZE,
+        )
+    }
+
+private const val PERSON_IMAGE_SIZE = 200

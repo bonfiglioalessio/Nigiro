@@ -1,7 +1,6 @@
 package com.github.damontecres.wholphin.ui.detail.movie
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.Box
@@ -365,8 +364,8 @@ fun MovieDetailsContent(
     Box(
         modifier =
             modifier
-                .fillMaxSize()
-                .background(background),
+                // No background here: MainContent already paints the theme background under every page
+                .fillMaxSize(),
     ) {
     // item-backdrop is absolute: it scrolls with the page but takes no room, so the sections start right below
     // the header and run over its faded bottom. Full screen width, under the sidebar like AIOStreams.

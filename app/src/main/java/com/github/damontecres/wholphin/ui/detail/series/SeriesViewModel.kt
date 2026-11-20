@@ -182,7 +182,7 @@ class SeriesViewModel
                         _state.update { it.copy(canDeleteSeries = canDelete) }
                     }
                 }
-                backdropService.submit(series)
+                showBackdrop(series)
 
                 val seasonsDeferred = getSeasons(series, seasonEpisodeIds?.seasonNumber)
 
@@ -364,13 +364,25 @@ class SeriesViewModel
             }
         }
 
+        /**
+         * The details page draws its own full-size backdrop: the app-wide one would only download a
+         * second copy and extract its colours for a layer that stays covered
+         */
+        private suspend fun showBackdrop(series: BaseItem) {
+            if (seriesPageType == SeriesPageType.DETAILS) {
+                backdropService.clearBackdrop()
+            } else {
+                backdropService.submit(series)
+            }
+        }
+
         fun onResumePage() {
             if (resumedOnce && seriesPageType == SeriesPageType.DETAILS) {
                 refreshAfterReturn()
             }
             resumedOnce = true
             state.value.series.successValue?.let { item ->
-                viewModelScope.launchDefault { backdropService.submit(item) }
+                viewModelScope.launchDefault { showBackdrop(item) }
                 viewModelScope.launchDefault {
                     themeSongPlayer.playThemeFor(seriesId)
                 }
@@ -685,7 +697,7 @@ class SeriesViewModel
             }
             // Kind of hack to ensure the backdrop is reloaded if needed
             state.value.series.successValue
-                ?.let { backdropService.submit(it) }
+                ?.let { showBackdrop(it) }
         }
 
         /**

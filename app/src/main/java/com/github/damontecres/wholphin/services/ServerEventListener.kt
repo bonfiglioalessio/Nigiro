@@ -18,6 +18,7 @@ import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -46,6 +47,10 @@ class ServerEventListener
         private val activity = (context as AppCompatActivity)
 
         private var listenJob: Job? = null
+
+        /** Consecutive websocket failures, for the retry backoff; reset when a message arrives */
+        @Volatile
+        private var failedAttempts = 0
 
         init {
             activity.lifecycle.addObserver(this)
@@ -89,6 +94,7 @@ class ServerEventListener
                             api.webSocket
                                 .subscribe<GeneralCommandMessage>()
                                 .onEach { message ->
+                                    failedAttempts = 0
                                     Timber.v(
                                         "Got GeneralCommandMessage: %s",
                                         message.data?.name,
@@ -125,6 +131,7 @@ class ServerEventListener
                                 .catch { ex ->
                                     Timber.e(ex, "Error in user updated websocket subscription")
                                 }.collectLatestIn(this@coroutineScope) { msg ->
+                                    failedAttempts = 0
                                     Timber.v("Got updated user: %s", msg.data?.id)
                                     msg.data?.let { serverRepository.updateUserDto(it) }
                                 }
@@ -132,7 +139,11 @@ class ServerEventListener
                     } catch (ex: CancellationException) {
                         throw ex
                     } catch (ex: Exception) {
-                        Timber.e(ex, "Error in websocket connection")
+                        // Wait before retrying: with the server or Wi-Fi down, retrying at once spins the CPU
+                        val backoffMs = BACKOFF_MS[failedAttempts.coerceAtMost(BACKOFF_MS.lastIndex)]
+                        failedAttempts++
+                        Timber.e(ex, "Error in websocket connection, retrying in %sms", backoffMs)
+                        delay(backoffMs)
                         if (activity.lifecycleScope.isActive) {
                             subscribeToWebSocket()
                         }
@@ -152,5 +163,9 @@ class ServerEventListener
         override fun onStop(owner: LifecycleOwner) {
             Timber.v("Cancelling WebSocket")
             listenJob?.cancel()
+        }
+
+        private companion object {
+            val BACKOFF_MS = longArrayOf(2_000L, 5_000L, 15_000L, 30_000L)
         }
     }

@@ -1,11 +1,13 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import com.github.damontecres.wholphin.preferences.ScreensaverPreference
 import com.github.damontecres.wholphin.services.hilt.DefaultCoroutineScope
 import com.github.damontecres.wholphin.ui.components.ScreensaverItem
 import com.github.damontecres.wholphin.ui.formatDate
@@ -59,22 +61,29 @@ class ScreensaverService
 
         val keepScreenOn = MutableStateFlow(false)
 
-        private var waitJob: Job? = null
-        private var dimJob: Job? = null
+        /** Started once and re-armed only when it fires, so D-pad presses don't create coroutines */
+        private var timerJob: Job? = null
+
+        @Volatile
+        private var startDelayMs: Long = ScreensaverPreference.DEFAULT_START_DELAY
+
+        @Volatile
+        private var lastPulseElapsedMs: Long = SystemClock.elapsedRealtime()
 
         init {
             userPreferencesService.flow
                 .onEach { prefs ->
+                    val screensaverPrefs = prefs.appPreferences.interfacePreferences.screensaverPreference
+                    startDelayMs = screensaverPrefs.startDelay
                     _state.update {
-                        val enabled =
-                            prefs.appPreferences.interfacePreferences.screensaverPreference.enabled
+                        val enabled = screensaverPrefs.enabled
                         keepScreenOnInternal(enabled)
                         ScreensaverState(
                             enabled = enabled,
                             enabledTemp = false,
                             active = false,
                             paused = false,
-                            dimEnabled = prefs.appPreferences.interfacePreferences.screensaverPreference.dimEnabled,
+                            dimEnabled = screensaverPrefs.dimEnabled,
                             dimActive = false,
                         )
                     }
@@ -82,59 +91,39 @@ class ScreensaverService
         }
 
         /**
-         * Reset the timer before showing the in-app screensaver
+         * Reset the timer before showing the in-app screensaver.
+         *
+         * Called on every key press, so it only records the time: a single timer coroutine
+         * sleeps until [startDelayMs] has passed since the last pulse.
          */
+        @Synchronized
         fun pulse() {
-            waitJob?.cancel()
-            if (_state.value.enabled) {
-//                Timber.v("pulse")
-                _state.update {
-                    if (!it.active) {
-                        it.copy(
-                            active = false,
-                            dimActive = false,
-                        )
-                    } else {
-                        it
-                    }
-                }
-
-                if (!_state.value.paused) {
-                    waitJob =
-                        scope.launch(ExceptionHandler()) {
-                            val startDelay =
-                                userPreferencesService
-                                    .getCurrent()
-                                    .appPreferences.interfacePreferences.screensaverPreference.startDelay.milliseconds
-                            delay(startDelay)
-                            _state.update {
+            lastPulseElapsedMs = SystemClock.elapsedRealtime()
+            val current = _state.value
+            if (!current.enabled && !current.dimEnabled) return
+            if (current.dimActive) {
+                _state.update { it.copy(dimActive = false) }
+            }
+            if (!current.paused && timerJob?.isActive != true) {
+                timerJob =
+                    scope.launch(ExceptionHandler()) {
+                        while (true) {
+                            val remaining = startDelayMs - (SystemClock.elapsedRealtime() - lastPulseElapsedMs)
+                            if (remaining <= 0L) break
+                            delay(remaining)
+                        }
+                        Timber.v("Screensaver timer fired, state=%s", _state.value)
+                        _state.update {
+                            if (it.paused) {
+                                it
+                            } else {
                                 it.copy(
-                                    active = true,
+                                    active = it.active || it.enabled,
                                     dimActive = it.dimEnabled,
                                 )
                             }
                         }
-                }
-            }
-            dimJob?.cancel()
-            if (_state.value.dimEnabled) {
-                _state.update {
-                    it.copy(dimActive = false)
-                }
-                if (!_state.value.paused) {
-                    dimJob =
-                        scope.launch(ExceptionHandler()) {
-                            val startDelay =
-                                userPreferencesService
-                                    .getCurrent()
-                                    .appPreferences.interfacePreferences.screensaverPreference.startDelay.milliseconds
-                            delay(startDelay)
-                            Timber.v("state dim=%s", _state.value)
-                            _state.update {
-                                it.copy(dimActive = !_state.value.paused)
-                            }
-                        }
-                }
+                    }
             }
         }
 
@@ -163,8 +152,7 @@ class ScreensaverService
                 )
             }
             if (cancelJob) {
-                waitJob?.cancel()
-                dimJob?.cancel()
+                timerJob?.cancel()
             }
         }
 

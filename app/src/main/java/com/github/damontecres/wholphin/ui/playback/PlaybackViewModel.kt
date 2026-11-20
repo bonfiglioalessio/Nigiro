@@ -16,6 +16,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
@@ -94,16 +95,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -199,6 +196,14 @@ class PlaybackViewModel
 
         private val _state = MutableStateFlow(PlaybackState())
         val state: StateFlow<PlaybackState> = _state
+
+        // Kept out of [state]: they change every second or so, and collecting them
+        // separately avoids recomposing the whole playback page on each update
+        private val _subtitleCues = MutableStateFlow<List<Cue>>(emptyList())
+        val subtitleCues: StateFlow<List<Cue>> = _subtitleCues
+
+        private val _analyticsState = MutableStateFlow(AnalyticsState())
+        val analyticsState: StateFlow<AnalyticsState> = _analyticsState
 
         internal lateinit var preferences: UserPreferences
         internal lateinit var itemId: UUID
@@ -320,6 +325,9 @@ class PlaybackViewModel
          */
         private suspend fun init() {
             musicService.stop()
+            // Posters & backdrops aren't on screen during playback: free their bitmaps for the
+            // player buffers. They stay in Coil's disk cache, so browsing again needs no network.
+            context.imageLoader.memoryCache?.clear()
             this.preferences = userPreferencesService.getCurrent()
             val maxBitrate =
                 preferences.appPreferences.playbackPreferences.maxBitrate
@@ -533,7 +541,7 @@ class PlaybackViewModel
                 transcodeOnlySourceIds.clear()
                 sourceErrorMessage = null
                 lastPositionMs = positionMs.coerceAtLeast(0L)
-                _state.update { it.copy(subtitleCues = emptyList()) }
+                _subtitleCues.value = emptyList()
 
                 viewModelScope.launchIO {
                     // Starting playback, so want to invalidate the last played timestamp for this item
@@ -1820,7 +1828,7 @@ class PlaybackViewModel
         }
 
         override fun onCues(cueGroup: CueGroup) {
-            _state.update { it.copy(subtitleCues = cueGroup.cues) }
+            _subtitleCues.value = cueGroup.cues
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -1890,32 +1898,34 @@ class PlaybackViewModel
 
         fun subscribeToWebSocket() {
             subscribeJob?.cancel()
-            try {
-                subscribeJob =
-                    viewModelScope.launch {
-                        coroutineScope {
+            subscribeJob =
+                viewModelScope.launch {
+                    var attempt = 0
+                    while (isActive) {
+                        try {
                             api.webSocket
                                 .subscribe<PlaystateMessage>()
-                                .onEach { message ->
+                                .collect { message ->
+                                    attempt = 0
                                     message.data?.let { request ->
                                         Timber.v("Received playstate request: %s", request)
                                         withContext(WholphinDispatchers.Main) {
                                             handlePlaystateRequest(request)
                                         }
                                     }
-                                }.catch { ex ->
-                                    Timber.e(ex, "Error in websocket subscription")
-                                }.launchIn(this)
+                                }
+                            // The flow completed normally: nothing more to listen to
+                            break
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            val backoffMs = WEBSOCKET_BACKOFF_MS[attempt.coerceAtMost(WEBSOCKET_BACKOFF_MS.lastIndex)]
+                            Timber.e(ex, "Error in playback websocket subscription, retrying in %sms", backoffMs)
+                            attempt++
+                            delay(backoffMs)
                         }
                     }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                Timber.e(ex, "Error in playback websocket subscription")
-                if (viewModelScope.isActive) {
-                    subscribeToWebSocket()
                 }
-            }
         }
 
         private suspend fun handlePlaystateRequest(request: PlaystateRequest) =
@@ -2158,13 +2168,10 @@ class PlaybackViewModel
                 bitrateEstimate,
             )
             if (totalLoadTimeMs > 0 && totalBytesLoaded > 0) {
-                _state.update {
+                _analyticsState.update {
                     it.copy(
-                        analyticsState =
-                            it.analyticsState.copy(
-                                bitrate = formatBitrate((totalBytesLoaded.toDouble() / (totalLoadTimeMs / 1000.0) * 8).roundToInt()),
-                                bitrateEstimate = formatBitrate(bitrateEstimate.toInt()),
-                            ),
+                        bitrate = formatBitrate((totalBytesLoaded.toDouble() / (totalLoadTimeMs / 1000.0) * 8).roundToInt()),
+                        bitrateEstimate = formatBitrate(bitrateEstimate.toInt()),
                     )
                 }
             }
@@ -2175,17 +2182,15 @@ class PlaybackViewModel
             droppedFrames: Int,
             elapsedMs: Long,
         ) {
-            _state.update {
-                it.copy(
-                    analyticsState =
-                        it.analyticsState.copy(
-                            droppedFrames = it.analyticsState.droppedFrames + droppedFrames,
-                        ),
-                )
+            _analyticsState.update {
+                it.copy(droppedFrames = it.droppedFrames + droppedFrames)
             }
         }
 
         companion object {
+            /** Delays before re-subscribing to the websocket after consecutive errors */
+            private val WEBSOCKET_BACKOFF_MS = longArrayOf(2_000L, 5_000L, 15_000L, 30_000L)
+
             /**
              * Maximum number of media sources to try for an item before giving up
              */

@@ -339,7 +339,7 @@ fun NavDrawer(
             x =
                 with(density) {
                     // Nigiro uses an opaque dark overlay drawer, so keep page content fixed (avoids full re-layout and clock collisions)
-                    if (drawerState.isOpen && !isNigiroTheme) (openDrawerWidth - closedDrawerWidth).roundToPx() else 0
+                    if (!isNigiroTheme && drawerState.isOpen) (openDrawerWidth - closedDrawerWidth).roundToPx() else 0
                 },
             y = 0,
         )

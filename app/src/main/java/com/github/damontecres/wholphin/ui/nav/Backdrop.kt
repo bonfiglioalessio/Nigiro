@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -37,7 +38,7 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @Composable
 fun Backdrop(
-    drawerIsOpen: Boolean,
+    drawerIsOpen: () -> Boolean,
     backdropStyle: BackdropStyle,
     viewModel: ApplicationContentViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
@@ -63,7 +64,7 @@ fun Backdrop(
 @Composable
 fun Backdrop(
     backdrop: BackdropResult,
-    drawerIsOpen: Boolean,
+    drawerIsOpen: () -> Boolean,
     backdropStyle: BackdropStyle,
     modifier: Modifier = Modifier,
     enableTopScrim: Boolean = true,
@@ -77,20 +78,35 @@ fun Backdrop(
     // Repainting it here cost a full-screen GPU pass on every frame.
 
     if (shouldDrawBackdropImage(backdropStyle, backdrop.imageUrl, enableAnimations)) {
+        val context = LocalContext.current
+        val request =
+            remember(context, backdrop.imageUrl, useExistingImageAsPlaceholder, enableAnimations, crossfadeDuration) {
+                ImageRequest
+                    .Builder(context)
+                    .data(backdrop.imageUrl)
+                    .useExistingImageAsPlaceholder(useExistingImageAsPlaceholder)
+                    .apply {
+                        if (enableAnimations) {
+                            transitionFactory(CrossFadeFactory(crossfadeDuration))
+                        }
+                    }.build()
+            }
+        val topScrim =
+            remember(baseBackgroundColor) {
+                Brush.verticalGradient(
+                    colors =
+                        listOf(
+                            Color.Black.copy(alpha = TOP_SCRIM_ALPHA),
+                            Color.Transparent,
+                            baseBackgroundColor,
+                        ),
+                )
+            }
         Box(
             modifier = modifier.fillMaxSize(),
         ) {
             AsyncImage(
-                model =
-                    ImageRequest
-                        .Builder(LocalContext.current)
-                        .data(backdrop.imageUrl)
-                        .useExistingImageAsPlaceholder(useExistingImageAsPlaceholder)
-                        .apply {
-                            if (enableAnimations) {
-                                transitionFactory(CrossFadeFactory(crossfadeDuration))
-                            }
-                        }.build(),
+                model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.TopEnd,
@@ -101,22 +117,13 @@ fun Backdrop(
                         .fillMaxWidth(.7f)
                         .drawWithContent {
                             drawContent()
-                            if (drawerIsOpen) {
+                            // Read while drawing: opening the sidebar only redraws, it doesn't recompose
+                            if (drawerIsOpen()) {
                                 drawRect(
                                     color = Color.Black.copy(alpha = 0.75f),
                                 )
                             } else if (enableTopScrim) {
-                                drawRect(
-                                    brush =
-                                        Brush.verticalGradient(
-                                            colors =
-                                                listOf(
-                                                    Color.Black.copy(alpha = TOP_SCRIM_ALPHA),
-                                                    Color.Transparent,
-                                                    baseBackgroundColor,
-                                                ),
-                                        ),
-                                )
+                                drawRect(brush = topScrim)
                             }
                         },
             )

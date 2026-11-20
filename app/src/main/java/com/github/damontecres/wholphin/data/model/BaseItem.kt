@@ -27,7 +27,6 @@ import com.github.damontecres.wholphin.ui.seriesProductionYears
 import com.github.damontecres.wholphin.ui.timeRemaining
 import com.github.damontecres.wholphin.ui.toServerString
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -109,10 +108,12 @@ data class BaseItem(
             }
 
     /**
-     * Contains pre computed UI elements that would be expensive to create on the main thread
+     * UI texts (quick details, corner labels) for the older Wholphin pages.
+     *
+     * Built on first read rather than in the constructor: every BaseItem used to pay for four
+     * AnnotatedStrings that the Nigiro pages (Home, Explore, AIOStreams details) never show.
      */
-    @Transient
-    val ui =
+    val ui: BaseItemUi by lazy(LazyThreadSafetyMode.PUBLICATION) {
         BaseItemUi(
             episodeCornerText =
                 if (type == BaseItemKind.EPISODE) {
@@ -259,6 +260,7 @@ data class BaseItem(
                         },
                 ),
         )
+    }
 
     private fun dateAsIndex(): Int? =
         data.premiereDate

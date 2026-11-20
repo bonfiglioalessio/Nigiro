@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,6 +64,7 @@ import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.MediaSegmentDto
 import org.jellyfin.sdk.model.api.TrickplayInfo
 import kotlin.time.Duration
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The overlay during playback showing controls, seek preview image, debug info, etc
@@ -87,7 +89,7 @@ fun PlaybackOverlay(
     showDebugInfo: Boolean,
     currentPlayback: CurrentPlayback?,
     currentSegment: MediaSegmentDto?,
-    analyticsState: AnalyticsState,
+    analyticsState: StateFlow<AnalyticsState>,
     queue: List<PlaylistItem>,
     modifier: Modifier = Modifier,
     trickplayInfo: TrickplayInfo? = null,
@@ -342,8 +344,11 @@ fun PlaybackOverlay(
                     configuration,
                     controllerHeight,
                 ) { configuration.screenHeightDp.dp - controllerHeight }
+            // Collected only while the debug overlay is shown: bandwidth & dropped frames
+            // updates cost nothing during normal playback
+            val analytics by analyticsState.collectAsState()
             PlaybackDebugOverlay(
-                analyticsState = analyticsState,
+                analyticsState = analytics,
                 currentPlayback = currentPlayback,
                 modifier =
                     Modifier

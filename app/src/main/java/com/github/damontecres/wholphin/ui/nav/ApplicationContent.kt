@@ -70,7 +70,7 @@ fun ApplicationContent(
     ) {
         val backdropStyle = preferences.appPreferences.interfacePreferences.backdropStyle
         Backdrop(
-            drawerIsOpen = drawerState.isOpen,
+            drawerIsOpen = { drawerState.isOpen },
             backdropStyle = backdropStyle,
             enableTopScrim = enableTopScrim,
             viewModel = viewModel,

@@ -44,11 +44,18 @@ class SuggestionsSchedulerService
 
         internal var initialDelaySecondsProvider: () -> Long = { 60L + Random.nextLong(0L, 121L) }
 
+        /**
+         * Nigiro: off. The worker woke up 1-3 minutes after launch, while browsing or watching, to query
+         * every library on the Pi and cache suggestion rows that the Nigiro Home never shows. Kept as a
+         * switch (instead of deleting the worker) so cherry-picks from Wholphin still apply.
+         */
+        internal var schedulingEnabled = false
+
         init {
             activity.lifecycleScope.launch(dispatcher + ExceptionHandler()) {
                 serverRepository.current.collect { user ->
                     Timber.v("New user %s", user?.user?.id)
-                    if (user == null) {
+                    if (user == null || !schedulingEnabled) {
                         workManager.cancelUniqueWork(SuggestionsWorker.WORK_NAME)
                     } else {
                         activity.lifecycleScope.launch(dispatcher + ExceptionHandler()) {

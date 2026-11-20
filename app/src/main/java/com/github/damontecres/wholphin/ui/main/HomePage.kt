@@ -32,9 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -487,7 +485,6 @@ fun StremioHomeContent(
             }
         }
     }
-    // FocusedBackdropSlot already handles focused item backdrops on Stremio home
 
     val continueRowIndex =
         remember(homeRows) {
@@ -505,18 +502,6 @@ fun StremioHomeContent(
         remember(density) {
             with(density) { NigiroDimens.FocusedRowTop.toPx() }
         }
-    // Row (index in homeRows) holding focus, -1 when focus is on the hero, filters or platforms
-    var focusedRowIndex by remember { mutableIntStateOf(-1) }
-    val focusedItem by remember(homeRows) {
-        derivedStateOf {
-            if (focusedRowIndex < 0) {
-                null
-            } else {
-                val position = positionProvider()
-                (homeRows.getOrNull(position.row) as? HomeRowLoadingState.Success)?.items?.getOrNull(position.column)
-            }
-        }
-    }
     val defaultBringIntoViewSpec = LocalBringIntoViewSpec.current
     var isHeroFocused by remember { mutableStateOf(false) }
     var isFilterFocused by remember { mutableStateOf(false) }
@@ -639,14 +624,7 @@ fun StremioHomeContent(
                                 aioCards = true,
                                 modifier =
                                     Modifier
-                                        .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd)
-                                        .onFocusChanged {
-                                            if (it.hasFocus) {
-                                                focusedRowIndex = 0
-                                            } else if (focusedRowIndex == 0) {
-                                                focusedRowIndex = -1
-                                            }
-                                        },
+                                        .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd),
                             )
                         }
                     }
@@ -693,14 +671,7 @@ fun StremioHomeContent(
                             aioCards = true,
                             modifier =
                                 Modifier
-                                    .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd)
-                                    .onFocusChanged {
-                                        if (it.hasFocus) {
-                                            focusedRowIndex = actualRowIndex
-                                        } else if (focusedRowIndex == actualRowIndex) {
-                                            focusedRowIndex = -1
-                                        }
-                                    },
+                                    .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd),
                         )
                     }
                 }
@@ -1535,25 +1506,6 @@ private fun Modifier.bleedHorizontally(
             placeable.place(-startPx, 0)
         }
     }
-
-/**
- * Own restart scopes, so only the header recomposes when focus moves between cards
- */
-@Composable
-private fun FocusedHeaderSlot(itemProvider: () -> BaseItem?) {
-    val item = itemProvider() ?: return
-    FocusedItemInfo(item = item)
-}
-
-@Composable
-private fun FocusedBackdropSlot(itemProvider: () -> BaseItem?) {
-    val item = itemProvider() ?: return
-    // Bleeds under the sidebar and to the right edge like the hero
-    FocusedItemBackdrop(
-        item = item,
-        modifier = Modifier.bleedHorizontally(NigiroDimens.HeroBleedStart, NigiroDimens.HeroBleedEnd),
-    )
-}
 
 /**
  * First platform tile: shows the rows of every platform again

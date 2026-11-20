@@ -34,6 +34,9 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -48,7 +51,6 @@ import com.github.damontecres.wholphin.ui.cards.showNotReleasedToast
 import com.github.damontecres.wholphin.ui.cards.AioUnreleasedChip
 import androidx.compose.ui.unit.sp
 import com.github.damontecres.wholphin.ui.cards.AioWatchedMark
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -198,10 +200,9 @@ fun AioSeasonPoster(
                         model = url,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .alpha(if (selected || focused) 1f else .6f),
+                        // Painter alpha, not Modifier.alpha: that one needs an offscreen layer per dimmed season
+                        alpha = if (selected || focused) 1f else .6f,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
                 Box(
@@ -375,8 +376,9 @@ fun AioEpisodeCard(
             }
         }
         // episode-title: "1. Name", semibold; meta text-sm muted
+        val title = remember(data.indexNumber, data.name) { listOfNotNull(data.indexNumber?.let { "$it." }, data.name).joinToString(" ") }
         Text(
-            text = listOfNotNull(data.indexNumber?.let { "$it." }, data.name).joinToString(" "),
+            text = title,
             fontSize = pxSp(16),
             fontWeight = FontWeight.SemiBold,
             color = if (focused) Color.White else AioTokens.Foreground,
@@ -388,7 +390,7 @@ fun AioEpisodeCard(
         if (meta.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = px(2))) {
                 // The star is drawn in yellow like the AIOStreams score
-                val parts = meta.split("★ ")
+                val parts = remember(meta) { meta.split("★ ") }
                 Text(text = parts[0], fontSize = pxSp(14), color = AioTokens.Muted, maxLines = 1)
                 if (parts.size > 1) {
                     Icon(AioIcons.Star, null, tint = Color(0xFFFACC15), modifier = Modifier.size(px(14)))
@@ -508,11 +510,19 @@ fun AioEpisodesSection(
             }
         }
         if (episodes != null) {
+            @OptIn(ExperimentalFoundationApi::class)
+            val episodesState =
+                rememberLazyListState(prefetchStrategy = remember { LazyListPrefetchStrategy(EPISODE_PREFETCH_CARDS) })
             LazyRow(
+                state = episodesState,
                 horizontalArrangement = Arrangement.spacedBy(px(16)),
                 contentPadding = PaddingValues(start = contentStart, end = px(32)),
             ) {
-                items(episodes.size) { index ->
+                items(
+                    count = episodes.size,
+                    key = { index -> episodes[index]?.id ?: "ep_$index" },
+                    contentType = { "episode_card" },
+                ) { index ->
                     val episode = episodes[index]
                     if (episode != null) {
                         AioEpisodeCard(
@@ -536,3 +546,6 @@ fun AioEpisodesSection(
 }
 
 private const val SEASON_FOCUS_DELAY_MS = 300L
+
+/** Episode cards composed ahead when the row comes into view (about one screen width) */
+private const val EPISODE_PREFETCH_CARDS = 4

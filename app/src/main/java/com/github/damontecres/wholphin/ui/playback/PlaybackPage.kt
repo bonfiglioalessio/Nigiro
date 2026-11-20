@@ -73,6 +73,7 @@ import com.github.damontecres.wholphin.mpv.MpvPlayer
 import com.github.damontecres.wholphin.preferences.AssPlaybackMode
 import com.github.damontecres.wholphin.preferences.DpadSeekMode
 import com.github.damontecres.wholphin.preferences.PlayerBackend
+import com.github.damontecres.wholphin.preferences.SubtitlePreferences
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.preferences.skipBackOnResume
 import com.github.damontecres.wholphin.ui.AppColors
@@ -504,107 +505,41 @@ fun PlaybackPageContent(
                 onClickPlaylist = viewModel::playItemInPlaylist,
                 currentSegment = state.currentSegment?.segment,
                 showClock = preferences.appPreferences.interfacePreferences.showClock,
-                analyticsState = state.analyticsState,
+                analyticsState = viewModel.analyticsState,
             )
 
-            var subtitleStyleAppliedForHdr by remember { mutableStateOf(state.currentMediaInfo.videoStream?.hdr == true) }
+            val isHdr = state.currentMediaInfo.videoStream?.hdr == true
             val subtitleSettings =
                 remember(state.currentMediaInfo) {
-                    Timber.v("subtitle choice: ${state.currentMediaInfo.videoStream?.hdr}")
+                    Timber.v("subtitle choice: $isHdr")
                     val useSeparate =
                         preferences.appPreferences.interfacePreferences.subtitlesPreferences.useSeparateHdr
-                    if (useSeparate && state.currentMediaInfo.videoStream?.hdr == true) {
+                    if (useSeparate && isHdr) {
                         preferences.appPreferences.interfacePreferences.hdrSubtitlesPreferences
                     } else {
                         preferences.appPreferences.interfacePreferences.subtitlesPreferences
                     }
                 }
-            val subtitleImageOpacity =
-                remember(subtitleSettings) { subtitleSettings.imageSubtitleOpacity / 100f }
 
             // Subtitles
             val subtitleMaxSize by animateFloatAsState(if (controllerViewState.controlsVisible) .7f else 1f)
-            val isImageSubtitles =
-                remember(state.subtitleCues) { state.subtitleCues.firstOrNull()?.bitmap != null }
-
-            // Reset cueCount when density changes to force re-applying subtitle style
-            var cueCount by remember(density) { mutableIntStateOf(0) }
-
             val subtitleVisible =
                 skipIndicatorDuration == 0L &&
                     state.currentPlayback?.subtitleIndexEnabled == true &&
                     !presentationState.coverSurface
 
-            AndroidView(
-                factory = { context ->
-                    SubtitleView(context).apply {
-                        subtitleSettings.applyTo(this)
-                        playerInstance.assHandler?.let { assHandler ->
-                            if (prefs.overrides.assPlaybackMode == AssPlaybackMode.ASS_LIBASS) {
-                                Timber.v("Adding AssSubtitleView")
-                                addView(
-                                    AssSubtitleView(context, assHandler).apply {
-                                        layoutParams =
-                                            FrameLayout
-                                                .LayoutParams(
-                                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                                ).apply { gravity = Gravity.CENTER }
-                                    },
-                                )
-                            }
-                        }
-                    }
-                },
-                update = { subtitleView ->
-                    if (subtitleStyleAppliedForHdr != state.currentMediaInfo.videoStream?.hdr) {
-                        // If the media has switched between SDR & HDR, reapply subtitle settings
-                        Timber.v("Switching SDR/HDR, reapplying subtitle style")
-                        subtitleSettings.applyTo(subtitleView)
-                    }
-                    subtitleView.setCues(state.subtitleCues)
-                    if (state.subtitleCues.size > cueCount) {
-                        Timber.i("Applying subtitle style to SubtitleView")
-                        // The output creates a painter for each cue, so need to apply the changes when the number of cues increases
-                        Media3SubtitleOverride(subtitleSettings.calculateEdgeSize(density))
-                            .apply(subtitleView)
-                        cueCount = state.subtitleCues.size
-                    }
-                    subtitleView.children.firstOrNull { it is AssSubtitleView }?.let {
-                        (it as? AssSubtitleView)?.apply {
-                            val resized =
-                                layoutParams.let { it.width != playerSurfaceSize.width || it.height != playerSurfaceSize.height }
-
-                            if (resized && playerSurfaceSize.width > 0 && playerSurfaceSize.height > 0) {
-                                Timber.v("Resizing AssSubtitleView: %s", playerSurfaceSize)
-                                layoutParams =
-                                    FrameLayout
-                                        .LayoutParams(
-                                            playerSurfaceSize.width,
-                                            playerSurfaceSize.height,
-                                        ).apply { gravity = Gravity.CENTER }
-                            }
-                        }
-                    }
-                },
-                onReset = {
-                    it.setCues(null)
-                },
+            PlaybackSubtitles(
+                viewModel = viewModel,
+                playerInstance = playerInstance,
+                subtitleSettings = subtitleSettings,
+                isHdr = isHdr,
+                useLibass = prefs.overrides.assPlaybackMode == AssPlaybackMode.ASS_LIBASS,
+                playerSurfaceSize = { playerSurfaceSize },
+                visible = subtitleVisible,
                 modifier =
                     Modifier
                         .fillMaxSize(subtitleMaxSize)
-                        .align(Alignment.TopCenter)
-                        .background(Color.Transparent)
-                        .graphicsLayer {
-                            alpha =
-                                if (!subtitleVisible) {
-                                    0f
-                                } else if (isImageSubtitles) {
-                                    subtitleImageOpacity
-                                } else {
-                                    1f
-                                }
-                        },
+                        .align(Alignment.TopCenter),
             )
         }
 
@@ -801,4 +736,104 @@ fun PlaybackPageContent(
             enableVideoScale = player !is MpvPlayer,
         )
     }
+}
+
+/**
+ * Draws the subtitles. Cues are collected here, not in [PlaybackPageContent], so a new cue
+ * only recomposes this composable instead of the whole playback page.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+private fun PlaybackSubtitles(
+    viewModel: PlaybackViewModel,
+    playerInstance: PlayerInstance,
+    subtitleSettings: SubtitlePreferences,
+    isHdr: Boolean,
+    useLibass: Boolean,
+    playerSurfaceSize: () -> IntSize,
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val subtitleCues by viewModel.subtitleCues.collectAsState()
+    val density = LocalDensity.current
+    var subtitleStyleAppliedForHdr by remember { mutableStateOf(isHdr) }
+    val subtitleImageOpacity =
+        remember(subtitleSettings) { subtitleSettings.imageSubtitleOpacity / 100f }
+    val isImageSubtitles =
+        remember(subtitleCues) { subtitleCues.firstOrNull()?.bitmap != null }
+
+    // Reset cueCount when density changes to force re-applying subtitle style
+    var cueCount by remember(density) { mutableIntStateOf(0) }
+
+    AndroidView(
+        factory = { context ->
+            SubtitleView(context).apply {
+                subtitleSettings.applyTo(this)
+                playerInstance.assHandler?.let { assHandler ->
+                    if (useLibass) {
+                        Timber.v("Adding AssSubtitleView")
+                        addView(
+                            AssSubtitleView(context, assHandler).apply {
+                                layoutParams =
+                                    FrameLayout
+                                        .LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ).apply { gravity = Gravity.CENTER }
+                            },
+                        )
+                    }
+                }
+            }
+        },
+        update = { subtitleView ->
+            if (subtitleStyleAppliedForHdr != isHdr) {
+                // If the media has switched between SDR & HDR, reapply subtitle settings
+                Timber.v("Switching SDR/HDR, reapplying subtitle style")
+                subtitleSettings.applyTo(subtitleView)
+                subtitleStyleAppliedForHdr = isHdr
+            }
+            subtitleView.setCues(subtitleCues)
+            if (subtitleCues.size > cueCount) {
+                Timber.i("Applying subtitle style to SubtitleView")
+                // The output creates a painter for each cue, so need to apply the changes when the number of cues increases
+                Media3SubtitleOverride(subtitleSettings.calculateEdgeSize(density))
+                    .apply(subtitleView)
+                cueCount = subtitleCues.size
+            }
+            subtitleView.children.firstOrNull { it is AssSubtitleView }?.let {
+                (it as? AssSubtitleView)?.apply {
+                    val size = playerSurfaceSize()
+                    val resized =
+                        layoutParams.let { it.width != size.width || it.height != size.height }
+
+                    if (resized && size.width > 0 && size.height > 0) {
+                        Timber.v("Resizing AssSubtitleView: %s", size)
+                        layoutParams =
+                            FrameLayout
+                                .LayoutParams(
+                                    size.width,
+                                    size.height,
+                                ).apply { gravity = Gravity.CENTER }
+                    }
+                }
+            }
+        },
+        onReset = {
+            it.setCues(null)
+        },
+        modifier =
+            modifier
+                .background(Color.Transparent)
+                .graphicsLayer {
+                    alpha =
+                        if (!visible) {
+                            0f
+                        } else if (isImageSubtitles) {
+                            subtitleImageOpacity
+                        } else {
+                            1f
+                        }
+                },
+    )
 }

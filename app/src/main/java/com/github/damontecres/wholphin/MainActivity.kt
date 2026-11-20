@@ -292,7 +292,10 @@ class MainActivity : AppCompatActivity() {
             screensaverService.pulse()
             return true
         } else {
-            screensaverService.pulse()
+            // Key-up and key-repeat events don't need to reset the timer again
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                screensaverService.pulse()
+            }
             return super.dispatchKeyEvent(event)
         }
     }
