@@ -59,7 +59,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.tv.material3.ClickableSurfaceColors
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.Icon
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.LocalContentColor
@@ -466,6 +468,43 @@ fun PlaybackButtons(
     }
 }
 
+internal fun playbackButtonFocusedContentColor(
+    theme: AppThemeColors,
+    colorScheme: ColorScheme,
+): Color =
+    when (theme) {
+        AppThemeColors.OLED_BLACK -> colorScheme.inverseOnSurface
+        AppThemeColors.NIGIRO,
+        AppThemeColors.UNRECOGNIZED,
+        -> colorScheme.onPrimary
+
+        AppThemeColors.PURPLE,
+        AppThemeColors.BLUE,
+        AppThemeColors.GREEN,
+        AppThemeColors.ORANGE,
+        AppThemeColors.BOLD_BLUE,
+        AppThemeColors.RED,
+        AppThemeColors.BROWN,
+        -> colorScheme.onSurface
+    }
+
+@Composable
+private fun playbackButtonColors(): ClickableSurfaceColors {
+    val colorScheme = MaterialTheme.colorScheme
+    val selectedColor = colorScheme.border
+    val focusedContentColor = playbackButtonFocusedContentColor(LocalTheme.current, colorScheme)
+    return ClickableSurfaceDefaults.colors(
+        containerColor = AppColors.TransparentBlack25,
+        contentColor = colorScheme.onSurface,
+        focusedContainerColor = selectedColor,
+        focusedContentColor = focusedContentColor,
+        pressedContainerColor = selectedColor,
+        pressedContentColor = focusedContentColor,
+        disabledContainerColor = AppColors.TransparentBlack25,
+        disabledContentColor = colorScheme.onSurface.copy(alpha = 0.4f),
+    )
+}
+
 @Composable
 fun PlaybackButton(
     @DrawableRes iconRes: Int,
@@ -475,16 +514,11 @@ fun PlaybackButton(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
 ) {
-    val selectedColor = MaterialTheme.colorScheme.border
     Button(
         enabled = enabled,
         onClick = onClick,
 //        shape = ButtonDefaults.shape(CircleShape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = AppColors.TransparentBlack25,
-                focusedContainerColor = selectedColor,
-            ),
+        colors = playbackButtonColors(),
         contentPadding = PaddingValues(4.dp),
         interactionSource = interactionSource,
         modifier =
@@ -496,12 +530,7 @@ fun PlaybackButton(
             modifier = Modifier.fillMaxSize(),
             painter = painterResource(iconRes),
             contentDescription = "",
-            tint =
-                if (LocalTheme.current == AppThemeColors.OLED_BLACK) {
-                    LocalContentColor.current
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
+            tint = LocalContentColor.current,
         )
     }
 }
@@ -516,16 +545,11 @@ fun PlaybackFaButton(
     interactionSource: MutableInteractionSource? = null,
     textColor: Color = Color.Unspecified,
 ) {
-    val selectedColor = MaterialTheme.colorScheme.border
     Button(
         enabled = enabled,
         onClick = onClick,
 //        shape = ButtonDefaults.shape(CircleShape),
-        colors =
-            ClickableSurfaceDefaults.colors(
-                containerColor = AppColors.TransparentBlack25,
-                focusedContainerColor = selectedColor,
-            ),
+        colors = playbackButtonColors(),
         contentPadding = PaddingValues(4.dp),
         interactionSource = interactionSource,
         modifier =
@@ -541,10 +565,8 @@ fun PlaybackFaButton(
             color =
                 if (textColor.isSpecified) {
                     textColor
-                } else if (LocalTheme.current == AppThemeColors.OLED_BLACK) {
-                    LocalContentColor.current
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    LocalContentColor.current
                 },
             modifier =
                 Modifier
