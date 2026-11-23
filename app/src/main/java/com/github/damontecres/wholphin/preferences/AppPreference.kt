@@ -221,7 +221,7 @@ sealed interface AppPreference<Pref, T> {
         val HomeClickToPlay =
             AppChoicePreference<AppPreferences, Boolean>(
                 title = R.string.continue_watching_click_behavior,
-                defaultValue = false,
+                defaultValue = true,
                 getter = { it.homePagePreferences.clickToPlay },
                 setter = { prefs, value ->
                     prefs.updateHomePagePreferences { clickToPlay = value }

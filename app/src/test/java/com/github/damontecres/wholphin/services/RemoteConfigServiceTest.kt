@@ -2,12 +2,14 @@ package com.github.damontecres.wholphin.services
 
 import com.github.damontecres.wholphin.data.model.RemoteConfigRuntime
 import com.github.damontecres.wholphin.data.model.RemoteConfigUrlResolver
+import com.github.damontecres.wholphin.data.model.RemoteHomeConfig
 import com.github.damontecres.wholphin.data.model.RemoteWholphinConfig
 import com.github.damontecres.wholphin.preferences.AppPreferences
 import com.github.damontecres.wholphin.preferences.BackdropStyle
 import com.github.damontecres.wholphin.preferences.PlayerBackend
 import com.github.damontecres.wholphin.preferences.SkipSegmentBehavior
 import com.github.damontecres.wholphin.preferences.ThemeSongVolume
+import com.github.damontecres.wholphin.preferences.updateHomePagePreferences
 import com.github.damontecres.wholphin.preferences.updateInterfacePreferences
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -125,6 +127,7 @@ class RemoteConfigServiceTest {
             assertEquals("2026-11-13-42", loaded.configRevision)
             assertEquals("MPV", loaded.playback.playerBackend)
             assertEquals("Series", loaded.home.defaultFilter)
+            assertTrue(loaded.home.clickToPlay)
             assertTrue(cacheFile.exists())
 
             val offlineService =
@@ -178,5 +181,23 @@ class RemoteConfigServiceTest {
         assertEquals(PlayerBackend.EXO_PLAYER, mapped.playbackPreferences.playerBackend)
         assertEquals(SkipSegmentBehavior.ASK_TO_SKIP, mapped.playbackPreferences.skipIntros)
         assertTrue(mapped.interfacePreferences.searchPreferences.combinedSearchResults)
+        assertTrue(mapped.homePagePreferences.clickToPlay)
+    }
+
+    @Test
+    fun mapToAppPreferences_respectsClickToPlayFalseOverride() {
+        val base =
+            AppPreferences
+                .getDefaultInstance()
+                .updateHomePagePreferences {
+                    clickToPlay = true
+                }
+        val mapped =
+            RemoteConfigService.mapToAppPreferences(
+                base,
+                RemoteWholphinConfig(home = RemoteHomeConfig(clickToPlay = false)),
+            )
+
+        assertFalse(mapped.homePagePreferences.clickToPlay)
     }
 }

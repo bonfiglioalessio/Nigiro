@@ -87,6 +87,7 @@ class AppPreferencesSerializer
                                 maxItemsPerRow = AppPreference.HomePageItems.defaultValue.toInt()
                                 enableRewatchingNextUp = AppPreference.RewatchNextUp.defaultValue
                                 maxDaysNextUp = AppPreference.MaxDaysNextUp.defaultValue.toInt()
+                                clickToPlay = AppPreference.HomeClickToPlay.defaultValue
                             }.build()
                     interfacePreferences =
                         InterfacePreferences

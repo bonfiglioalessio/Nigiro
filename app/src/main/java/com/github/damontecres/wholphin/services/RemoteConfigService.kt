@@ -246,6 +246,7 @@ class RemoteConfigService private constructor(
                 }.updateHomePagePreferences {
                     maxItemsPerRow = remote.home.maxItemsPerRow.coerceIn(6, 50)
                     enableRewatchingNextUp = remote.home.enableRewatchingNextUp
+                    clickToPlay = remote.home.clickToPlay
                 }
         }
 

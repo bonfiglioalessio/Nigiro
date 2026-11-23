@@ -117,6 +117,7 @@ import com.github.damontecres.wholphin.ui.data.ItemDetailsDialog
 import com.github.damontecres.wholphin.ui.data.ItemDetailsDialogInfo
 import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
+import com.github.damontecres.wholphin.ui.detail.series.isUnreleased
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -208,7 +209,9 @@ fun HomePage(
                     { clickedPosition: RowColumn, item: BaseItem ->
                         position = clickedPosition
                         if (currentHomePrefs.clickToPlay &&
-                            currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
+                            currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true &&
+                            item.playable &&
+                            !item.isUnreleased()
                         ) {
                             viewModel.versionPicker.play(item, item.playbackPosition)
                         } else {
@@ -1070,7 +1073,7 @@ private fun HomeRowItemContent(
                             remember(rowIndex, index) {
                                 { event: KeyEvent ->
                                     val focused = currentCardItem
-                                    if (isPlayKeyUp(event) && focused?.type?.playable == true) {
+                                    if (isPlayKeyUp(event) && focused?.type?.playable == true && !focused.isUnreleased()) {
                                         Timber.v("Clicked play on ${focused.id}")
                                         currentOnClickPlay(RowColumn(rowIndex, index), focused)
                                         true

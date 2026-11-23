@@ -42,6 +42,7 @@ import com.github.damontecres.wholphin.ui.components.GridTitle
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.StudioCardGrid
 import com.github.damontecres.wholphin.ui.components.rememberContextMenu
+import com.github.damontecres.wholphin.ui.detail.series.isUnreleased
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -276,10 +277,19 @@ fun HomeRowGrid(
                     }
 
                     else -> {
+                        val isContinueRow =
+                            destination.config is HomeRowConfig.ContinueWatching ||
+                                destination.config is HomeRowConfig.NextUp ||
+                                destination.config is HomeRowConfig.ContinueWatchingCombined
+                        val clickToPlay = preferences.appPreferences.homePagePreferences.clickToPlay
                         val onClickItem =
-                            remember {
+                            remember(isContinueRow, clickToPlay) {
                                 { index: Int, item: BaseItem ->
-                                    viewModel.navigateTo(item.destination(index))
+                                    if (clickToPlay && isContinueRow && item.playable && !item.isUnreleased()) {
+                                        viewModel.navigateTo(Destination.Playback(item.id, item.resumeMs))
+                                    } else {
+                                        viewModel.navigateTo(item.destination(index))
+                                    }
                                 }
                             }
                         LaunchedEffect(Unit) { gridFocusRequester.tryRequestFocus() }

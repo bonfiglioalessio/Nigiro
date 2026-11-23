@@ -76,6 +76,7 @@ data class RemoteHomeConfig(
     val maxItemsPerRow: Int = 24,
     val enableRewatchingNextUp: Boolean = false,
     val includeNativeResumeNextUp: Boolean = true,
+    val clickToPlay: Boolean = true,
     val hero: RemoteHeroConfig = RemoteHeroConfig(),
     val platforms: List<RemotePlatformConfig> = DEFAULT_PLATFORMS,
 ) {
