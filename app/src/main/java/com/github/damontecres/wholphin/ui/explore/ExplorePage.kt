@@ -58,7 +58,7 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.cards.cardScale
 import com.github.damontecres.wholphin.ui.cards.noCardGlow
-import com.github.damontecres.wholphin.ui.components.CircularProgress
+import com.github.damontecres.wholphin.ui.components.ExploreGenresSkeleton
 import com.github.damontecres.wholphin.ui.components.HeaderIconButton
 import com.github.damontecres.wholphin.ui.main.HomeMediaFilterBar
 import com.github.damontecres.wholphin.ui.main.NigiroDimens
@@ -190,16 +190,21 @@ fun ExplorePage(
         if (state.genres.isEmpty()) {
             item(key = "genres_status") {
                 GenresTitle()
-                Box(
-                    contentAlignment = Alignment.CenterStart,
-                    modifier =
-                        Modifier
-                            .padding(start = NigiroDimens.ContentStart, top = NigiroDimens.TitleGap)
-                            .size(TileWidth, TileHeight),
-                ) {
-                    if (state.genresLoading) {
-                        CircularProgress(Modifier.size(32.dp))
-                    } else {
+                if (state.genresLoading) {
+                    ExploreGenresSkeleton(
+                        columns = GENRE_COLUMNS,
+                        rows = 2,
+                        tileWidth = TileWidth,
+                        tileHeight = TileHeight,
+                    )
+                } else {
+                    Box(
+                        contentAlignment = Alignment.CenterStart,
+                        modifier =
+                            Modifier
+                                .padding(start = NigiroDimens.ContentStart, top = NigiroDimens.TitleGap)
+                                .size(TileWidth, TileHeight),
+                    ) {
                         Text(stringResource(R.string.explore_empty), color = NigiroPalette.TextMuted)
                     }
                 }

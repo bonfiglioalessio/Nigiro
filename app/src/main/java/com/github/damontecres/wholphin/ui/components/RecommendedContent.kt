@@ -371,7 +371,7 @@ fun RecommendedContent(
         LoadingState.Loading,
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            RowsPageSkeleton(modifier = modifier)
         }
 
         LoadingState.Success -> {

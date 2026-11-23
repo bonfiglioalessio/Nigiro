@@ -200,6 +200,7 @@ fun AioSeriesDetailsContent(
                         seasons = state.seasons,
                         selectedSeasonId = selectedSeasonId,
                         episodes = episodes,
+                        episodesLoading = state.episodes is EpisodeList.Loading,
                         contentStart = contentStart,
                         onSelectSeason = onSelectSeason,
                         onLongClickSeason = onLongClickSeason,

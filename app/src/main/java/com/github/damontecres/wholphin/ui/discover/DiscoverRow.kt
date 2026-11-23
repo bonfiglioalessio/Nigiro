@@ -19,17 +19,15 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
-import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.DiscoverItem
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
 import com.github.damontecres.wholphin.ui.cards.ViewMoreCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
+import com.github.damontecres.wholphin.ui.components.SkeletonRow
 import com.github.damontecres.wholphin.ui.detail.LocalRowStyle
 import com.github.damontecres.wholphin.ui.ifElse
 import com.github.damontecres.wholphin.ui.rememberInt
@@ -55,21 +53,15 @@ fun DiscoverRow(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            SkeletonRow(
+                title = row.title.getString(),
+                cardHeight = Cards.height2x3,
+                contentStartPadding = 16.dp,
+                titleStartPadding = 8.dp,
+                titleStyle = null,
+                titleGap = 8.dp,
                 modifier = modifier,
-            ) {
-                Text(
-                    text = row.title.getString(),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = stringResource(R.string.loading),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
+            )
         }
 
         is DataLoadingState.Success<List<DiscoverItem>> -> {

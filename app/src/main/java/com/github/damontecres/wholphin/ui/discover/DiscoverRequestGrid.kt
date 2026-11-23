@@ -3,6 +3,7 @@ package com.github.damontecres.wholphin.ui.discover
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -35,7 +36,7 @@ import com.github.damontecres.wholphin.services.SeerrApi
 import com.github.damontecres.wholphin.services.SeerrService
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
-import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.GridPageSkeleton
 import com.github.damontecres.wholphin.ui.detail.CardGrid
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.nav.Destination
@@ -285,7 +286,12 @@ fun DiscoverRequestGrid(
             DataLoadingState.Pending,
             DataLoadingState.Loading,
             -> {
-                LoadingPage(Modifier)
+                GridPageSkeleton(
+                    showTitle = false,
+                    columns = 6,
+                    contentPadding = PaddingValues(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             is DataLoadingState.Error -> {

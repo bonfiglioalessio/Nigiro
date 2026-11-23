@@ -399,7 +399,11 @@ fun ItemGrid(
         DataLoadingState.Loading,
         DataLoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            GridPageSkeleton(
+                title = destination.title.getString(),
+                columns = destination.viewOptions.columns.coerceIn(2, 8),
+                modifier = modifier,
+            )
         }
 
         is DataLoadingState.Success<List<BaseItem?>> -> {

@@ -66,10 +66,13 @@ import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.preferences.PrefContentScale
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.ui.AspectRatio
+import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.DiscoverItemCard
 import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.cards.ItemRow
 import com.github.damontecres.wholphin.ui.cards.ItemRowTitle
+import com.github.damontecres.wholphin.ui.components.SearchResultsSkeleton
+import com.github.damontecres.wholphin.ui.components.SkeletonRow
 import com.github.damontecres.wholphin.ui.components.TabDetails
 import com.github.damontecres.wholphin.ui.components.VoiceSearchButton
 import com.github.damontecres.wholphin.ui.components.rememberContextMenu
@@ -541,10 +544,9 @@ fun SearchCombinedResults(
         SearchResult.NoQuery -> {}
 
         SearchResult.Searching -> {
-            SearchResultPlaceholder(
-                title = stringResource(R.string.results),
-                message = stringResource(R.string.searching),
-                modifier = modifier.padding(16.dp),
+            SearchResultsSkeleton(
+                posterHeight = ResultPosterHeight,
+                modifier = modifier,
             )
         }
 
@@ -771,9 +773,13 @@ fun SearchRowResult(
         }
 
         SearchResult.Searching -> {
-            SearchResultPlaceholder(
+            SkeletonRow(
                 title = stringResource(title),
-                message = stringResource(R.string.searching),
+                cardHeight = Cards.height2x3,
+                contentStartPadding = 16.dp,
+                titleStartPadding = 8.dp,
+                titleStyle = null,
+                titleGap = 8.dp,
                 modifier = modifier,
             )
         }

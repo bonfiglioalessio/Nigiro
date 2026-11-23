@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,8 +39,8 @@ import com.github.damontecres.wholphin.ui.cards.GridCard
 import com.github.damontecres.wholphin.ui.components.ContextMenuProvider
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.GenreCardGrid
+import com.github.damontecres.wholphin.ui.components.GridPageSkeleton
 import com.github.damontecres.wholphin.ui.components.GridTitle
-import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.components.StudioCardGrid
 import com.github.damontecres.wholphin.ui.components.rememberContextMenu
 import com.github.damontecres.wholphin.ui.detail.series.isUnreleased
@@ -252,7 +253,14 @@ fun HomeRowGrid(
             is HomeRowLoadingState.Loading,
             is HomeRowLoadingState.Pending,
             -> {
-                LoadingPage(Modifier.fillMaxSize())
+                GridPageSkeleton(
+                    showTitle = false,
+                    columns = if (viewOptions.aspectRatio.ratio > 1f) 4 else 6,
+                    aspectRatio = viewOptions.aspectRatio.ratio,
+                    spacing = viewOptions.spacing.dp,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             is HomeRowLoadingState.Success -> {

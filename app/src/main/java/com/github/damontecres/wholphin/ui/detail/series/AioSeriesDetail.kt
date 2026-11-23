@@ -75,6 +75,7 @@ import com.github.damontecres.wholphin.ui.LocalImageUrlService
 import com.github.damontecres.wholphin.ui.cards.aioCardBorder
 import com.github.damontecres.wholphin.ui.cards.cardScale
 import com.github.damontecres.wholphin.ui.cards.noCardGlow
+import com.github.damontecres.wholphin.ui.components.EpisodeRowSkeleton
 import com.github.damontecres.wholphin.ui.detail.movie.aioDuration
 import com.github.damontecres.wholphin.ui.main.episodeCode
 import com.github.damontecres.wholphin.ui.theme.AioTokens
@@ -449,6 +450,7 @@ fun AioEpisodesSection(
     onPlayEpisode: (BaseItem) -> Unit,
     onLongClickEpisode: (Int, BaseItem) -> Unit,
     modifier: Modifier = Modifier,
+    episodesLoading: Boolean = false,
 ) {
     val selectedSeason = seasons.firstOrNull { it?.id == selectedSeasonId }
     Column(verticalArrangement = Arrangement.spacedBy(px(16)), modifier = modifier) {
@@ -541,6 +543,8 @@ fun AioEpisodesSection(
                     }
                 }
             }
+        } else if (episodesLoading) {
+            EpisodeRowSkeleton(contentStart = contentStart)
         }
     }
 }

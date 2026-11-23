@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.components
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +25,7 @@ import com.github.damontecres.wholphin.data.model.alphabetSortName
 import com.github.damontecres.wholphin.data.model.createGenreDestination
 import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.services.NavigationManager
+import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.OneTimeLaunchedEffect
 import com.github.damontecres.wholphin.ui.SlimItemFields
 import com.github.damontecres.wholphin.ui.cards.GenreCard
@@ -296,7 +298,15 @@ fun GenreCardGrid(
         DataLoadingState.Pending,
         DataLoadingState.Loading,
         -> {
-            LoadingPage(modifier.focusable())
+            GridPageSkeleton(
+                showTitle = false,
+                columns = columns,
+                aspectRatio = AspectRatios.SQUARE,
+                spacing = spacing,
+                showCardTitles = false,
+                contentPadding = PaddingValues(16.dp),
+                modifier = modifier,
+            )
         }
 
         is DataLoadingState.Error -> {

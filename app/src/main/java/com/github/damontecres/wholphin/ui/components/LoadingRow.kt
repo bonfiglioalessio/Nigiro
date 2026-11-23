@@ -71,9 +71,14 @@ fun LoadingRow(
         RowLoadingState.Pending,
         RowLoadingState.Loading,
         -> {
-            LoadingRowPlaceholder(
+            SkeletonRow(
                 title = title,
-                message = stringResource(R.string.loading),
+                cardHeight = Cards.height2x3,
+                cardSpacing = horizontalPadding,
+                contentStartPadding = horizontalPadding,
+                titleStartPadding = 8.dp,
+                titleStyle = null,
+                titleGap = 8.dp,
                 modifier = modifier,
             )
         }

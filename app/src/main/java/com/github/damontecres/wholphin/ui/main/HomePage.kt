@@ -84,6 +84,7 @@ import com.github.damontecres.wholphin.data.model.HomeRowConfig
 import com.github.damontecres.wholphin.data.model.HomeRowViewOptions
 import com.github.damontecres.wholphin.data.model.QuickDetailsData
 import com.github.damontecres.wholphin.preferences.UserPreferences
+import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.Cards
 import com.github.damontecres.wholphin.ui.cards.ContinueWatchingCard
 import com.github.damontecres.wholphin.ui.cards.ExpandingPosterCard
@@ -107,8 +108,9 @@ import com.github.damontecres.wholphin.ui.components.EpisodeName
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.FocusableItemRow
 import com.github.damontecres.wholphin.ui.components.HeaderUtils
-import com.github.damontecres.wholphin.ui.components.LoadingPage
+import com.github.damontecres.wholphin.ui.components.HomePageSkeleton
 import com.github.damontecres.wholphin.ui.components.QuickDetails
+import com.github.damontecres.wholphin.ui.components.SkeletonRow
 import com.github.damontecres.wholphin.ui.components.TextButton
 import com.github.damontecres.wholphin.ui.components.TitleOrLogo
 import com.github.damontecres.wholphin.ui.components.rememberLogoUrl
@@ -172,7 +174,7 @@ fun HomePage(
         LoadingState.Loading,
         LoadingState.Pending,
         -> {
-            LoadingPage(modifier)
+            HomePageSkeleton(modifier)
         }
 
         LoadingState.Success -> {
@@ -1012,9 +1014,15 @@ private fun HomeRowItemContent(
         is HomeRowLoadingState.Loading,
         is HomeRowLoadingState.Pending,
         -> {
-            FocusableItemRow(
+            SkeletonRow(
                 title = r.title.getString(),
-                subtitle = stringResource(R.string.loading),
+                cardHeight = if (aioCards) NigiroDimens.PosterHeight else Cards.height2x3,
+                aspectRatio = AspectRatios.TALL,
+                contentStartPadding = NigiroDimens.ContentStart,
+                titleStartPadding = NigiroDimens.ContentStart,
+                titleStyle = NigiroDimens.RowTitle,
+                titleGap = NigiroDimens.TitleGap,
+                focusable = true,
                 modifier = modifier,
             )
         }

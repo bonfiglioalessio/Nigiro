@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -996,7 +997,10 @@ fun CollectionFolderViewContent(
             DataLoadingState.Loading,
             DataLoadingState.Pending,
             -> {
-                LoadingPage(Modifier.fillMaxSize())
+                GridPageSkeleton(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             is DataLoadingState.Error -> {
@@ -1063,7 +1067,14 @@ fun CollectionFolderViewContent(
                         DataLoadingState.Loading,
                         DataLoadingState.Pending,
                         -> {
-                            LoadingPage(Modifier.fillMaxSize())
+                            GridPageSkeleton(
+                                showTitle = false,
+                                columns = state.viewOptions.columns.coerceIn(2, 8),
+                                aspectRatio = state.viewOptions.aspectRatio.ratio,
+                                spacing = state.viewOptions.spacing.dp,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxSize(),
+                            )
                         }
 
                         is DataLoadingState.Success<List<BaseItem?>> -> {
