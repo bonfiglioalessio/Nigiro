@@ -478,6 +478,10 @@
     <string name="sample_rate_unit">Hz</string>
     <string name="show_titles">Show titles</string>
     <string name="live_tv_repeat">Repeat</string>
+    <string name="live_now">LIVE</string>
+    <string name="all_channels">All</string>
+    <string name="live_tv_no_guide">No guide</string>
+    <string name="live_tv_no_guide_hint">No guide available · press OK to watch live</string>
     <string name="favorite_channels_at_beginning">Show favorite channels first</string>
     <string name="sort_channels_recently_watched">Sort channels by recently watched</string>
     <string name="color_code_programs">Color-code programs</string>

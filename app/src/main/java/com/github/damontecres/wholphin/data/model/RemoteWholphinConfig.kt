@@ -34,7 +34,7 @@ data class RemoteUiConfig(
 data class RemoteModulesConfig(
     val discover: Boolean = true,
     val screensaver: Boolean = true,
-    val liveTv: Boolean = false,
+    val liveTv: Boolean = true,
     val music: Boolean = false,
     val photos: Boolean = false,
 )

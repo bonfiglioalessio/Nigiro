@@ -15,6 +15,7 @@ import com.github.damontecres.wholphin.ui.components.LicenseInfo
 import com.github.damontecres.wholphin.ui.data.MovieSortOptions
 import com.github.damontecres.wholphin.ui.data.rememberSortOptions
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderGeneric
+import com.github.damontecres.wholphin.ui.detail.CollectionFolderLiveTv
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderMovie
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderPlaylist
 import com.github.damontecres.wholphin.ui.detail.CollectionFolderTv
@@ -440,7 +441,14 @@ fun CollectionFolder(
             )
         }
 
-        CollectionType.LIVETV,
+        CollectionType.LIVETV -> {
+            CollectionFolderLiveTv(
+                preferences = preferences,
+                destination = destination,
+                modifier = modifier,
+            )
+        }
+
         CollectionType.MUSIC,
         CollectionType.HOMEVIDEOS,
         CollectionType.PHOTOS,
