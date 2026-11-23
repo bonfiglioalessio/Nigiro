@@ -490,7 +490,14 @@ fun StremioHomeContent(
         remember(homeRows) {
             if (homeRows.firstOrNull().isContinueWatchingNextUp) 0 else -1
         }
-    val catalogStartIndex = if (continueRowIndex == 0) 1 else 0
+    val rankedStartIndex = if (continueRowIndex == 0) 1 else 0
+    val rankedRows =
+        remember(homeRows, rankedStartIndex) {
+            homeRows
+                .drop(rankedStartIndex)
+                .takeWhile { (it as? HomeRowLoadingState.Success)?.ranked == true }
+        }
+    val catalogStartIndex = rankedStartIndex + rankedRows.size
     val catalogRows =
         remember(homeRows, catalogStartIndex) {
             if (catalogStartIndex < homeRows.size) homeRows.subList(catalogStartIndex, homeRows.size) else emptyList()
@@ -627,6 +634,34 @@ fun StremioHomeContent(
                                         .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd),
                             )
                         }
+                    }
+                }
+
+                itemsIndexed(
+                    items = rankedRows,
+                    key = { idx, row -> "ranked_${(row as? HomeRowLoadingState.Success)?.title ?: idx}" },
+                    contentType = { _, _ -> "ranked_catalog_row" },
+                ) { rankedIdx, row ->
+                    val actualRowIndex = rankedStartIndex + rankedIdx
+                    CompositionLocalProvider(
+                        LocalBringIntoViewSpec provides defaultBringIntoViewSpec,
+                    ) {
+                        HomeRowItemContent(
+                            rowIndex = actualRowIndex,
+                            row = row,
+                            rowFocusRequester = rowFocusRequesters[actualRowIndex],
+                            showViewMore = true,
+                            showEmptyRows = false,
+                            currentOnFocusPosition = currentOnFocusPosition,
+                            currentOnClickPlay = currentOnClickPlay,
+                            onClickItem = onClickItem,
+                            onLongClickItem = onLongClickItem,
+                            onClickViewMore = onClickViewMore,
+                            aioCards = true,
+                            modifier =
+                                Modifier
+                                    .padding(start = NigiroDimens.HeroBleedStart, end = NigiroDimens.HeroBleedEnd),
+                        )
                     }
                 }
 
@@ -1066,6 +1101,7 @@ private fun HomeRowItemContent(
                                     onLongClick = onLongClick,
                                     cardHeight = NigiroDimens.PosterHeight,
                                     onDisk = item.isOnDisk(),
+                                    rank = if (r.ranked && index < TOP_10_LIMIT) index + 1 else null,
                                     modifier = cardMod,
                                 )
                             }

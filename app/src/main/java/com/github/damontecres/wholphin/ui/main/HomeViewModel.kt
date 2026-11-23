@@ -65,10 +65,13 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.UserItemDataDto
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
+import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
 
@@ -114,6 +117,7 @@ class HomeViewModel
         private var dataLoadingJob: Job? = null
         private var cachedContinueWatching: HomeRowLoadingState.Success? = null
         private var cachedCatalogByKey: Map<String, CachedPlatformCatalog> = emptyMap()
+        private var cachedHeroRecent: CachedPlatformCatalog = CachedPlatformCatalog()
         private var cachedConfig: RemoteWholphinConfig = RemoteWholphinConfig.DEFAULT
         private var hasAppliedInitialFilter = false
 
@@ -136,6 +140,7 @@ class HomeViewModel
                         hasAppliedInitialFilter = false
                         cachedContinueWatching = null
                         cachedCatalogByKey = emptyMap()
+                        cachedHeroRecent = CachedPlatformCatalog()
                         _state.update { HomeState.EMPTY }
                     }
                     val configChanged = remoteConfig != cachedConfig
@@ -190,7 +195,7 @@ class HomeViewModel
                     filter = filter,
                     platformKey = _state.value.platformFilter,
                 )
-            val heroSlides = buildHeroSlidesFromConfig(cachedConfig, cachedCatalogByKey, filter)
+            val heroSlides = buildHeroSlidesFromConfig(cachedConfig, cachedCatalogByKey, filter, cachedHeroRecent)
             _state.update {
                 it.copy(
                     selectedFilter = filter,
@@ -267,6 +272,12 @@ class HomeViewModel
 
                 coroutineScope {
                     val continueJob = async { fetchContinueWatching(userDto, remoteConfig, refresh) }
+                    val recentHeroJob =
+                        if (usesRecentHero(remoteConfig)) {
+                            async { fetchRecentHeroCatalog(userDto.id, cachedHeroRecent) }
+                        } else {
+                            null
+                        }
                     val immediate =
                         immediatePlatforms.map { platform ->
                             async {
@@ -275,11 +286,18 @@ class HomeViewModel
                         }
                     continueJob.await().onSuccess { cachedContinueWatching = it }
                     val immediateCatalogs = immediate.awaitAll().toMap()
+                    val recentHero = recentHeroJob?.await()
                     catalogMutex.withLock {
                         // Merge, so platforms not reloaded yet keep their rows instead of disappearing
                         cachedCatalogByKey = cachedCatalogByKey + immediateCatalogs
+                        if (recentHero != null) {
+                            cachedHeroRecent = recentHero
+                        }
                         // Rows and hero in one update, so the first focus lands on the hero, not on a row
-                        publishRowsLocked(remoteConfig, buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey))
+                        publishRowsLocked(
+                            remoteConfig,
+                            buildHeroSlidesFromConfig(remoteConfig, cachedCatalogByKey, recentHero = cachedHeroRecent),
+                        )
                     }
 
                     // Batch deferred platforms into a single state update to avoid 6 sequential UI recompositions on startup
@@ -492,6 +510,56 @@ class HomeViewModel
                     useSeries = false,
                 )
             val maxItems = config.home.maxItemsPerRow.coerceAtLeast(1)
+            val specs = buildStremioHomeRowSpecs(config.home.platforms, filter)
+            val (homeSpecs, platformSpecs) = specs.partition { it.isHome }
+
+            fun addSpecRow(spec: StremioRowSpec) {
+                val rowMaxItems = maxItemsForRow(spec, maxItems)
+                val items = selectPlatformRowItems(catalogByKey[spec.key], filter, rowMaxItems)
+                if (items.isNotEmpty()) {
+                    val rowViewOptions =
+                        if (spec.isHome) {
+                            posterOptions.copy(spacing = NigiroDimens.RankedCardGap.value.toInt())
+                        } else {
+                            posterOptions
+                        }
+                    val targetCollectionId =
+                        when (filter) {
+                            HomeMediaFilter.MOVIE -> spec.movieCollectionId
+                            HomeMediaFilter.SERIES -> spec.seriesCollectionId
+                            HomeMediaFilter.ALL ->
+                                if (spec.movieCollectionId != null && spec.seriesCollectionId == null) {
+                                    spec.movieCollectionId
+                                } else if (spec.seriesCollectionId != null && spec.movieCollectionId == null) {
+                                    spec.seriesCollectionId
+                                } else {
+                                    null
+                                }
+                        }
+                    val rowConfig =
+                        targetCollectionId?.toUUIDOrNull()?.let { uuid ->
+                            HomeRowConfig.ByParent(
+                                parentId = uuid,
+                                recursive = false,
+                                viewOptions = rowViewOptions,
+                            )
+                        }
+                    rows.add(
+                        HomeRowLoadingState.Success(
+                            title = StringStringProvider(spec.title),
+                            items = items,
+                            viewOptions = rowViewOptions,
+                            rowType = rowConfig,
+                            showViewMore = !spec.isHome && rowConfig != null && items.size >= rowMaxItems,
+                            ranked = spec.isHome,
+                        ),
+                    )
+                }
+            }
+
+            // Ranked home rows (Top 10 Italia) sit right below Continue Watching and stay visible when filtering platforms
+            homeSpecs.forEach(::addSpecRow)
+
             val platform = platformKey?.let { key -> config.home.platforms.firstOrNull { it.key == key } }
             if (platform != null) {
                 // One platform: separate Movies and Series rows
@@ -526,69 +594,116 @@ class HomeViewModel
                 }
                 return rows
             }
-            val specs = buildStremioHomeRowSpecs(config.home.platforms, filter)
-            for (spec in specs) {
-                val items = selectPlatformRowItems(catalogByKey[spec.key], filter, maxItems)
-                if (items.isNotEmpty()) {
-                    val targetCollectionId =
-                        when (filter) {
-                            HomeMediaFilter.MOVIE -> spec.movieCollectionId
-                            HomeMediaFilter.SERIES -> spec.seriesCollectionId
-                            HomeMediaFilter.ALL ->
-                                if (spec.movieCollectionId != null && spec.seriesCollectionId == null) {
-                                    spec.movieCollectionId
-                                } else if (spec.seriesCollectionId != null && spec.movieCollectionId == null) {
-                                    spec.seriesCollectionId
-                                } else {
-                                    null
-                                }
-                        }
-                    val rowConfig =
-                        targetCollectionId?.toUUIDOrNull()?.let { uuid ->
-                            HomeRowConfig.ByParent(
-                                parentId = uuid,
-                                recursive = false,
-                                viewOptions = posterOptions,
-                            )
-                        }
-                    rows.add(
-                        HomeRowLoadingState.Success(
-                            title = StringStringProvider(spec.title),
-                            items = items,
-                            viewOptions = posterOptions,
-                            rowType = rowConfig,
-                            showViewMore = rowConfig != null && items.size >= maxItems,
-                        ),
-                    )
-                }
-            }
+            platformSpecs.forEach(::addSpecRow)
             return rows
         }
+
+        private fun usesRecentHero(config: RemoteWholphinConfig): Boolean {
+            if (!config.home.hero.enabled) return false
+            val explicitNonHome =
+                config.home.platforms.firstOrNull { it.key == config.home.hero.sourceKey && !it.isHome }
+            return explicitNonHome == null
+        }
+
+        private suspend fun fetchRecentHeroCatalog(
+            userId: UUID,
+            previous: CachedPlatformCatalog,
+        ): CachedPlatformCatalog =
+            coroutineScope {
+                val movies = async { fetchRecentByKind(userId, BaseItemKind.MOVIE) }
+                val series = async { fetchRecentByKind(userId, BaseItemKind.SERIES) }
+                CachedPlatformCatalog(
+                    movies = movies.await() ?: previous.movies,
+                    series = series.await() ?: previous.series,
+                )
+            }
+
+        private suspend fun fetchRecentByKind(
+            userId: UUID,
+            kind: BaseItemKind,
+        ): List<BaseItem>? =
+            try {
+                val request =
+                    GetItemsRequest(
+                        userId = userId,
+                        recursive = true,
+                        includeItemTypes = listOf(kind),
+                        sortBy = listOf(ItemSortBy.PREMIERE_DATE, ItemSortBy.DATE_CREATED),
+                        sortOrder = listOf(SortOrder.DESCENDING, SortOrder.DESCENDING),
+                        fields = HomeItemFields,
+                        maxPremiereDate = LocalDateTime.now(),
+                        isUnaired = false,
+                        enableTotalRecordCount = false,
+                        limit = HERO_RECENT_FETCH_LIMIT,
+                    )
+                GetItemsRequestHandler
+                    .execute(api, request)
+                    .content.items
+                    .map { BaseItem(it, false) }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: InvalidStatusException) {
+                Timber.w(ex, "Status %s fetching recent %s for hero", ex.status, kind)
+                null
+            } catch (ex: Exception) {
+                Timber.w(ex, "Error fetching recent %s for hero", kind)
+                null
+            }
 
         private fun buildHeroSlidesFromConfig(
             config: RemoteWholphinConfig,
             catalogByKey: Map<String, CachedPlatformCatalog>,
             filter: HomeMediaFilter = _state.value.selectedFilter,
+            recentHero: CachedPlatformCatalog = cachedHeroRecent,
         ): List<HeroSlide> {
             if (!config.home.hero.enabled) return emptyList()
+            val heroCount = config.home.hero.count.coerceAtLeast(1)
             val heroPlatform =
                 config.home.platforms.firstOrNull { it.key == config.home.hero.sourceKey }
                     ?: config.home.platforms.firstOrNull { it.isHome }
-                    ?: return emptyList()
-            val catalog = catalogByKey[heroPlatform.key] ?: return emptyList()
+            var badgeLabel = context.getString(R.string.hero_top10_badge)
             val pool =
-                // The hero follows the Movies/Series filter too, so changing it visibly changes the page
-                interleavePlatformItems(
-                    movies = if (filter == HomeMediaFilter.SERIES) emptyList() else catalog.movies,
-                    series = if (filter == HomeMediaFilter.MOVIE) emptyList() else catalog.series,
-                    maxItems = config.home.hero.count.coerceAtLeast(1),
-                )
-            val badgeLabel = context.getString(R.string.hero_top10_badge)
+                if (usesRecentHero(config)) {
+                    val maxItems = config.home.maxItemsPerRow.coerceAtLeast(1)
+                    val top10Excluded =
+                        buildStremioHomeRowSpecs(config.home.platforms, filter)
+                            .filter { it.isHome }
+                            .flatMap { spec ->
+                                selectPlatformRowItems(catalogByKey[spec.key], filter, maxItemsForRow(spec, maxItems))
+                            }
+                    val recentPool =
+                        selectRecentHeroItems(
+                            recentMovies = recentHero.movies,
+                            recentSeries = recentHero.series,
+                            excludedItems = top10Excluded,
+                            filter = filter,
+                            count = heroCount,
+                        )
+                    if (recentPool.isNotEmpty()) {
+                        badgeLabel = context.getString(R.string.recently_released)
+                        recentPool
+                    } else {
+                        val catalog = heroPlatform?.let { catalogByKey[it.key] } ?: return emptyList()
+                        interleavePlatformItems(
+                            movies = if (filter == HomeMediaFilter.SERIES) emptyList() else catalog.movies,
+                            series = if (filter == HomeMediaFilter.MOVIE) emptyList() else catalog.series,
+                            maxItems = heroCount,
+                        )
+                    }
+                } else {
+                    val catalog = heroPlatform?.let { catalogByKey[it.key] } ?: return emptyList()
+                    // The hero follows the Movies/Series filter too, so changing it visibly changes the page
+                    interleavePlatformItems(
+                        movies = if (filter == HomeMediaFilter.SERIES) emptyList() else catalog.movies,
+                        series = if (filter == HomeMediaFilter.MOVIE) emptyList() else catalog.series,
+                        maxItems = heroCount,
+                    )
+                }
             val movieLabel = context.getString(R.string.home_filter_movies)
             val seriesLabel = context.getString(R.string.home_filter_series)
             return buildHeroSlides(
                 items = pool,
-                count = config.home.hero.count,
+                count = heroCount,
                 badgeLabel = badgeLabel,
                 backdropUrlFor = { item ->
                     imageUrlService.getItemImageUrl(
@@ -686,6 +801,11 @@ class HomeViewModel
                     cachedCatalogByKey.mapValues { (_, catalog) ->
                         catalog.copy(movies = catalog.movies.updated(), series = catalog.series.updated())
                     }
+                cachedHeroRecent =
+                    cachedHeroRecent.copy(
+                        movies = cachedHeroRecent.movies.updated(),
+                        series = cachedHeroRecent.series.updated(),
+                    )
                 cachedContinueWatching =
                     cachedContinueWatching?.let { row ->
                         row.copy(items = row.items.map { if (it?.id == itemId) it.withUserData(block) else it })
@@ -763,6 +883,7 @@ class HomeViewModel
              * How long the platform catalogs are reused before reloading them
              */
             const val CATALOG_TTL_MS = 20 * 60 * 1000L
+            private const val HERO_RECENT_FETCH_LIMIT = 24
         }
     }
 

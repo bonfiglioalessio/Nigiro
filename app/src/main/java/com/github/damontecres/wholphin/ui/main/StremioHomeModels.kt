@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.ui.main
 
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.RemotePlatformConfig
+import org.jellyfin.sdk.model.api.BaseItemKind
 import java.util.Locale
 import java.util.UUID
 
@@ -108,6 +109,13 @@ internal fun interleavePlatformItems(
     return result
 }
 
+internal const val TOP_10_LIMIT = 10
+
+internal fun maxItemsForRow(
+    spec: StremioRowSpec,
+    maxItemsPerRow: Int,
+): Int = if (spec.isHome) minOf(maxItemsPerRow, TOP_10_LIMIT) else maxItemsPerRow
+
 internal fun selectPlatformRowItems(
     cached: CachedPlatformCatalog?,
     filter: HomeMediaFilter,
@@ -176,5 +184,65 @@ internal fun buildHeroSlides(
             isFavorite = item.favorite,
             logoUrl = logoUrlFor(item),
         )
+    }
+}
+
+private const val HERO_MIN_PREFERRED_RATING = 5.5f
+
+private fun BaseItem.heroTitleKey(): String? =
+    (title ?: name)?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
+
+private fun heroCandidateTier(item: BaseItem): Int {
+    val hasBackdrop = !item.data.backdropImageTags.isNullOrEmpty()
+    val hasOverview = !item.data.overview.isNullOrBlank()
+    val unwatched = item.data.userData?.played != true
+    val rating = item.data.communityRating?.takeIf { it > 0f }
+    val goodRating = rating == null || rating >= HERO_MIN_PREFERRED_RATING
+    return when {
+        hasBackdrop && unwatched && hasOverview && goodRating -> 0
+        hasBackdrop && unwatched -> 1
+        hasBackdrop -> 2
+        else -> 3
+    }
+}
+
+/**
+ * Picks up to [count] recent movies and series for the hero banner, excluding titles already in [excludedItems]
+ * (eg Top 10 Italia) and prioritizing unwatched items with backdrop, overview and solid ratings.
+ */
+internal fun selectRecentHeroItems(
+    recentMovies: List<BaseItem>,
+    recentSeries: List<BaseItem>,
+    excludedItems: List<BaseItem>,
+    filter: HomeMediaFilter,
+    count: Int,
+): List<BaseItem> {
+    if (count <= 0) return emptyList()
+    val excludedIds = excludedItems.mapTo(HashSet()) { it.id }
+    val excludedKeys =
+        excludedItems.mapNotNullTo(HashSet()) { item ->
+            item.heroTitleKey()?.let { item.type to it }
+        }
+
+    fun prepare(items: List<BaseItem>): List<BaseItem> {
+        val seenKeys = HashSet<Any>()
+        return items
+            .asSequence()
+            .filter { item ->
+                item.id !in excludedIds &&
+                    item.heroTitleKey()?.let { (item.type to it) in excludedKeys } != true
+            }.sortedBy { heroCandidateTier(it) }
+            .filter { item ->
+                val dedupeKey: Any = item.heroTitleKey()?.let { item.type to it } ?: item.id
+                seenKeys.add(dedupeKey)
+            }.toList()
+    }
+
+    val preparedMovies = if (filter == HomeMediaFilter.SERIES) emptyList() else prepare(recentMovies)
+    val preparedSeries = if (filter == HomeMediaFilter.MOVIE) emptyList() else prepare(recentSeries)
+    return when (filter) {
+        HomeMediaFilter.ALL -> interleavePlatformItems(preparedMovies, preparedSeries, count)
+        HomeMediaFilter.MOVIE -> preparedMovies.take(count)
+        HomeMediaFilter.SERIES -> preparedSeries.take(count)
     }
 }

@@ -83,6 +83,7 @@ fun ExpandingPosterCard(
     expandable: Boolean = true,
     // The heart is left out where every card is a favourite
     showFavorite: Boolean = true,
+    rank: Int? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -110,19 +111,88 @@ fun ExpandingPosterCard(
 
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongClick by rememberUpdatedState(onLongClick)
+    val rankGlyph = rank?.let { rememberTop10RankGlyph(it, cardHeight) }
+
+    if (rankGlyph != null) {
+        Box(
+            modifier =
+                modifier
+                    .width(rankGlyph.posterOffset + width)
+                    .bringIntoViewRequester(bringIntoView),
+        ) {
+            Top10RankNumber(
+                glyph = rankGlyph,
+                focused = focused,
+                cardHeight = cardHeight,
+                modifier = Modifier.align(Alignment.TopStart),
+            )
+            PosterCardColumn(
+                item = item,
+                width = width,
+                posterWidth = posterWidth,
+                wideWidth = wideWidth,
+                cardHeight = cardHeight,
+                onDisk = onDisk,
+                showFavorite = showFavorite,
+                focused = focused,
+                expanded = expanded,
+                interactionSource = interactionSource,
+                onClick = { currentOnClick() },
+                onLongClick = { currentOnLongClick() },
+                modifier =
+                    Modifier
+                        .padding(start = rankGlyph.posterOffset)
+                        .width(width),
+            )
+        }
+    } else {
+        PosterCardColumn(
+            item = item,
+            width = width,
+            posterWidth = posterWidth,
+            wideWidth = wideWidth,
+            cardHeight = cardHeight,
+            onDisk = onDisk,
+            showFavorite = showFavorite,
+            focused = focused,
+            expanded = expanded,
+            interactionSource = interactionSource,
+            onClick = { currentOnClick() },
+            onLongClick = { currentOnLongClick() },
+            modifier =
+                modifier
+                    .width(width)
+                    .bringIntoViewRequester(bringIntoView),
+        )
+    }
+}
+
+@Composable
+private fun PosterCardColumn(
+    item: BaseItem?,
+    width: Dp,
+    posterWidth: Dp,
+    wideWidth: Dp,
+    cardHeight: Dp,
+    onDisk: Boolean,
+    showFavorite: Boolean,
+    focused: Boolean,
+    expanded: Boolean,
+    interactionSource: MutableInteractionSource,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val data = item?.data
     Column(
         verticalArrangement = Arrangement.spacedBy(px(4)),
-        modifier =
-            modifier
-                .width(width)
-                .bringIntoViewRequester(bringIntoView),
+        modifier = modifier,
     ) {
         // poster-card-image: rounded-lg bg-gray-900 ring-1 ring-white/5
         val shape = RoundedCornerShape(AioTokens.Radius)
         Card(
-            onClick = { currentOnClick() },
-            onLongClick = { currentOnLongClick() },
+            onClick = onClick,
+            onLongClick = onLongClick,
             interactionSource = interactionSource,
             shape = CardDefaults.shape(shape),
             border = aioCardBorder(shape),
