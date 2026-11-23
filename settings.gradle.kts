@@ -16,6 +16,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://jitpack.io") {
+            content {
+                includeGroup("com.github.TeamNewPipe")
+            }
+        }
         @Suppress("ktlint:standard:property-naming")
         val WholphinExtensionsUsername: String? by settings
         if (!WholphinExtensionsUsername.isNullOrBlank()) {

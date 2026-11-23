@@ -37,6 +37,7 @@ import com.github.damontecres.wholphin.ui.main.HomePage
 import com.github.damontecres.wholphin.ui.main.settings.HomeSettingsPage
 import com.github.damontecres.wholphin.ui.playback.PlayExternalPage
 import com.github.damontecres.wholphin.ui.playback.PlaybackPage
+import com.github.damontecres.wholphin.ui.playback.TrailerPlaybackPage
 import com.github.damontecres.wholphin.ui.preferences.PreferencesPage
 import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleStylePage
 import com.github.damontecres.wholphin.ui.preferences.user.UserProfilePreferencesPage
@@ -103,6 +104,14 @@ fun DestinationContent(
                     modifier = modifier,
                 )
             }
+        }
+
+        is Destination.TrailerPlayback -> {
+            TrailerPlaybackPage(
+                title = destination.title,
+                url = destination.url,
+                modifier = modifier,
+            )
         }
 
         is Destination.Settings -> {

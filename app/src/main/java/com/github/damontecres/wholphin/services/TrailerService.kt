@@ -12,6 +12,7 @@ import com.github.damontecres.wholphin.ui.nav.Destination
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -97,10 +98,30 @@ class TrailerService
                     }
 
                     is RemoteTrailer -> {
-                        val intent = Intent(Intent.ACTION_VIEW, trailer.url.toUri())
-                        context.startActivity(intent)
+                        if (isYouTubeUrl(trailer.url)) {
+                            navigateTo.invoke(
+                                Destination.TrailerPlayback(
+                                    title = trailer.name,
+                                    url = trailer.url,
+                                ),
+                            )
+                        } else {
+                            openExternal(context, trailer.url)
+                        }
                     }
                 }
             }
+
+            fun openExternal(
+                context: Context,
+                url: String,
+            ): Boolean =
+                runCatching {
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                    context.startActivity(intent)
+                    true
+                }.onFailure { ex ->
+                    Timber.w(ex, "Failed opening external trailer URL %s", url)
+                }.getOrDefault(false)
         }
     }

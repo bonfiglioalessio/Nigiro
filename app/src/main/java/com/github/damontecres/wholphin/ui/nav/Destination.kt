@@ -104,6 +104,12 @@ sealed class Destination(
     }
 
     @Serializable
+    data class TrailerPlayback(
+        val title: String,
+        val url: String,
+    ) : Destination(true)
+
+    @Serializable
     data class FilteredCollection(
         val itemId: UUID,
         val parentType: BaseItemKind,

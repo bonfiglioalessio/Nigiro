@@ -872,4 +872,7 @@
     <string name="search_no_results_hint">Prova con meno parole o controlla come è scritto</string>
     <string name="search_popular_now">Popolari ora</string>
     <string name="search_other_results">Altro</string>
+    <string name="trailer_opening_external">Apertura trailer su YouTube…</string>
+    <string name="trailer_load_error">Impossibile riprodurre questo trailer</string>
+    <string name="trailer_controls_hint">OK Pausa/Riproduci · ◀ ▶ ±10s · Indietro chiudi</string>
 </resources>

@@ -390,6 +390,7 @@ dependencies {
     ksp(libs.auto.service.ksp)
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
+    implementation(libs.newpipe.extractor)
     implementation(libs.kache)
     implementation(libs.kache.file)
 

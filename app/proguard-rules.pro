@@ -25,3 +25,9 @@
 
 # Keep external/native functions
 -keep class com.suyashbelekar.exoplayerhdrutils.libdovi.LibDovi { *; }
+
+# NewPipeExtractor / Mozilla Rhino for YouTube signature deobfuscation
+-keep class org.mozilla.javascript.** { *; }
+-keep class org.mozilla.classfile.ClassFileWriter
+-dontwarn org.mozilla.javascript.tools.**
+-dontwarn org.jsoup.**
