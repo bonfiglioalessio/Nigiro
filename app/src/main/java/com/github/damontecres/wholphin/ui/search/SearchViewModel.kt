@@ -192,15 +192,14 @@ class SearchViewModel
          * Swaps favorited streamed movies (Gelato) for their downloaded copy, so the row shows what is on disk
          */
         private suspend fun withLocalCopies(items: List<BaseItem>): List<BaseItem> {
-            if (items.none { localTwinService.isStreamOnly(it.data) }) return items
-            return items
-                .map { item ->
-                    if (localTwinService.isStreamOnly(item.data)) {
-                        localTwinService.findLocalTwin(item.data)?.let { BaseItem.from(it, api, false) } ?: item
-                    } else {
-                        item
-                    }
-                }.distinctBy { it.id }
+            val dtos = items.map { it.data }
+            val replaced =
+                localTwinService.replaceWithLocalTwins(
+                    dtos,
+                    SlimItemFields + listOf(ItemFields.PATH, ItemFields.PROVIDER_IDS, ItemFields.MEDIA_SOURCES),
+                )
+            if (replaced === dtos) return items
+            return replaced.map { BaseItem.from(it, api, false) }
         }
 
         fun rememberSearch(query: String) {

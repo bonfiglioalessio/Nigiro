@@ -233,7 +233,7 @@ class ImageUrlService
             fillWidth: Int? = null,
             fillHeight: Int? = null,
             tag: String? = null,
-            format: ImageFormat? = null,
+            format: ImageFormat? = ImageFormat.WEBP,
             percentPlayed: Double? = null,
             unplayedCount: Int? = null,
             blur: Int? = null,
@@ -272,21 +272,25 @@ class ImageUrlService
         fun rememberImageUrl(
             item: BaseItem?,
             imageType: ImageType = ImageType.PRIMARY,
+            fillWidth: Int? = null,
+            fillHeight: Int? = null,
         ) = remember(
             item?.id,
             item?.useSeriesForPrimary,
             item?.data?.imageTags?.get(imageType),
             item?.data?.backdropImageTags?.firstOrNull(),
             imageType,
+            fillWidth,
+            fillHeight,
         ) {
             if (item != null) {
-                getItemImageUrl(item, imageType)
+                getItemImageUrl(item, imageType, fillWidth = fillWidth, fillHeight = fillHeight)
             } else {
                 null
             }
         }
 
         companion object {
-            private const val QUALITY = 96
+            private const val QUALITY = 88
         }
     }

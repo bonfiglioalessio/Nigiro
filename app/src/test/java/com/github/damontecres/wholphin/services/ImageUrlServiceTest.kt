@@ -204,4 +204,13 @@ class ImageUrlServiceTest {
         val item = BaseItem(episode(parentThumbItemId = seriesId).copy(id = seasonId, type = BaseItemKind.SEASON))
         assertImage(imageUrlService.getItemImageUrl(item, ImageType.THUMB), seriesId, ImageType.THUMB, "parentThumb")
     }
+
+    @Test
+    fun `Default image url uses WebP format and quality 88`() {
+        val item = BaseItem(movie(imageTags = mapOf(ImageType.PRIMARY to "primary")))
+        val url = imageUrlService.getItemImageUrl(item, ImageType.PRIMARY)!!
+        val query = url.substringAfter('?', "")
+        Assert.assertTrue("Expected WebP format in $url", query.contains("format=Webp", ignoreCase = true))
+        Assert.assertTrue("Expected quality=88 in $url", query.contains("quality=88"))
+    }
 }

@@ -4,7 +4,6 @@ import androidx.compose.ui.focus.FocusRequester
 import com.github.damontecres.wholphin.ui.AioIcons
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
-import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,7 +67,6 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -166,6 +164,10 @@ fun AioNextAiring(episode: BaseItem) {
     }
 }
 
+private val SeasonCardShape = RoundedCornerShape(AioTokens.Radius)
+private val EpisodeCardShape = RoundedCornerShape(AioTokens.RadiusXl)
+private val SmallPillShape = RoundedCornerShape(50)
+
 /** season-poster: 120 px, rounded-lg, dimmed unless current; ring-2 white when current; name below */
 @Composable
 fun AioSeasonPoster(
@@ -179,7 +181,7 @@ fun AioSeasonPoster(
     val url = remember(season.id) { imageUrlService.getItemImageUrl(season, ImageType.PRIMARY, fillWidth = 240) }
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(AioTokens.Radius)
+    val shape = SeasonCardShape
     Column(verticalArrangement = Arrangement.spacedBy(px(8)), modifier = modifier.width(px(120))) {
         Card(
             onClick = onClick,
@@ -306,7 +308,7 @@ fun AioEpisodeCard(
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongClick by rememberUpdatedState(onLongClick)
     val data = episode.data
-    val shape = RoundedCornerShape(AioTokens.RadiusXl)
+    val shape = EpisodeCardShape
     val played = data.userData?.played == true
     val percent = data.userData?.playedPercentage ?: 0.0
     val unreleased = remember(episode.id, data.premiereDate) { episode.isUnreleased() }
@@ -410,7 +412,7 @@ fun AioSmallPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pill = RoundedCornerShape(50)
+    val pill = SmallPillShape
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(pill),
@@ -537,7 +539,7 @@ fun AioEpisodesSection(
                             Modifier
                                 .width(px(336))
                                 .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(AioTokens.RadiusXl))
+                                .clip(EpisodeCardShape)
                                 .background(AioTokens.Gray900),
                         )
                     }

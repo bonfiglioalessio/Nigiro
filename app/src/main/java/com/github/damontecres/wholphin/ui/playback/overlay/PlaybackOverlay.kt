@@ -299,7 +299,7 @@ fun PlaybackOverlay(
         }
 
         // Top
-        val logoImageUrl = LocalImageUrlService.current.rememberImageUrl(item, ImageType.LOGO)
+        val logoImageUrl = LocalImageUrlService.current.rememberImageUrl(item, ImageType.LOGO, fillWidth = 480, fillHeight = 240)
         AnimatedVisibility(
             visible = !showDebugInfo && logoImageUrl.isNotNullOrBlank() && controllerViewState.controlsVisible,
             enter = slideIn { IntOffset(x = -it.width / 2, y = -it.height / 2) } + fadeIn(),

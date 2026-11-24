@@ -2,7 +2,6 @@ package com.github.damontecres.wholphin.ui.cards
 
 import com.github.damontecres.wholphin.ui.theme.px
 import com.github.damontecres.wholphin.ui.theme.pxSp
-import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -40,14 +39,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
@@ -65,6 +62,8 @@ import kotlin.math.roundToInt
  * scroll, which is what made the TV's home stutter. Only the card stopped on opens.
  */
 private const val EXPAND_DELAY_MS = 650L
+
+private val PosterCardShape = RoundedCornerShape(AioTokens.Radius)
 
 /**
  * A poster with its title and year below. When focus rests on it, it widens to 16:9 and shows the backdrop,
@@ -189,7 +188,7 @@ private fun PosterCardColumn(
         modifier = modifier,
     ) {
         // poster-card-image: rounded-lg bg-gray-900 ring-1 ring-white/5
-        val shape = RoundedCornerShape(AioTokens.Radius)
+        val shape = PosterCardShape
         Card(
             onClick = onClick,
             onLongClick = onLongClick,

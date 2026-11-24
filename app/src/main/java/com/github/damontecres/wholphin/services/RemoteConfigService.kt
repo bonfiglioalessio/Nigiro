@@ -15,11 +15,14 @@ import com.github.damontecres.wholphin.preferences.updateInterfacePreferences
 import com.github.damontecres.wholphin.preferences.updatePlaybackPreferences
 import com.github.damontecres.wholphin.preferences.updateScreensaverPreferences
 import com.github.damontecres.wholphin.preferences.updateSearchPreferences
+import com.github.damontecres.wholphin.services.hilt.IoCoroutineScope
 import com.github.damontecres.wholphin.services.hilt.StandardOkHttpClient
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -37,16 +40,19 @@ class RemoteConfigService private constructor(
     private val cacheFile: File,
     private val preferencesDataStore: DataStore<AppPreferences>?,
     private val fetcher: suspend (String) -> String?,
+    ioScope: CoroutineScope?,
 ) {
     @Inject
     constructor(
         @ApplicationContext context: Context,
         @StandardOkHttpClient okHttpClient: OkHttpClient,
         preferencesDataStore: DataStore<AppPreferences>,
+        @IoCoroutineScope ioScope: CoroutineScope,
     ) : this(
         cacheFile = File(context.filesDir, CACHE_FILE_NAME),
         preferencesDataStore = preferencesDataStore,
         fetcher = defaultFetcher(okHttpClient),
+        ioScope = ioScope,
     )
 
     internal constructor(
@@ -54,18 +60,34 @@ class RemoteConfigService private constructor(
         preferencesDataStore: DataStore<AppPreferences>? = null,
         fetcher: suspend (String) -> String?,
         testInit: Boolean = true,
-    ) : this(cacheFile, preferencesDataStore, fetcher) {
+    ) : this(cacheFile, preferencesDataStore, fetcher, ioScope = null) {
         if (testInit) {
             RemoteConfigRuntime.current = _config.value
         }
     }
 
     private val mutex = Mutex()
-    private val _config = MutableStateFlow(loadInitialConfig(cacheFile))
+    private val _config = MutableStateFlow(RemoteWholphinConfig.DEFAULT)
     val config: StateFlow<RemoteWholphinConfig> = _config
+
+    @Volatile
+    private var hasRefreshed = false
+    private var lastWrittenRaw: String? = null
+    private var lastAppliedConfig: RemoteWholphinConfig? = null
 
     init {
         RemoteConfigRuntime.current = _config.value
+        ioScope?.launch {
+            mutex.withLock {
+                if (!hasRefreshed) {
+                    val cached = loadInitialConfig(cacheFile)
+                    if (cached != _config.value) {
+                        _config.value = cached
+                        RemoteConfigRuntime.current = cached
+                    }
+                }
+            }
+        }
     }
 
     suspend fun refreshForServer(
@@ -73,6 +95,7 @@ class RemoteConfigService private constructor(
         overrideUrl: String? = null,
     ): RemoteWholphinConfig =
         mutex.withLock {
+            hasRefreshed = true
             val candidates = RemoteConfigUrlResolver.candidateUrls(serverUrl, overrideUrl)
             var fetched: Pair<RemoteWholphinConfig, String>? = null
             for (url in candidates) {
@@ -94,15 +117,28 @@ class RemoteConfigService private constructor(
 
             val resolved =
                 if (fetched != null) {
-                    writeCache(cacheFile, fetched.second)
+                    val raw = fetched.second
+                    withContext(Dispatchers.IO) {
+                        if (lastWrittenRaw == null && cacheFile.exists()) {
+                            val existing = runCatching { cacheFile.readText() }.getOrNull()
+                            if (existing != null) lastWrittenRaw = existing
+                        }
+                        if (raw != lastWrittenRaw) {
+                            writeCache(cacheFile, raw)
+                            lastWrittenRaw = raw
+                        }
+                    }
                     fetched.first
                 } else {
-                    loadInitialConfig(cacheFile)
+                    withContext(Dispatchers.IO) { loadInitialConfig(cacheFile) }
                 }
 
             _config.value = resolved
             RemoteConfigRuntime.current = resolved
-            applyPreferences(resolved)
+            if (resolved != lastAppliedConfig) {
+                applyPreferences(resolved)
+                lastAppliedConfig = resolved
+            }
             resolved
         }
 

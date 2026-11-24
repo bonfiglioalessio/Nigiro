@@ -48,6 +48,10 @@ class BackdropService
     ) {
         private val extractedColorCache = LruCache<String, ExtractedColors>(50)
 
+    init {
+        backdropServiceCreated = true
+    }
+
         private val _backdropFlow = MutableStateFlow<BackdropResult>(BackdropResult.NONE)
         val backdropFlow = _backdropFlow
 
@@ -296,3 +300,10 @@ data class ExtractedColors(
         val DEFAULT = ExtractedColors(Color.Unspecified, Color.Unspecified, Color.Unspecified)
     }
 }
+
+/**
+ * True once [BackdropService] has been instantiated. Avoids calling `backdropService.get()` inside
+ * [com.github.damontecres.wholphin.WholphinApplication.onTrimMemory] when `backdropStyle` is `NONE`.
+ */
+@Volatile
+var backdropServiceCreated: Boolean = false

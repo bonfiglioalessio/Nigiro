@@ -617,7 +617,7 @@ fun PlaybackPageContent(
                             it.name,
                         ).joinToString(" - "),
                     description = it.data.overview,
-                    imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
+                    imageUrl = LocalImageUrlService.current.rememberImageUrl(it, fillWidth = 640),
                     aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
                     onClick = {
                         viewModel.reportInteraction()

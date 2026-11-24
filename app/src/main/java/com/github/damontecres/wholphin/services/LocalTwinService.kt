@@ -3,8 +3,14 @@ package com.github.damontecres.wholphin.services
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.util.GetEpisodesRequestHandler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.itemsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
@@ -49,9 +55,11 @@ class LocalTwinService
         // Streamed series id -> local series id
         private val seriesCache = ConcurrentHashMap<UUID, CacheEntry>()
 
-        // Searches are rare: serializing them lets a concurrent lookup of the same item (eg a details page
-        // initializing twice) wait for the first one and use its cached result instead of searching again
-        private val searchMutex = Mutex()
+        // Bounded concurrency for batch/parallel local copy lookups and per-item coalescing
+        private val lookupSemaphore = Semaphore(4)
+        private val inFlightLookups = ConcurrentHashMap<UUID, CompletableDeferred<UUID?>>()
+        // Series -> local series lookup stays serialized (rare and shared across all episodes of a show)
+        private val seriesMutex = Mutex()
 
         /**
          * Whether the item is a movie or episode with only streamed sources (eg a Gelato stub)
@@ -63,41 +71,98 @@ class LocalTwinService
             return sources.isNotEmpty() && sources.all { it.isRemote || it.protocol == MediaProtocol.HTTP }
         }
 
+        private suspend fun resolveTwinId(item: BaseItemDto): UUID? {
+            itemCache[item.id]?.takeIf { it.isFresh }?.let { return it.twinId }
+
+            val newDeferred = CompletableDeferred<UUID?>()
+            val existing = inFlightLookups.putIfAbsent(item.id, newDeferred)
+            if (existing != null) {
+                return existing.await()
+            }
+
+            try {
+                val found =
+                    lookupSemaphore.withPermit {
+                        // Re-check cache after acquiring permit
+                        itemCache[item.id]?.takeIf { it.isFresh }?.let { return@withPermit it.twinId }
+                        val resolved =
+                            if (item.type == BaseItemKind.EPISODE) searchEpisodeTwin(item) else searchMovieTwin(item)
+                        itemCache[item.id] = CacheEntry(resolved, System.currentTimeMillis())
+                        resolved
+                    }
+                newDeferred.complete(found)
+                return found
+            } catch (ex: CancellationException) {
+                newDeferred.cancel(ex)
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Local copy search failed for %s", item.id)
+                newDeferred.complete(null)
+                return null
+            } finally {
+                inFlightLookups.remove(item.id, newDeferred)
+            }
+        }
+
         /**
          * Returns the full local item for a stream-only movie or episode, or null if there is none
          */
         suspend fun findLocalTwin(item: BaseItemDto): BaseItemDto? {
             if (!isStreamOnly(item)) return null
-            val twinId =
-                try {
-                    searchMutex.withLock {
-                        // A cached "no local copy" counts too, so it isn't searched again on every play
-                        val cached = itemCache[item.id]?.takeIf { it.isFresh }
-                        if (cached != null) {
-                            cached.twinId
-                        } else {
-                            val found =
-                                if (item.type == BaseItemKind.EPISODE) searchEpisodeTwin(item) else searchMovieTwin(item)
-                            itemCache[item.id] = CacheEntry(found, System.currentTimeMillis())
-                            found
-                        }
-                    }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Local copy search failed for %s", item.id)
-                    null
-                }
-            return twinId?.let {
-                try {
-                    api.userLibraryApi.getItem(it).content
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    Timber.w(ex, "Could not fetch local copy %s", it)
-                    null
-                }
+            val twinId = resolveTwinId(item) ?: return null
+            return try {
+                api.userLibraryApi.getItem(twinId).content
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not fetch local copy %s", twinId)
+                null
             }
+        }
+
+        /**
+         * Replaces stream-only items with their downloaded local copies using bounded parallel twin
+         * resolution and a single batched `GetItems` call for the matched local items.
+         */
+        suspend fun replaceWithLocalTwins(
+            items: List<BaseItemDto>,
+            fields: List<ItemFields>,
+        ): List<BaseItemDto> {
+            if (items.none { isStreamOnly(it) }) return items
+            val twinIdsByItemId =
+                coroutineScope {
+                    items
+                        .filter { isStreamOnly(it) }
+                        .map { dto -> async { dto.id to resolveTwinId(dto) } }
+                        .awaitAll()
+                        .toMap()
+                }
+            val twinIds = twinIdsByItemId.values.filterNotNull().distinct()
+            val localById =
+                if (twinIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    try {
+                        api.itemsApi
+                            .getItems(
+                                GetItemsRequest(
+                                    userId = serverRepository.currentUser?.id,
+                                    ids = twinIds,
+                                    fields = fields,
+                                    enableTotalRecordCount = false,
+                                ),
+                            ).content.items
+                            .associateBy { it.id }
+                    } catch (ex: CancellationException) {
+                        throw ex
+                    } catch (ex: Exception) {
+                        Timber.w(ex, "Could not batch-fetch local copies %s", twinIds)
+                        emptyMap()
+                    }
+                }
+            return items
+                .map { dto -> twinIdsByItemId[dto.id]?.let { localById[it] } ?: dto }
+                .distinctBy { it.id }
         }
 
         private suspend fun searchMovieTwin(item: BaseItemDto): UUID? =
@@ -121,7 +186,7 @@ class LocalTwinService
             val key = series.id to season
             seasonCache[key]?.takeIf { System.currentTimeMillis() - it.second < CACHE_MS }?.let { return it.first }
             return try {
-                searchMutex
+                seriesMutex
                     .withLock {
                         val localSeriesId = localSeriesIdFor(series.id) ?: return@withLock emptySet()
                         localEpisodes(localSeriesId, season)

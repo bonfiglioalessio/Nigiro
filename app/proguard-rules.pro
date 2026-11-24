@@ -34,3 +34,9 @@
 -dontwarn javax.script.**
 -dontwarn jdk.dynalink.**
 -dontwarn org.jsoup.**
+
+# Strip verbose/debug Timber calls in release (Timber tree filters < INFO anyway)
+-assumenosideeffects class timber.log.Timber {
+  public static void v(...);
+  public static void d(...);
+}

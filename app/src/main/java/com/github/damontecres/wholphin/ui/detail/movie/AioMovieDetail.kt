@@ -4,7 +4,6 @@ import com.github.damontecres.wholphin.ui.theme.px
 import com.github.damontecres.wholphin.ui.AioIcons
 import com.github.damontecres.wholphin.ui.FaGlyph
 import com.github.damontecres.wholphin.ui.theme.pxSp
-import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -74,8 +73,8 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
-import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.Person
@@ -92,6 +91,10 @@ import kotlin.time.Duration
  * The movie page of the AIOStreams app (packages/web/src/pages/item.tsx, components/people.tsx,
  * components/overview.tsx, ui button/badge variants), written for Compose on a 960x540 dp TV screen.
  */
+
+private val DetailPosterShape = RoundedCornerShape(AioTokens.RadiusXl)
+private val DetailRadiusShape = RoundedCornerShape(AioTokens.Radius)
+private val DetailPillShape = RoundedCornerShape(50)
 
 /**
  * item-backdrop (lg): top 85vh, image right-aligned within 2.6x its height and faded in over its first 12rem,
@@ -114,6 +117,7 @@ fun AioDetailBackdrop(
                     .Builder(context)
                     .data(it)
                     .size(1920, 1080)
+                    .memoryCachePolicy(CachePolicy.DISABLED)
                     .build()
             }
         } ?: return
@@ -190,7 +194,7 @@ fun AioPoster(
                     .build()
             }
         }
-    val shape = RoundedCornerShape(AioTokens.RadiusXl)
+    val shape = DetailPosterShape
     Box(
         modifier =
             modifier
@@ -336,9 +340,9 @@ fun AioGenres(genres: List<String>) {
                 modifier =
                     Modifier
                         .height(px(24))
-                        .clip(RoundedCornerShape(50))
+                        .clip(DetailPillShape)
                         .background(Color(0xFF1C1C1C).copy(alpha = .1f))
-                        .border(px(1), Color(0xFF5A5A5A).copy(alpha = .4f), RoundedCornerShape(50))
+                        .border(px(1), Color(0xFF5A5A5A).copy(alpha = .4f), DetailPillShape)
                         .padding(horizontal = px(8)),
             ) {
                 Text(
@@ -365,7 +369,7 @@ fun AioOverview(
     Surface(
         onClick = onMore,
         interactionSource = interaction,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(AioTokens.Radius)),
+        shape = ClickableSurfaceDefaults.shape(DetailRadiusShape),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
@@ -375,7 +379,7 @@ fun AioOverview(
             ),
         border =
             ClickableSurfaceDefaults.border(
-                focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = RoundedCornerShape(AioTokens.Radius)),
+                focusedBorder = Border(BorderStroke(AioTokens.RingWidth, AioTokens.Ring), shape = DetailRadiusShape),
             ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         modifier = modifier,
@@ -429,7 +433,7 @@ fun AioPillButton(
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
-    val pill = RoundedCornerShape(50)
+    val pill = DetailPillShape
     val container = if (white) Color.White.copy(alpha = .18f) else Color.Transparent
     val contentColor = if (white) Color.White else AioTokens.Gray300
     Button(
@@ -654,7 +658,7 @@ private fun AioPersonCard(
         onClick = onClick,
         onLongClick = onLongClick,
         interactionSource = interaction,
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(AioTokens.RadiusXl)),
+        shape = ClickableSurfaceDefaults.shape(DetailPosterShape),
         colors =
             ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,

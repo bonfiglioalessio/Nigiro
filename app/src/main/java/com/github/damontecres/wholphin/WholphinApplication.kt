@@ -10,6 +10,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import coil3.imageLoader
 import com.github.damontecres.wholphin.services.BackdropService
+import com.github.damontecres.wholphin.services.backdropServiceCreated
 import com.github.damontecres.wholphin.ui.coilImageLoaderCreated
 import dagger.hilt.android.HiltAndroidApp
 import org.acra.ACRA
@@ -128,7 +129,7 @@ class WholphinApplication :
         val memoryCache = if (coilImageLoaderCreated) imageLoader.memoryCache else null
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             memoryCache?.clear()
-            if (::backdropService.isInitialized) backdropService.get().clearColorCache()
+            if (backdropServiceCreated && ::backdropService.isInitialized) backdropService.get().clearColorCache()
         } else if (level >= TRIM_MEMORY_RUNNING_MODERATE) {
             memoryCache?.let { it.trimToSize(it.maxSize / 2) }
         }
@@ -138,7 +139,7 @@ class WholphinApplication :
     override fun onLowMemory() {
         super.onLowMemory()
         if (coilImageLoaderCreated) imageLoader.memoryCache?.clear()
-        if (::backdropService.isInitialized) backdropService.get().clearColorCache()
+        if (backdropServiceCreated && ::backdropService.isInitialized) backdropService.get().clearColorCache()
     }
 
     override val workManagerConfiguration: Configuration

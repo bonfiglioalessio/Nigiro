@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui.cards
 import com.github.damontecres.wholphin.ui.theme.px
 import com.github.damontecres.wholphin.ui.AioIcons
 import com.github.damontecres.wholphin.ui.theme.pxSp
-import android.graphics.Bitmap
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +42,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.bitmapConfig
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.LocalImageUrlService
@@ -52,6 +50,8 @@ import com.github.damontecres.wholphin.ui.main.remainingLabel
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import kotlin.math.roundToInt
+
+private val ContinueWatchingCardShape = RoundedCornerShape(AioTokens.RadiusXl)
 
 /**
  * Continue watching / next up: a 16:9 still (the episode's own image, or the movie's thumb/backdrop) with the
@@ -127,7 +127,7 @@ fun ContinueWatchingCard(
         modifier = modifier.width(width),
     ) {
         // wide-card-image: rounded-xl bg-gray-900 ring-1 ring-white/5
-        val shape = RoundedCornerShape(AioTokens.RadiusXl)
+        val shape = ContinueWatchingCardShape
         val focused by interactionSource.collectIsFocusedAsState()
         Card(
             onClick = { if (unreleased) showNotReleasedToast(context, item?.releaseDay()) else currentOnClick() },

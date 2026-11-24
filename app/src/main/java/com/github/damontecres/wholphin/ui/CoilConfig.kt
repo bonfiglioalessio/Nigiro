@@ -3,7 +3,6 @@ package com.github.damontecres.wholphin.ui
 import android.app.ActivityManager
 import android.os.Process
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import coil3.ImageLoader
 import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
@@ -57,20 +56,21 @@ fun CoilConfig(
     debugLogging: Boolean,
     enableCache: Boolean = true,
 ) {
-    val client =
-        remember(okHttpClient, debugLogging) {
-            // Images get their own request queue (connections are still shared): OkHttp allows 5
-            // requests per host per dispatcher, and scrolling a grid queues 10-15 posters on the
-            // Jellyfin server, which would leave opening a title or starting playback waiting behind them
-            val imageClient =
-                okHttpClient
-                    .newBuilder()
-                    .dispatcher(
-                        Dispatcher().apply {
-                            maxRequests = 16
-                            maxRequestsPerHost = 6
-                        },
-                    ).build()
+    setSingletonImageLoaderFactory { ctx ->
+        // Images get their own request queue (connections are still shared): OkHttp allows 5
+        // requests per host per dispatcher, and scrolling a grid queues 10-15 posters on the
+        // Jellyfin server, which would leave opening a title or starting playback waiting behind them.
+        // Built inside the singleton factory so Activity recreation/recomposition never allocates a new Dispatcher.
+        val imageClient =
+            okHttpClient
+                .newBuilder()
+                .dispatcher(
+                    Dispatcher().apply {
+                        maxRequests = 16
+                        maxRequestsPerHost = 6
+                    },
+                ).build()
+        val client =
             if (debugLogging) {
                 imageClient
                     .newBuilder()
@@ -85,8 +85,6 @@ fun CoilConfig(
             } else {
                 imageClient
             }
-        }
-    setSingletonImageLoaderFactory { ctx ->
         Timber.i("Image diskCacheSizeBytes=$diskCacheSizeBytes")
         coilImageLoaderCreated = true
         ImageLoader

@@ -64,9 +64,7 @@ class ExploreViewModel
         private val _state = MutableStateFlow(ExploreState())
         val state: StateFlow<ExploreState> = _state
 
-        // Genre tiles per filter: switching back and forth does not reload them
-        private val genreTiles = ConcurrentHashMap<HomeMediaFilter, List<ExploreGenreTile>>()
-        private var genreIdsByName: Map<String, UUID>? = null
+        // Genre tiles per filter: switching back and forth and re-entering Explore reuses the TTL cache
         private var genreJob: Job? = null
 
         init {
@@ -165,18 +163,27 @@ class ExploreViewModel
                 }
 
         private fun loadGenres(filter: HomeMediaFilter) {
-            genreTiles[filter]?.let { tiles ->
-                genreJob?.cancel()
-                _state.update { it.copy(genres = tiles, genresLoading = false) }
-                return
-            }
+            val userId = serverRepository.currentUser?.id
+            val cacheKey = userId to filter
+            genreTilesCache[cacheKey]
+                ?.takeIf { System.currentTimeMillis() - it.loadedAtMs < GENRE_CACHE_TTL_MS }
+                ?.let { cached ->
+                    genreJob?.cancel()
+                    _state.update { it.copy(genres = cached.tiles, genresLoading = false) }
+                    return
+                }
             genreJob?.cancel()
             _state.update { it.copy(genresLoading = true) }
             genreJob =
                 viewModelScope.launchIO {
                     try {
-                        val userId = serverRepository.currentUser?.id
-                        val idsByName = genreIdsByName ?: fetchGenreIds(userId).also { genreIdsByName = it }
+                        val idsByName =
+                            genreIdsCache[userId]
+                                ?.takeIf { System.currentTimeMillis() - it.loadedAtMs < GENRE_CACHE_TTL_MS }
+                                ?.idsByName
+                                ?: fetchGenreIds(userId).also {
+                                    genreIdsCache[userId] = CachedGenreIds(it, System.currentTimeMillis())
+                                }
                         val kinds = filter.itemKinds()
                         val semaphore = Semaphore(4)
                         val tiles =
@@ -187,7 +194,7 @@ class ExploreViewModel
                                     }.awaitAll()
                                     .filterNotNull()
                             }
-                        genreTiles[filter] = tiles
+                        genreTilesCache[cacheKey] = CachedGenreTiles(tiles, System.currentTimeMillis())
                         if (_state.value.filter == filter) {
                             _state.update { it.copy(genres = tiles, genresLoading = false) }
                         }
@@ -229,7 +236,10 @@ class ExploreViewModel
                             genreIds = ids,
                             // A random title each time the hub opens, like Nuvio's dynamic backdrops
                             sortBy = listOf(ItemSortBy.RANDOM),
-                            limit = 4,
+                            limit = 3,
+                            fields = emptyList(),
+                            enableImageTypes = listOf(ImageType.BACKDROP),
+                            imageTypeLimit = 1,
                             enableTotalRecordCount = true,
                             enableUserData = false,
                         ),
@@ -253,8 +263,22 @@ class ExploreViewModel
             return ExploreGenreTile(genre, ids, result.totalRecordCount, imageUrl)
         }
 
+        private data class CachedGenreTiles(
+            val tiles: List<ExploreGenreTile>,
+            val loadedAtMs: Long,
+        )
+
+        private data class CachedGenreIds(
+            val idsByName: Map<String, UUID>,
+            val loadedAtMs: Long,
+        )
+
         private companion object {
             const val TILE_IMAGE_WIDTH = 480
             const val TILE_IMAGE_HEIGHT = 270
+            const val GENRE_CACHE_TTL_MS = 15 * 60 * 1000L
+
+            private val genreTilesCache = ConcurrentHashMap<Pair<UUID?, HomeMediaFilter>, CachedGenreTiles>()
+            private val genreIdsCache = ConcurrentHashMap<UUID?, CachedGenreIds>()
         }
     }

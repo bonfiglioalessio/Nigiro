@@ -225,14 +225,16 @@ class ItemGridViewModel
                                 // Provider ids and sources let a streamed favourite be matched to its downloaded copy
                                 fields = SlimItemFields + listOf(ItemFields.PROVIDER_IDS, ItemFields.MEDIA_SOURCES),
                             )
-                        val items =
+                        val rawItems =
                             api.itemsApi
                                 .getItems(request)
                                 .content.items
-                                .map { dto ->
-                                    if (localTwinService.isStreamOnly(dto)) localTwinService.findLocalTwin(dto) ?: dto else dto
-                                }.distinctBy { it.id }
-                                .map { BaseItem.from(it, api, useSeriesForPrimary = true) }
+                        val items =
+                            localTwinService
+                                .replaceWithLocalTwins(
+                                    rawItems,
+                                    SlimItemFields + listOf(ItemFields.PROVIDER_IDS, ItemFields.MEDIA_SOURCES),
+                                ).map { BaseItem.from(it, api, useSeriesForPrimary = true) }
                         _state.update { it.copy(items = DataLoadingState.Success(items)) }
                     } catch (ex: CancellationException) {
                         throw ex

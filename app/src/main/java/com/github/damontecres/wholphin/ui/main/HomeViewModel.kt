@@ -396,7 +396,6 @@ class HomeViewModel
             if (!config.home.includeNativeResumeNextUp) return Result.success(null)
             return try {
                 val preferences = userPreferencesService.getCurrent()
-                val libraries = navDrawerService.getAllUserLibraries(userDto.id, userDto.tvAccess)
                 val rowConfig =
                     HomeRowConfig.ContinueWatchingCombined(
                         viewOptions =
@@ -419,7 +418,7 @@ class HomeViewModel
                         scope = viewModelScope,
                         prefs = preferences.appPreferences.homePagePreferences,
                         userDto = userDto,
-                        libraries = libraries,
+                        libraries = emptyList(),
                         limit = config.home.maxItemsPerRow.coerceAtLeast(1),
                         isRefresh = isRefresh,
                     )
