@@ -97,10 +97,10 @@ class SearchRelevanceTest {
     }
 
     @Test
-    fun defaultExcludedSearchTypesLeavesOnlyMoviesAndSeries() {
+    fun defaultExcludedSearchTypesLeavesMoviesSeriesAndLiveTv() {
         val activeByDefault = allSearchableTypes.filterNot { it in DEFAULT_EXCLUDED_SEARCH_TYPES }
 
-        assertEquals(listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES), activeByDefault)
+        assertEquals(listOf(BaseItemKind.MOVIE, BaseItemKind.SERIES, BaseItemKind.TV_CHANNEL), activeByDefault)
     }
 
     @Test
