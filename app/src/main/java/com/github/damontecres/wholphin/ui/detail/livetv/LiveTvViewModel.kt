@@ -755,7 +755,9 @@ data class TvProgram(
     }
 
     companion object {
-        private val NO_DATA = WholphinApplication.instance.getString(R.string.live_tv_no_guide)
+        private val NO_DATA by lazy {
+            WholphinApplication.instance.getString(R.string.live_tv_no_guide)
+        }
 
         fun fake(
             zeroHourStart: LocalDateTime,
