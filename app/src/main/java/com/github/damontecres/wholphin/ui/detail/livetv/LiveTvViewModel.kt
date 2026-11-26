@@ -120,11 +120,17 @@ class LiveTvViewModel
                     .collectLatest { (sortByRecentlyWatched, favoritesFirst, group) ->
                         Timber.v("Init due to pref or group change")
                         _state.update {
-                            // Switching group keeps the group chips on screen while the channels reload
+                            // Switching group keeps the group chips and current view mode on screen while channels reload
                             if (it.groups.isEmpty()) {
-                                LiveTvState()
+                                LiveTvState(viewMode = it.viewMode)
                             } else {
-                                LiveTvState(loading = LoadingState.Loading, groups = it.groups, selectedGroup = group)
+                                LiveTvState(
+                                    loading = LoadingState.Loading,
+                                    groups = it.groups,
+                                    selectedGroup = group,
+                                    viewMode = it.viewMode,
+                                    hasFavorites = it.hasFavorites,
+                                )
                             }
                         }
                         // Runs inside collectLatest so a quick group change cancels the previous load
@@ -135,6 +141,10 @@ class LiveTvViewModel
 
         fun selectGroup(group: String?) {
             selectedGroup.value = group
+        }
+
+        fun selectViewMode(mode: LiveTvViewMode) {
+            _state.update { it.copy(viewMode = mode) }
         }
 
         private suspend fun init(
@@ -160,10 +170,21 @@ class LiveTvViewModel
                             .sortedBy { it.number?.toDoubleOrNull() ?: Double.MAX_VALUE }
                             .mapNotNull { it.group }
                             .distinct()
-                    val activeGroup = group?.takeIf { it in groups }
-                    val channels =
-                        if (activeGroup == null) allChannels else allChannels.filter { it.group == activeGroup }
-                    _state.update { it.copy(groups = groups, selectedGroup = activeGroup) }
+                    val hasFavorites = allChannels.any { it.favorite }
+                    val activeGroup =
+                        when {
+                            group == FAVORITES_GROUP_KEY && hasFavorites -> FAVORITES_GROUP_KEY
+                            group != null && group in groups -> group
+                            else -> null
+                        }
+                    val channels = filterChannelsByGroup(allChannels, activeGroup)
+                    _state.update {
+                        it.copy(
+                            groups = groups,
+                            selectedGroup = activeGroup,
+                            hasFavorites = hasFavorites,
+                        )
+                    }
                     Timber.d("Got ${channels.size} channels (group=$activeGroup)")
                     channelsIdToIndex =
                         channels.withIndex().associateBy({ it.value.id }, { it.index })
@@ -462,7 +483,7 @@ class LiveTvViewModel
                 (programsByChannel.values.flatten())
                     .sortedWith(
                         compareBy(
-                            { channelsIdToIndex[it.channelId]!! },
+                            { channelsIdToIndex[it.channelId] ?: Int.MAX_VALUE },
                             { it.start },
                         ),
                     )
@@ -585,20 +606,34 @@ class LiveTvViewModel
             }
         }
 
-        fun toggleFavorite(
-            index: Int,
-            channel: TvChannel,
-        ) {
+        fun toggleFavorite(channel: TvChannel) {
             viewModelScope.launchIO {
-                favoriteWatchManager.setFavorite(channel.id, !channel.favorite)
-                cachedChannels = null
-                _state.update {
-                    it.copy(
-                        channels =
-                            it.channels.toMutableList().apply {
-                                set(index, channel.copy(favorite = !channel.favorite))
-                            },
+                val newFavorite = !channel.favorite
+                favoriteWatchManager.setFavorite(channel.id, newFavorite)
+                cachedChannels =
+                    cachedChannels?.let { (sortKey, list) ->
+                        sortKey to list.map { if (it.id == channel.id) it.copy(favorite = newFavorite) else it }
+                    }
+                val hasFavorites =
+                    cachedChannels?.second?.any { it.favorite }
+                        ?: (newFavorite || _state.value.channels.any { it.id != channel.id && it.favorite })
+                val wasFavoritesGroup = _state.value.selectedGroup == FAVORITES_GROUP_KEY
+                _state.update { current ->
+                    val updatedChannels =
+                        if (current.selectedGroup == FAVORITES_GROUP_KEY && !newFavorite) {
+                            current.channels.filterNot { it.id == channel.id }
+                        } else {
+                            current.channels.map { if (it.id == channel.id) it.copy(favorite = newFavorite) else it }
+                        }
+                    channelsIdToIndex =
+                        updatedChannels.withIndex().associateBy({ it.value.id }, { it.index })
+                    current.copy(
+                        channels = updatedChannels,
+                        hasFavorites = hasFavorites,
                     )
+                }
+                if (wasFavoritesGroup && !hasFavorites) {
+                    selectGroup(null)
                 }
             }
         }
@@ -627,6 +662,8 @@ data class LiveTvState(
     /** Channel groups found in the channel names, in channel number order */
     val groups: List<String> = emptyList(),
     val selectedGroup: String? = null,
+    val viewMode: LiveTvViewMode = LiveTvViewMode.NOW,
+    val hasFavorites: Boolean = false,
 )
 
 data class ProgramDialogState(

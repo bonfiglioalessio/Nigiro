@@ -72,6 +72,7 @@ import eu.wewox.programguide.ProgramGuide
 import eu.wewox.programguide.ProgramGuideDimensions
 import eu.wewox.programguide.ProgramGuideItem
 import eu.wewox.programguide.rememberSaveableProgramGuideState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -92,7 +93,22 @@ fun TvGuideGrid(
     val preferences by viewModel.preferences.data.collectAsState(preferences.appPreferences)
     val tvPrefs = preferences.interfacePreferences.liveTvPreferences
     var showViewOptions by remember { mutableStateOf(false) }
-    var showChannelDialog by remember { mutableStateOf<Pair<Int, TvChannel>?>(null) }
+    var showChannelDialog by remember { mutableStateOf<TvChannel?>(null) }
+    var now by remember { mutableStateOf(LocalDateTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000L)
+            now = LocalDateTime.now()
+        }
+    }
+    val playChannel: (UUID) -> Unit = { channelId ->
+        viewModel.navigationManager.navigateTo(
+            Destination.Playback(
+                itemId = channelId,
+                positionMs = 0L,
+            ),
+        )
+    }
 
     when (val st = state.loading) {
         is LoadingState.Error -> {
@@ -136,13 +152,14 @@ fun TvGuideGrid(
                     ErrorMessage("Live TV is enabled, but no channels were found.", null)
                 } else {
                     AnimatedVisibility(
-                        visible = tvPrefs.showHeader && !switchingGroup,
+                        visible = state.viewMode == LiveTvViewMode.GRID && tvPrefs.showHeader && !switchingGroup,
                         enter = expandVertically(),
                         exit = shrinkVertically(),
                     ) {
                         TvGuideHeader(
                             program = focusedProgram,
                             channel = state.channels.getOrNull(focusedPosition.row),
+                            now = now,
                             modifier =
                                 Modifier
                                     .padding(
@@ -157,22 +174,40 @@ fun TvGuideGrid(
                         enter = expandVertically(),
                         exit = shrinkVertically(),
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp),
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
                         ) {
-                            ExpandableFaButton(
-                                title = R.string.view_options,
-                                iconStringRes = R.string.fa_sliders,
-                                onClick = { showViewOptions = true },
-                                modifier = Modifier.focusRequester(buttonFocusRequester),
-                            )
-                            if (state.groups.isNotEmpty()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                LiveClockBadge(now = now)
+                                LiveTvModePills(
+                                    selected = state.viewMode,
+                                    onSelect = {
+                                        viewModel.selectViewMode(it)
+                                        focusedPosition = RowColumn(0, 0)
+                                        onRowPosition(0)
+                                    },
+                                )
+                                ExpandableFaButton(
+                                    title = R.string.view_options,
+                                    iconStringRes = R.string.fa_sliders,
+                                    onClick = { showViewOptions = true },
+                                    modifier = Modifier.focusRequester(buttonFocusRequester),
+                                )
+                            }
+                            if (state.groups.isNotEmpty() || state.hasFavorites) {
                                 ChannelGroupChips(
                                     groups = state.groups,
+                                    hasFavorites = state.hasFavorites,
                                     selected = state.selectedGroup,
-                                    onSelect = viewModel::selectGroup,
+                                    onSelect = {
+                                        viewModel.selectGroup(it)
+                                        focusedPosition = RowColumn(0, 0)
+                                        onRowPosition(0)
+                                    },
                                 )
                             }
                         }
@@ -182,51 +217,86 @@ fun TvGuideGrid(
                             CircularProgress(Modifier.size(48.dp))
                         }
                     } else {
-                        key(state.selectedGroup) {
-                            TvGuideGridContent(
-                                preferences = tvPrefs,
-                                refreshing = state.refreshing,
-                                channels = state.channels,
-                                programs = state.programs,
-                                channelProgramCount = state.channelProgramCount,
-                                guideTimes = state.guideTimes,
-                                onClickChannel = { index, channel ->
-                                    showChannelDialog = index to channel
-                                },
-                                onFocus = {
-                                    focusedPosition = it
-                                    onRowPosition.invoke(it.row)
-                                    viewModel.onFocusChannel(it)
-                                },
-                                onClickProgram = { index, program ->
-                                    if (program.isFake) {
-                                        val now = LocalDateTime.now()
-                                        if (now.isAfter(program.start) && now.isBefore(program.end)) {
-                                            viewModel.navigationManager.navigateTo(
-                                                Destination.Playback(
-                                                    itemId = program.channelId,
-                                                    positionMs = 0L,
-                                                ),
-                                            )
-                                        } else {
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    "No guide data found!",
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
-                                        }
-                                    } else {
-                                        viewModel.fetchProgramForDialog(program.id)
-                                        showItemDialog = index
-                                    }
-                                },
-                                focusRequester = focusRequester,
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.background),
-                            )
+                        when (state.viewMode) {
+                            LiveTvViewMode.NOW,
+                            LiveTvViewMode.TONIGHT,
+                            -> {
+                                key(state.selectedGroup, state.viewMode) {
+                                    LiveTvScheduleList(
+                                        mode = state.viewMode,
+                                        now = now,
+                                        refreshing = state.refreshing,
+                                        channels = state.channels,
+                                        programsByChannel = state.programs.programsByChannel,
+                                        onPlayChannel = { channel -> playChannel(channel.id) },
+                                        onLongClickChannel = { channel -> showChannelDialog = channel },
+                                        onFocusRow = { row ->
+                                            focusedPosition = RowColumn(row, 0)
+                                            onRowPosition.invoke(row)
+                                            viewModel.onFocusChannel(RowColumn(row, 0))
+                                        },
+                                        focusRequester = focusRequester,
+                                        modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.background),
+                                    )
+                                }
+                            }
+
+                            LiveTvViewMode.GRID -> {
+                                key(state.selectedGroup) {
+                                    TvGuideGridContent(
+                                        preferences = tvPrefs,
+                                        now = now,
+                                        refreshing = state.refreshing,
+                                        channels = state.channels,
+                                        programs = state.programs,
+                                        channelProgramCount = state.channelProgramCount,
+                                        guideTimes = state.guideTimes,
+                                        onClickChannel = { _, channel ->
+                                            playChannel(channel.id)
+                                        },
+                                        onLongClickChannel = { _, channel ->
+                                            showChannelDialog = channel
+                                        },
+                                        onFocus = {
+                                            focusedPosition = it
+                                            onRowPosition.invoke(it.row)
+                                            viewModel.onFocusChannel(it)
+                                        },
+                                        onClickProgram = { index, program ->
+                                            val airingNow =
+                                                isProgramAiring(program, now) ||
+                                                    (program.isFake && !now.isBefore(program.start) && now.isBefore(program.end))
+                                            if (airingNow) {
+                                                playChannel(program.channelId)
+                                            } else if (program.isFake) {
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "No guide data found!",
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                            } else {
+                                                viewModel.fetchProgramForDialog(program.id)
+                                                showItemDialog = index
+                                            }
+                                        },
+                                        onLongClickProgram = { index, program ->
+                                            if (!program.isFake) {
+                                                viewModel.fetchProgramForDialog(program.id)
+                                                showItemDialog = index
+                                            }
+                                        },
+                                        focusRequester = focusRequester,
+                                        modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.background),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -284,10 +354,10 @@ fun TvGuideGrid(
             },
         )
     }
-    showChannelDialog?.let { (index, channel) ->
+    showChannelDialog?.let { channel ->
         val watchLiveStr = stringResource(R.string.watch_live)
         val dialogItems =
-            remember {
+            remember(channel) {
                 listOf(
                     DialogItem(
                         watchLiveStr,
@@ -307,13 +377,13 @@ fun TvGuideGrid(
                         iconColor = if (channel.favorite) Color.Red else Color.Unspecified,
                         dismissOnClick = true,
                     ) {
-                        viewModel.toggleFavorite(index, channel)
+                        viewModel.toggleFavorite(channel)
                     },
                 )
             }
         DialogPopup(
             onDismissRequest = { showChannelDialog = null },
-            params = DialogParams(false, channel.name ?: "", dialogItems),
+            params = DialogParams(false, channel.shortName ?: channel.name ?: "", dialogItems),
             elevation = 3.dp,
         )
     }
@@ -325,19 +395,22 @@ val tvGuideDimensions =
         timelineHeight = 32.dp,
         channelWidth = 176.dp,
         channelHeight = 60.dp,
-        currentTimeWidth = 2.dp,
+        currentTimeWidth = 3.dp,
     )
 
 @Composable
 fun TvGuideGridContent(
     preferences: LiveTvPreferences,
+    now: LocalDateTime,
     refreshing: Boolean,
     channels: List<TvChannel>,
     programs: FetchedPrograms,
     channelProgramCount: Map<UUID, Int>,
     guideTimes: List<LocalDateTime>,
     onClickChannel: (Int, TvChannel) -> Unit,
+    onLongClickChannel: (Int, TvChannel) -> Unit,
     onClickProgram: (Int, TvProgram) -> Unit,
+    onLongClickProgram: (Int, TvProgram) -> Unit,
     onFocus: (RowColumn) -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
@@ -404,17 +477,12 @@ fun TvGuideGridContent(
             currentTime(
                 layoutInfo = {
                     ProgramGuideItem.CurrentTime(
-                        hoursBetween(guideStart, LocalDateTime.now()),
+                        hoursBetween(guideStart, now),
                     )
                 },
             ) {
                 Surface(
-                    colors =
-                        SurfaceDefaults.colors(
-                            MaterialTheme.colorScheme.tertiary.copy(
-                                alpha = .25f,
-                            ),
-                        ),
+                    colors = SurfaceDefaults.colors(LiveRed),
                     modifier = Modifier,
                 ) {
                     // Empty
@@ -485,12 +553,15 @@ fun TvGuideGridContent(
                 val program = programs.programs[programIndex]
                 Program(
                     guideStart = guideStart,
+                    now = now,
                     program = program,
                     colorCode = preferences.colorCodePrograms,
                     onClick = {
                         onClickProgram.invoke(programIndex, program)
                     },
-                    onLongClick = {},
+                    onLongClick = {
+                        onLongClickProgram.invoke(programIndex, program)
+                    },
                     modifier =
                         Modifier
                             .ifElse(
@@ -529,7 +600,7 @@ fun TvGuideGridContent(
                     channel = channel,
                     channelIndex = channelIndex,
                     onClick = { onClickChannel.invoke(channelIndex, channel) },
-                    onLongClick = {},
+                    onLongClick = { onLongClickChannel.invoke(channelIndex, channel) },
                     modifier =
                         Modifier
                             .ifElse(
@@ -584,24 +655,39 @@ fun TvGuideGridContent(
 @Composable
 fun ChannelGroupChips(
     groups: List<String>,
+    hasFavorites: Boolean,
     selected: String?,
     onSelect: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val options = remember(groups) { listOf<String?>(null) + groups }
+    val options =
+        remember(groups, hasFavorites) {
+            buildList<String?> {
+                add(null)
+                if (hasFavorites) add(FAVORITES_GROUP_KEY)
+                addAll(groups)
+            }
+        }
     val allLabel = stringResource(R.string.all_channels)
+    val favLabel = stringResource(R.string.live_tv_favorites_chip)
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
         modifier = modifier,
     ) {
         items(options) { group ->
+            val label =
+                when (group) {
+                    null -> allLabel
+                    FAVORITES_GROUP_KEY -> favLabel
+                    else -> group
+                }
             AioPillButton(
                 white = group == selected,
                 onClick = { if (group != selected) onSelect(group) },
             ) {
                 Text(
-                    text = group ?: allLabel,
+                    text = label,
                     fontSize = 13.sp,
                     fontWeight = if (group == selected) FontWeight.SemiBold else FontWeight.Normal,
                 )

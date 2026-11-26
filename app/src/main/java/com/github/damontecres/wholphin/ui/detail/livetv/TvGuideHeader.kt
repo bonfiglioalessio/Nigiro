@@ -45,9 +45,9 @@ fun TvGuideHeader(
     program: TvProgram?,
     channel: TvChannel?,
     modifier: Modifier = Modifier,
+    now: LocalDateTime = LocalDateTime.now(),
 ) {
-    val now = LocalDateTime.now()
-    val airing = program != null && !program.isFake && !now.isBefore(program.start) && now.isBefore(program.end)
+    val airing = program != null && isProgramAiring(program, now)
     // Placeholder cell of a channel without guide data: show the channel, not "No guide" as a title
     val noGuide = program?.isFake == true
     Row(
@@ -87,10 +87,10 @@ fun TvGuideHeader(
                             text = stringResource(R.string.live_now),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = androidx.compose.ui.graphics.Color.White,
                             modifier =
                                 Modifier
-                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                                    .background(LiveRed, RoundedCornerShape(4.dp))
                                     .padding(horizontal = 6.dp, vertical = 1.dp),
                         )
                     }
