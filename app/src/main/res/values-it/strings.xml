@@ -879,4 +879,9 @@
     <string name="trailer_opening_external">Apertura trailer su YouTube…</string>
     <string name="trailer_load_error">Impossibile riprodurre questo trailer</string>
     <string name="trailer_controls_hint">OK Pausa/Riproduci · ◀ ▶ ±10s · Indietro chiudi</string>
+    <string name="unreleased_episode_title">Episodio non ancora uscito</string>
+    <string name="unreleased_episode_body_date">Esce il %1$s. Vuoi provare a riprodurlo comunque?</string>
+    <string name="unreleased_episode_body">Questo episodio non è ancora uscito. Vuoi provare a riprodurlo comunque?</string>
+    <string name="play_anyway">Riproduci comunque</string>
+    <string name="live_tv_channels">Canali Live TV</string>
 </resources>

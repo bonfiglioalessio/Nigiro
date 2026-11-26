@@ -46,8 +46,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
-import com.github.damontecres.wholphin.ui.cards.showNotReleasedToast
 import com.github.damontecres.wholphin.ui.cards.AioUnreleasedChip
+import com.github.damontecres.wholphin.ui.cards.UnreleasedEpisodeConfirmDialog
 import androidx.compose.ui.unit.sp
 import com.github.damontecres.wholphin.ui.cards.AioWatchedMark
 import androidx.compose.ui.draw.clip
@@ -312,12 +312,12 @@ fun AioEpisodeCard(
     val played = data.userData?.played == true
     val percent = data.userData?.playedPercentage ?: 0.0
     val unreleased = remember(episode.id, data.premiereDate) { episode.isUnreleased() }
+    var confirmUnreleased by remember(episode.id) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(px(8)), modifier = modifier.width(width)) {
         Card(
             onClick = {
                 if (unreleased) {
-                    // Not out yet: nothing to play, say when it comes out instead
-                    showNotReleasedToast(context, episode.releaseDay())
+                    confirmUnreleased = true
                 } else {
                     currentOnClick()
                 }
@@ -402,6 +402,16 @@ fun AioEpisodeCard(
                 }
             }
         }
+    }
+    if (confirmUnreleased) {
+        UnreleasedEpisodeConfirmDialog(
+            day = episode.releaseDay(),
+            onCancel = { confirmUnreleased = false },
+            onConfirm = {
+                confirmUnreleased = false
+                currentOnClick()
+            },
+        )
     }
 }
 

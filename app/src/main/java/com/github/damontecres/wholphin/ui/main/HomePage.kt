@@ -212,8 +212,7 @@ fun HomePage(
                         position = clickedPosition
                         if (currentHomePrefs.clickToPlay &&
                             currentHomeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true &&
-                            item.playable &&
-                            !item.isUnreleased()
+                            item.playable
                         ) {
                             viewModel.versionPicker.play(item, item.playbackPosition)
                         } else {

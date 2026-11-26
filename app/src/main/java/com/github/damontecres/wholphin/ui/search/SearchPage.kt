@@ -632,8 +632,13 @@ private fun SearchSplitResults(
             listOf(
                 R.string.home_filter_movies to all.filter { it.type == BaseItemKind.MOVIE },
                 R.string.home_filter_series to all.filter { it.type == BaseItemKind.SERIES },
+                R.string.live_tv_channels to all.filter { it.type == BaseItemKind.TV_CHANNEL },
                 R.string.search_other_results to
-                    all.filter { it.type != BaseItemKind.MOVIE && it.type != BaseItemKind.SERIES },
+                    all.filter {
+                        it.type != BaseItemKind.MOVIE &&
+                            it.type != BaseItemKind.SERIES &&
+                            it.type != BaseItemKind.TV_CHANNEL
+                    },
             ).filter { it.second.isNotEmpty() }
         }
     // No details header: the focused poster expands with them, as on Home
@@ -657,19 +662,30 @@ private fun SearchSplitResults(
                         ) {
                             itemsIndexed(list, key = { _, it -> it.id }) { index, item ->
                                 val fullIndex = remember(items, item.id) { items.indexOf(item) }
-                                ExpandingPosterCard(
-                                    item = item,
-                                    onClick = { onClickItem(fullIndex, item) },
-                                    onLongClick = { onLongClickItem(fullIndex, item) },
-                                    cardHeight = ResultPosterHeight,
-                                    onDisk = item.isOnDisk(),
-                                    modifier =
-                                        if (sectionIndex == 0 && index == 0) {
-                                            Modifier.focusRequester(focusRequester)
-                                        } else {
-                                            Modifier
-                                        },
-                                )
+                                val itemMod =
+                                    if (sectionIndex == 0 && index == 0) {
+                                        Modifier.focusRequester(focusRequester)
+                                    } else {
+                                        Modifier
+                                    }
+                                if (item.type == BaseItemKind.TV_CHANNEL) {
+                                    SearchPageCard(
+                                        item = item,
+                                        type = BaseItemKind.TV_CHANNEL,
+                                        onClick = { onClickItem(fullIndex, item) },
+                                        onLongClick = { onLongClickItem(fullIndex, item) },
+                                        modifier = itemMod,
+                                    )
+                                } else {
+                                    ExpandingPosterCard(
+                                        item = item,
+                                        onClick = { onClickItem(fullIndex, item) },
+                                        onLongClick = { onLongClickItem(fullIndex, item) },
+                                        cardHeight = ResultPosterHeight,
+                                        onDisk = item.isOnDisk(),
+                                        modifier = itemMod,
+                                    )
+                                }
                             }
                         }
                     }

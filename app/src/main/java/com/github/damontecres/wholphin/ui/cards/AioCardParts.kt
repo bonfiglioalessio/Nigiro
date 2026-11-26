@@ -37,6 +37,7 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import com.github.damontecres.wholphin.ui.components.ConfirmDialog
 import com.github.damontecres.wholphin.ui.theme.AioTokens
 
 /*
@@ -148,12 +149,24 @@ internal fun BoxScope.AioUnreleasedChip() {
     }
 }
 
-/** Not aired yet: says when it comes out instead of starting playback */
-internal fun showNotReleasedToast(
-    context: android.content.Context,
+/** Not aired yet: asks whether the user still wants to try playing it */
+@Composable
+internal fun UnreleasedEpisodeConfirmDialog(
     day: String?,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit,
 ) {
-    android.widget.Toast
-        .makeText(context, "Non ancora uscito: esce il ${day.orEmpty()}", android.widget.Toast.LENGTH_SHORT)
-        .show()
+    ConfirmDialog(
+        title = stringResource(R.string.unreleased_episode_title),
+        body =
+            if (!day.isNullOrBlank()) {
+                stringResource(R.string.unreleased_episode_body_date, day)
+            } else {
+                stringResource(R.string.unreleased_episode_body)
+            },
+        onCancel = onCancel,
+        onConfirm = onConfirm,
+        cancelStringRes = R.string.cancel,
+        confirmStringRes = R.string.play_anyway,
+    )
 }

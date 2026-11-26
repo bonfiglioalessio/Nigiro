@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.github.damontecres.wholphin.ui.detail.series.releaseDay
@@ -121,6 +123,7 @@ fun ContinueWatchingCard(
 
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongClick by rememberUpdatedState(onLongClick)
+    var confirmUnreleased by remember(item?.id) { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     Column(
         verticalArrangement = Arrangement.spacedBy(px(4)),
@@ -130,7 +133,7 @@ fun ContinueWatchingCard(
         val shape = ContinueWatchingCardShape
         val focused by interactionSource.collectIsFocusedAsState()
         Card(
-            onClick = { if (unreleased) showNotReleasedToast(context, item?.releaseDay()) else currentOnClick() },
+            onClick = { if (unreleased) confirmUnreleased = true else currentOnClick() },
             onLongClick = { currentOnLongClick() },
             interactionSource = interactionSource,
             shape = CardDefaults.shape(shape),
@@ -200,5 +203,15 @@ fun ContinueWatchingCard(
                 modifier = Modifier.padding(end = px(4)),
             )
         }
+    }
+    if (confirmUnreleased) {
+        UnreleasedEpisodeConfirmDialog(
+            day = item?.releaseDay(),
+            onCancel = { confirmUnreleased = false },
+            onConfirm = {
+                confirmUnreleased = false
+                currentOnClick()
+            },
+        )
     }
 }

@@ -1083,4 +1083,9 @@
     <string name="trailer_opening_external">Opening trailer in YouTube…</string>
     <string name="trailer_load_error">Could not play this trailer</string>
     <string name="trailer_controls_hint">OK Play/Pause · ◀ ▶ ±10s · Back to close</string>
+    <string name="unreleased_episode_title">Episode not aired yet</string>
+    <string name="unreleased_episode_body_date">Airs on %1$s. Try playing it anyway?</string>
+    <string name="unreleased_episode_body">This episode hasn\'t aired yet. Try playing it anyway?</string>
+    <string name="play_anyway">Play anyway</string>
+    <string name="live_tv_channels">Live TV Channels</string>
 </resources>

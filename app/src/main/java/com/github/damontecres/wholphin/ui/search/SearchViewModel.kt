@@ -42,6 +42,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +55,7 @@ import kotlinx.coroutines.launch
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.artistsApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.liveTvApi
 import org.jellyfin.sdk.api.client.extensions.personsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -60,6 +63,7 @@ import org.jellyfin.sdk.model.api.ItemFields
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.api.request.GetLiveTvChannelsRequest
 import com.github.damontecres.wholphin.services.RemoteConfigService
 import com.github.damontecres.wholphin.util.PlatformItemsRequest
 import com.github.damontecres.wholphin.util.PlatformItemsRequestHandler
@@ -107,6 +111,8 @@ class SearchViewModel
         private val searchJobs = mutableListOf<Job>()
 
         private var userLibraryTypes: Set<BaseItemKind> = emptySet()
+        private var cachedLiveTvUserId: UUID? = null
+        private var cachedLiveTvChannels: List<BaseItem>? = null
 
         // Shown before searching: recent queries and the user's favorites (usually the downloaded titles)
         private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
@@ -338,12 +344,50 @@ class SearchViewModel
             }
         }
 
+        private suspend fun getLiveTvChannels(userId: UUID): List<BaseItem> {
+            cachedLiveTvChannels?.takeIf { cachedLiveTvUserId == userId }?.let { return it }
+            return try {
+                val request =
+                    GetLiveTvChannelsRequest(
+                        userId = userId,
+                        fields = SlimItemFields,
+                        enableImages = true,
+                        addCurrentProgram = true,
+                        limit = LIVE_TV_FETCH_LIMIT,
+                    )
+                api.liveTvApi
+                    .getLiveTvChannels(request)
+                    .toBaseItems(api, false)
+                    .also { channels ->
+                        cachedLiveTvUserId = userId
+                        cachedLiveTvChannels = channels
+                    }
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Could not load Live TV channels for search")
+                emptyList()
+            }
+        }
+
         private fun searchType(
             query: String,
             type: BaseItemKind,
         ): Job =
             viewModelScope.launchIO {
                 try {
+                    if (type == BaseItemKind.TV_CHANNEL) {
+                        val uid = serverRepository.currentUser?.id
+                        val matches =
+                            if (uid != null && serverRepository.currentUserDto?.tvAccess == true) {
+                                filterLiveTvChannels(getLiveTvChannels(uid), query, LIVE_TV_SEARCH_LIMIT)
+                            } else {
+                                emptyList()
+                            }
+                        Timber.v("Search finished for %s, %s results", type, matches.size)
+                        _state.value.results[type] = SearchResult.Success(matches)
+                        return@launchIO
+                    }
                     val items: List<BaseItem> =
                         when (type) {
                             BaseItemKind.MUSIC_ARTIST -> {
@@ -393,29 +437,54 @@ class SearchViewModel
             viewModelScope.launch(ExceptionHandler() + WholphinDispatchers.IO) {
                 try {
                     Timber.v("Starting searchCombined")
-                    val request =
-                        GetItemsRequest(
-                            searchTerm = query,
-                            recursive = true,
-                            includeItemTypes = state.value.includedSearchableTypes,
-                            fields =
-                                SlimItemFields +
-                                    listOf(
-                                        ItemFields.PROVIDER_IDS,
-                                        ItemFields.PATH,
-                                        ItemFields.GENRES,
-                                        ItemFields.ORIGINAL_TITLE,
-                                    ),
-                            limit = SEARCH_LIMIT,
-                            enableTotalRecordCount = false,
-                        )
-
-                    val result = api.itemsApi.getItems(request).content
-                    val items =
-                        result.items.map {
-                            BaseItem(it, false)
+                    val mediaTypes = state.value.includedSearchableTypes.filterNot { it == BaseItemKind.TV_CHANNEL }
+                    val includeLiveTv =
+                        BaseItemKind.TV_CHANNEL in state.value.includedSearchableTypes &&
+                            serverRepository.currentUserDto?.tvAccess == true
+                    val sorted =
+                        coroutineScope {
+                            val mediaDeferred =
+                                async {
+                                    if (mediaTypes.isEmpty()) {
+                                        emptyList()
+                                    } else {
+                                        val request =
+                                            GetItemsRequest(
+                                                searchTerm = query,
+                                                recursive = true,
+                                                includeItemTypes = mediaTypes,
+                                                fields =
+                                                    SlimItemFields +
+                                                        listOf(
+                                                            ItemFields.PROVIDER_IDS,
+                                                            ItemFields.PATH,
+                                                            ItemFields.GENRES,
+                                                            ItemFields.ORIGINAL_TITLE,
+                                                        ),
+                                                limit = SEARCH_LIMIT,
+                                                enableTotalRecordCount = false,
+                                            )
+                                        val result = api.itemsApi.getItems(request).content
+                                        dedupeLocalCopies(
+                                            SearchRelevance.filterAndSort(
+                                                result.items.map { BaseItem(it, false) },
+                                                query,
+                                            ),
+                                        )
+                                    }
+                                }
+                            val channelsDeferred =
+                                async {
+                                    if (includeLiveTv) {
+                                        serverRepository.currentUser?.id?.let { uid ->
+                                            filterLiveTvChannels(getLiveTvChannels(uid), query, LIVE_TV_SEARCH_LIMIT)
+                                        }.orEmpty()
+                                    } else {
+                                        emptyList()
+                                    }
+                                }
+                            mediaDeferred.await() + channelsDeferred.await()
                         }
-                    val sorted = dedupeLocalCopies(SearchRelevance.filterAndSort(items, query))
                     Timber.v("searchCombined complete %s results", sorted.size)
                     _state.update { it.copy(combinedResults = SearchResult.Success(sorted)) }
                 } catch (ex: CancellationException) {
@@ -671,6 +740,7 @@ internal val allSearchableTypes =
     listOf(
         BaseItemKind.MOVIE,
         BaseItemKind.SERIES,
+        BaseItemKind.TV_CHANNEL,
         BaseItemKind.EPISODE,
         BaseItemKind.BOX_SET,
         BaseItemKind.PERSON,
@@ -679,13 +749,42 @@ internal val allSearchableTypes =
     )
 
 internal val DEFAULT_EXCLUDED_SEARCH_TYPES =
-    allSearchableTypes.filterNot { it == BaseItemKind.MOVIE || it == BaseItemKind.SERIES }
+    allSearchableTypes.filterNot {
+        it == BaseItemKind.MOVIE ||
+            it == BaseItemKind.SERIES ||
+            it == BaseItemKind.TV_CHANNEL
+    }
 
 private const val SEARCH_LIMIT = 50
 private const val POPULAR_LIMIT = 20
+private const val LIVE_TV_FETCH_LIMIT = 200
+private const val LIVE_TV_SEARCH_LIMIT = 12
 
 private const val RECENT_SEARCHES_KEY = "recent_searches"
 private const val MAX_RECENT_SEARCHES = 8
+
+internal fun filterLiveTvChannels(
+    channels: List<BaseItem>,
+    query: String,
+    limit: Int = LIVE_TV_SEARCH_LIMIT,
+): List<BaseItem> {
+    val rawQ = query.trim().lowercase()
+    val normQ = SearchRelevance.normalize(query)
+    if (rawQ.length < 2 || channels.isEmpty() || limit <= 0) return emptyList()
+    return channels
+        .filter { ch ->
+            val normName = SearchRelevance.normalize(ch.name.orEmpty())
+            val num = ch.data.channelNumber?.trim()?.lowercase().orEmpty()
+            (normQ.isNotEmpty() && normName.contains(normQ)) || (num.isNotEmpty() && num.contains(rawQ))
+        }.sortedWith(
+            compareByDescending<BaseItem> { it.favorite }
+                .thenByDescending {
+                    val normName = SearchRelevance.normalize(it.name.orEmpty())
+                    val num = it.data.channelNumber?.trim()?.lowercase().orEmpty()
+                    (normQ.isNotEmpty() && normName.startsWith(normQ)) || (num.isNotEmpty() && num.startsWith(rawQ))
+                }.thenBy { it.name.orEmpty().lowercase() },
+        ).take(limit)
+}
 
 /**
  * A title both streamed (Gelato) and downloaded shows up twice: keep one card, the downloaded copy, at the

@@ -40,6 +40,8 @@ import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.launchDefault
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.showToast
+import com.github.damontecres.wholphin.ui.toBaseItems
+import com.github.damontecres.wholphin.ui.util.ResStringProvider
 import com.github.damontecres.wholphin.ui.util.StringStringProvider
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
@@ -63,12 +65,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
+import org.jellyfin.sdk.api.client.extensions.liveTvApi
 import org.jellyfin.sdk.model.api.BaseItemKind
 import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.jellyfin.sdk.model.api.UserItemDataDto
 import org.jellyfin.sdk.model.api.request.GetItemsRequest
+import org.jellyfin.sdk.model.api.request.GetLiveTvChannelsRequest
 import org.jellyfin.sdk.model.serializer.toUUIDOrNull
 import timber.log.Timber
 import java.time.LocalDateTime
@@ -116,6 +120,7 @@ class HomeViewModel
 
         private var dataLoadingJob: Job? = null
         private var cachedContinueWatching: HomeRowLoadingState.Success? = null
+        private var cachedLiveTvRow: HomeRowLoadingState.Success? = null
         private var cachedCatalogByKey: Map<String, CachedPlatformCatalog> = emptyMap()
         private var cachedHeroRecent: CachedPlatformCatalog = CachedPlatformCatalog()
         private var cachedConfig: RemoteWholphinConfig = RemoteWholphinConfig.DEFAULT
@@ -139,6 +144,7 @@ class HomeViewModel
                     if (userChanged) {
                         hasAppliedInitialFilter = false
                         cachedContinueWatching = null
+                        cachedLiveTvRow = null
                         cachedCatalogByKey = emptyMap()
                         cachedHeroRecent = CachedPlatformCatalog()
                         _state.update { HomeState.EMPTY }
@@ -194,6 +200,7 @@ class HomeViewModel
                     config = cachedConfig,
                     filter = filter,
                     platformKey = _state.value.platformFilter,
+                    liveTvRow = cachedLiveTvRow,
                 )
             val heroSlides = buildHeroSlidesFromConfig(cachedConfig, cachedCatalogByKey, filter, cachedHeroRecent)
             _state.update {
@@ -301,6 +308,7 @@ class HomeViewModel
                     }
 
                     // Batch deferred platforms into a single state update to avoid 6 sequential UI recompositions on startup
+                    val liveTvJob = async { fetchLiveTvRow(userDto, remoteConfig) }
                     val semaphore = Semaphore(3)
                     val deferredCatalogs =
                         deferredPlatforms
@@ -313,9 +321,11 @@ class HomeViewModel
                                 }
                             }.awaitAll()
                             .toMap()
-                    if (deferredCatalogs.isNotEmpty()) {
+                    val liveTvRow = liveTvJob.await()
+                    if (deferredCatalogs.isNotEmpty() || liveTvRow != cachedLiveTvRow) {
                         catalogMutex.withLock {
                             cachedCatalogByKey = cachedCatalogByKey + deferredCatalogs
+                            cachedLiveTvRow = liveTvRow
                             publishRowsLocked(remoteConfig)
                         }
                     }
@@ -349,6 +359,7 @@ class HomeViewModel
                     config = config,
                     filter = _state.value.selectedFilter,
                     platformKey = _state.value.platformFilter,
+                    liveTvRow = cachedLiveTvRow,
                 )
             _state.update {
                 it.copy(
@@ -371,6 +382,7 @@ class HomeViewModel
                     config = cachedConfig,
                     filter = _state.value.selectedFilter,
                     platformKey = platformKey,
+                    liveTvRow = cachedLiveTvRow,
                 )
             _state.update { it.copy(platformFilter = platformKey, homeRows = rows) }
         }
@@ -487,12 +499,61 @@ class HomeViewModel
             }
         }
 
+        private suspend fun fetchLiveTvRow(
+            userDto: ServerUserConfig,
+            config: RemoteWholphinConfig,
+        ): HomeRowLoadingState.Success? {
+            if (!userDto.tvAccess || !config.modules.liveTv) return null
+            return try {
+                val request =
+                    GetLiveTvChannelsRequest(
+                        userId = userDto.id,
+                        fields = HomeItemFields,
+                        enableImages = true,
+                        addCurrentProgram = true,
+                        limit = LIVE_TV_HOME_FETCH_LIMIT,
+                    )
+                val channels =
+                    api.liveTvApi
+                        .getLiveTvChannels(request)
+                        .toBaseItems(api, false)
+                val maxChannels = config.home.maxItemsPerRow.coerceIn(1, LIVE_TV_HOME_ROW_LIMIT)
+                val picked = pickHomeLiveTvChannels(channels, maxChannels)
+                if (picked.isEmpty()) return null
+                val liveTvOptions =
+                    HomeRowViewOptions(
+                        showTitles = true,
+                        aspectRatio = AspectRatio.WIDE,
+                        episodeAspectRatio = AspectRatio.WIDE,
+                        heightDp = NigiroDimens.WideCardHeight.value.toInt(),
+                        spacing = NigiroDimens.CardGap.value.toInt(),
+                        imageType = ViewOptionImageType.PRIMARY,
+                        episodeImageType = ViewOptionImageType.PRIMARY,
+                        contentScale = PrefContentScale.FIT,
+                        episodeContentScale = PrefContentScale.FIT,
+                    )
+                HomeRowLoadingState.Success(
+                    title = ResStringProvider(R.string.live_tv_channels),
+                    items = picked,
+                    viewOptions = liveTvOptions,
+                    rowType = HomeRowConfig.TvChannels(viewOptions = liveTvOptions),
+                    showViewMore = false,
+                )
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                Timber.w(ex, "Error fetching Live TV channels for home")
+                null
+            }
+        }
+
         private fun buildVisibleHomeRows(
             continueRow: HomeRowLoadingState.Success?,
             catalogByKey: Map<String, CachedPlatformCatalog>,
             config: RemoteWholphinConfig,
             filter: HomeMediaFilter,
             platformKey: String? = null,
+            liveTvRow: HomeRowLoadingState.Success? = null,
         ): List<HomeRowLoadingState> {
             val rows = mutableListOf<HomeRowLoadingState>()
             if (continueRow != null && continueRow.items.isNotEmpty()) {
@@ -594,6 +655,9 @@ class HomeViewModel
                 return rows
             }
             platformSpecs.forEach(::addSpecRow)
+            if (filter == HomeMediaFilter.ALL && platformKey == null && liveTvRow != null && liveTvRow.items.isNotEmpty()) {
+                rows.add(liveTvRow)
+            }
             return rows
         }
 
@@ -883,6 +947,8 @@ class HomeViewModel
              */
             const val CATALOG_TTL_MS = 20 * 60 * 1000L
             private const val HERO_RECENT_FETCH_LIMIT = 24
+            private const val LIVE_TV_HOME_FETCH_LIMIT = 100
+            private const val LIVE_TV_HOME_ROW_LIMIT = 12
         }
     }
 

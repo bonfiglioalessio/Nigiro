@@ -138,27 +138,26 @@ class LatestNextUpService
             withContext(WholphinDispatchers.IO) {
                 val start = System.currentTimeMillis()
                 val semaphore = Semaphore(3)
-                val deferred =
+                val nextUpLastPlayedById =
                     nextUp
                         .filter { it.data.seriesId != null }
                         .map { item ->
                             async(WholphinDispatchers.IO) {
-                                try {
-                                    semaphore.withPermit {
-                                        datePlayedService.getLastPlayed(item)
+                                val lastPlayed =
+                                    try {
+                                        semaphore.withPermit {
+                                            datePlayedService.getLastPlayed(item)
+                                        }
+                                    } catch (ex: Exception) {
+                                        Timber.e(ex, "Error fetching %s", item.id)
+                                        null
                                     }
-                                } catch (ex: Exception) {
-                                    Timber.e(ex, "Error fetching %s", item.id)
-                                    null
-                                }
+                                item.id to lastPlayed
                             }
-                        }
+                        }.awaitAll()
+                        .toMap()
 
-                val nextUpLastPlayed = deferred.awaitAll()
-                val timestamps = mutableMapOf<UUID, LocalDateTime?>()
-                nextUp.map { it.id }.zip(nextUpLastPlayed).toMap(timestamps)
-                resume.forEach { timestamps[it.id] = it.data.userData?.lastPlayedDate }
-                val result = (resume + nextUp).sortedByDescending { timestamps[it.id] }
+                val result = sortContinueWatchingCombined(resume, nextUp, nextUpLastPlayedById)
                 val duration = (System.currentTimeMillis() - start).milliseconds
                 Timber.v("buildCombined took %s", duration)
                 return@withContext result
@@ -272,3 +271,69 @@ class LatestNextUpService
 data class RemovedSeriesIds(
     val value: Map<UUID, LocalDateTime>,
 )
+
+private data class ContinueEntry(
+    val item: BaseItem,
+    val unreleased: Boolean,
+    val activityTime: LocalDateTime?,
+)
+
+private fun maxOfNonNull(
+    a: LocalDateTime?,
+    b: LocalDateTime?,
+): LocalDateTime? =
+    when {
+        a != null && b != null -> if (a.isAfter(b)) a else b
+        else -> a ?: b
+    }
+
+/**
+ * Merges Resume + NextUp items, deduplicating by item ID and series ID (preferring Resume),
+ * sorting playable entries by most recent activity (watch time vs aired premiere), and pushing
+ * unreleased future episodes to the end.
+ */
+internal fun sortContinueWatchingCombined(
+    resume: List<BaseItem>,
+    nextUp: List<BaseItem>,
+    nextUpLastPlayedById: Map<UUID, LocalDateTime?>,
+    now: LocalDateTime = LocalDateTime.now(),
+): List<BaseItem> {
+    val seenIds = HashSet<UUID>()
+    val seenSeries = HashSet<UUID>()
+    val entries = ArrayList<ContinueEntry>(resume.size + nextUp.size)
+    val today = now.toLocalDate()
+
+    fun addItem(
+        item: BaseItem,
+        fromResume: Boolean,
+    ) {
+        if (!seenIds.add(item.id)) return
+        val seriesId = item.data.seriesId
+        if (seriesId != null && !seenSeries.add(seriesId)) return
+
+        val premiere = item.data.premiereDate
+        val unreleased = premiere?.toLocalDate()?.isAfter(today) == true
+        val airedPremiere = premiere?.takeIf { !it.isAfter(now) }
+        val lastPlayed = item.data.userData?.lastPlayedDate
+        val dateCreated = item.data.dateCreated
+
+        val activityTime =
+            if (fromResume) {
+                lastPlayed ?: dateCreated ?: airedPremiere
+            } else {
+                val basePlayed = nextUpLastPlayedById[item.id] ?: lastPlayed
+                maxOfNonNull(basePlayed, airedPremiere) ?: dateCreated
+            }
+
+        entries.add(ContinueEntry(item = item, unreleased = unreleased, activityTime = activityTime))
+    }
+
+    resume.forEach { addItem(it, fromResume = true) }
+    nextUp.forEach { addItem(it, fromResume = false) }
+
+    return entries
+        .sortedWith(
+            compareBy<ContinueEntry> { it.unreleased }
+                .thenByDescending { it.activityTime },
+        ).map { it.item }
+}

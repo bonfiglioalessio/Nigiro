@@ -246,3 +246,15 @@ internal fun selectRecentHeroItems(
         HomeMediaFilter.SERIES -> preparedSeries.take(count)
     }
 }
+
+/**
+ * Picks up to [limit] Live TV channels for the Stremio Home row: favorites first, otherwise the first channels.
+ */
+internal fun pickHomeLiveTvChannels(
+    channels: List<BaseItem>,
+    limit: Int = 12,
+): List<BaseItem> {
+    if (channels.isEmpty() || limit <= 0) return emptyList()
+    val favorites = channels.filter { it.favorite }
+    return (if (favorites.isNotEmpty()) favorites else channels).take(limit)
+}
