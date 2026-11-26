@@ -503,7 +503,7 @@ class HomeViewModel
             userDto: ServerUserConfig,
             config: RemoteWholphinConfig,
         ): HomeRowLoadingState.Success? {
-            if (!userDto.tvAccess || !config.modules.liveTv) return null
+            if (!userDto.tvAccess || !config.ui.modules.liveTv) return null
             return try {
                 val request =
                     GetLiveTvChannelsRequest(
